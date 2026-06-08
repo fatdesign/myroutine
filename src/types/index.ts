@@ -13,6 +13,7 @@ export interface DayHistory {
   completedCount: number;
   totalCount: number;
   level: number; // 0-4 for GitHub style graph
+  journal?: string; // Daily Grimoire entry
 }
 
 export type HistoryRecord = Record<string, DayHistory>;

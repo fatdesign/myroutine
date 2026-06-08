@@ -52,3 +52,27 @@ export const checkAndResetRoutines = (routines: Routine[]): Routine[] => {
 
   return hasChanges ? updatedRoutines : routines;
 };
+
+export const checkIsGridBroken = (history: HistoryRecord): boolean => {
+  const dates = Object.keys(history).sort();
+  if (dates.length === 0) return false;
+  
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+  const pastDates = dates.filter(d => d < todayStr);
+  if (pastDates.length === 0) return false;
+  
+  const lastActiveDate = pastDates[pastDates.length - 1];
+  
+  // Missed yesterday completely
+  if (lastActiveDate < yesterdayStr) return true;
+  
+  // Yesterday had 0 completed routines
+  if (lastActiveDate === yesterdayStr && history[yesterdayStr].completedCount === 0) return true;
+
+  return false;
+};

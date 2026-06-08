@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Eye, Check, Edit2, Trash2, X, Hexagon, CircleDot, Shield } from 'lucide-react';
+import { Eye, Check, Edit2, Trash2, X, Hexagon, CircleDot, Shield, Waves, BookOpen } from 'lucide-react';
 import { initialRoutines } from './data/mockData';
 import type { Routine, HistoryRecord } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
-import { getTodayStr, calculateLevel, getHistoryGraphData, checkAndResetRoutines } from './utils/habitUtils';
+import { getTodayStr, calculateLevel, getHistoryGraphData, checkAndResetRoutines, checkIsGridBroken } from './utils/habitUtils';
+import { getDailyQuote } from './data/quotes';
+import { useAudioDrone } from './hooks/useAudioDrone';
 import { EmotionalScale } from './components/EmotionalScale';
 import './index.css';
 
@@ -12,8 +14,6 @@ const getEmbedUrl = (url: string) => {
   if (!url) return '';
   try {
     const urlObj = new URL(url);
-    
-    // YouTube
     if (urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('youtu.be')) {
       let videoId = '';
       if (urlObj.hostname.includes('youtu.be')) {
@@ -23,14 +23,10 @@ const getEmbedUrl = (url: string) => {
       }
       return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
     }
-    
-    // Instagram
     if (urlObj.hostname.includes('instagram.com')) {
-      // Remove query params and ensure trailing slash before /embed
       const baseUrl = url.split('?')[0].replace(/\/$/, '');
       return `${baseUrl}/embed`;
     }
-    
     return url;
   } catch (e) {
     return url;
@@ -40,6 +36,7 @@ const getEmbedUrl = (url: string) => {
 function App() {
   const [routines, setRoutines] = useLocalStorage<Routine[]>('routineflow-routines', initialRoutines);
   const [history, setHistory] = useLocalStorage<HistoryRecord>('routineflow-history', {});
+  const { isPlaying: isDronePlaying, toggleDrone } = useAudioDrone();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
@@ -54,14 +51,34 @@ function App() {
   const [type, setType] = useState<'morning' | 'evening'>('morning');
   const [mediaUrl, setMediaUrl] = useState('');
 
+  // Grimoire State
+  const todayStr = getTodayStr();
+  const [journalEntry, setJournalEntry] = useState(history[todayStr]?.journal || '');
+
+  // Grid Break State
+  const [isGridBroken, setIsGridBroken] = useState(false);
+  const [oathInput, setOathInput] = useState('');
+
   useEffect(() => {
+    // 1. Reset Routines if new day
     const updated = checkAndResetRoutines(routines);
     if (updated !== routines) {
       setRoutines(updated);
     }
+    
+    // 2. Load today's journal
+    if (history[todayStr]?.journal) {
+      setJournalEntry(history[todayStr].journal as string);
+    }
+
+    // 3. Check Price of Failure
+    if (checkIsGridBroken(history)) {
+      setIsGridBroken(true);
+    }
   }, []);
 
-  const saveHistory = (currentRoutines: Routine[]) => {
+  // Save history helper
+  const saveHistory = (currentRoutines: Routine[], journal?: string) => {
     const today = getTodayStr();
     const completedCount = currentRoutines.filter(r => r.completed).length;
     const totalCount = currentRoutines.length;
@@ -69,11 +86,19 @@ function App() {
     
     setHistory(prev => ({
       ...prev,
-      [today]: { date: today, completedCount, totalCount, level }
+      [today]: { 
+        ...prev[today],
+        date: today, 
+        completedCount, 
+        totalCount, 
+        level,
+        journal: journal !== undefined ? journal : prev[today]?.journal 
+      }
     }));
   };
 
   const toggleRoutine = (id: string) => {
+    if (isGridBroken) return; // Block actions if broken
     const today = getTodayStr();
     const newRoutines = routines.map(r => 
       r.id === id ? { ...r, completed: !r.completed, lastCompletedDate: !r.completed ? today : r.lastCompletedDate } : r
@@ -82,8 +107,15 @@ function App() {
     saveHistory(newRoutines);
   };
 
+  const handleJournalChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
+    setJournalEntry(text);
+    saveHistory(routines, text);
+  };
+
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
+    if (isGridBroken) return;
     if(confirm('Erase this ritual from the grimoire?')) {
       const newRoutines = routines.filter(r => r.id !== id);
       setRoutines(newRoutines);
@@ -93,6 +125,7 @@ function App() {
 
   const handleEdit = (e: React.MouseEvent, routine: Routine) => {
     e.stopPropagation();
+    if (isGridBroken) return;
     setEditingRoutine(routine);
     setTitle(routine.title);
     setTime(routine.time);
@@ -102,6 +135,7 @@ function App() {
   };
 
   const openNewModal = () => {
+    if (isGridBroken) return;
     setEditingRoutine(null);
     setTitle('');
     setTime('08:00');
@@ -141,6 +175,30 @@ function App() {
     }
   };
 
+  const handleOathSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      if (oathInput.trim().toLowerCase() === 'i am bound by discipline') {
+        setIsGridBroken(false);
+        // Repair grid by marking yesterday as level 1 (forgiven) so it doesn't trigger again on reload today
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        
+        setHistory(prev => ({
+          ...prev,
+          [yesterdayStr]: {
+            date: yesterdayStr,
+            completedCount: 1, // Fake count to pass the check
+            totalCount: 1,
+            level: 1 // Lowest positive level
+          }
+        }));
+      } else {
+        alert('The oath is incorrect. You must vow: "I am bound by discipline"');
+      }
+    }
+  };
+
   const completedCount = routines.filter(r => r.completed).length;
   const totalCount = routines.length;
   const progressPercentage = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
@@ -149,18 +207,51 @@ function App() {
   const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
 
   const graphData = getHistoryGraphData(history, 90);
+  const dailyQuote = getDailyQuote(todayStr);
 
   return (
     <div className="app-container">
+      {/* Broken Grid Overlay */}
+      {isGridBroken && (
+        <div className="broken-overlay">
+          <h2>The Protection Grid is Fractured.</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '40px', maxWidth: '600px', lineHeight: '1.6' }}>
+            Discipline was compromised. To re-enter The Sanctum and repair the grid, you must swear the oath. 
+            Type exactly: <strong>I am bound by discipline</strong> and press Enter.
+          </p>
+          <input 
+            type="text" 
+            value={oathInput} 
+            onChange={(e) => setOathInput(e.target.value)} 
+            onKeyDown={handleOathSubmit}
+            placeholder="Type your oath..."
+            autoFocus
+          />
+        </div>
+      )}
+
       <header>
         <div>
           <h1 className="gradient-text" style={{ fontSize: '2.5rem' }}>The Sanctum</h1>
           <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Discipline is the ultimate protector.</p>
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
+          <button 
+            className="btn-secondary" 
+            onClick={toggleDrone} 
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: isDronePlaying ? 'var(--accent-gold)' : 'var(--border-color)', color: isDronePlaying ? 'var(--accent-gold)' : 'var(--text-secondary)' }}
+            title="Toggle 432Hz Aura"
+          >
+            <Waves size={18} /> {isDronePlaying ? 'Aura Active' : 'Ignite Aura'}
+          </button>
           <button className="btn-primary" onClick={openNewModal}>Forge Ritual</button>
         </div>
       </header>
+
+      {/* The Oracle */}
+      <div className="oracle-container glass-panel">
+        <p className="oracle-quote">"{dailyQuote}"</p>
+      </div>
 
       <div className="dashboard-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
@@ -189,7 +280,7 @@ function App() {
           {/* Graph */}
           <div className="glass-panel">
             <h3 className="section-title"><Shield className="lucide-icon" size={20} /> Protection Grid</h3>
-            <div className="habit-graph">
+            <div className={`habit-graph ${isGridBroken ? 'broken' : ''}`}>
               {graphData.map((level, i) => (
                 <div key={i} className="habit-day" data-level={level}></div>
               ))}
@@ -236,6 +327,22 @@ function App() {
                     </div>
                   ))}
                 </div>
+
+                {/* The Grimoire specifically for Evening Rites */}
+                {typeCategory === 'evening' && (
+                  <div style={{ marginTop: '30px' }}>
+                    <h4 style={{ color: 'var(--accent-gold)', fontFamily: 'var(--font-heading)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <BookOpen size={16} /> The Grimoire
+                    </h4>
+                    <textarea 
+                      className="grimoire-textarea"
+                      placeholder="Transcribe your manifestations, gratitude, or reflections of the day..."
+                      value={journalEntry}
+                      onChange={handleJournalChange}
+                      disabled={isGridBroken}
+                    />
+                  </div>
+                )}
               </div>
             )
           })}

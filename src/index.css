@@ -446,3 +446,113 @@ header {
   height: 100%;
   border: 0;
 }
+
+/* The Oracle */
+.oracle-container {
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 30px;
+  background: radial-gradient(circle at center, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.oracle-quote {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  color: var(--accent-gold);
+  font-style: italic;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+}
+
+/* The Grimoire (Journal) */
+.grimoire-textarea {
+  width: 100%;
+  min-height: 120px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid var(--border-color);
+  border-left: 2px solid var(--accent-gold);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  padding: 16px;
+  resize: vertical;
+  margin-top: 20px;
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+}
+
+.grimoire-textarea:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+  box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.05);
+}
+
+.grimoire-textarea::placeholder {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* The Price of Failure (Broken Grid) */
+.habit-graph.broken .habit-day {
+  background: var(--accent-crimson);
+  box-shadow: 0 0 5px var(--accent-crimson);
+  animation: glitch 2s infinite alternate;
+}
+
+.habit-graph.broken .habit-day:nth-child(even) {
+  animation-delay: 0.5s;
+}
+
+.habit-graph.broken .habit-day:nth-child(3n) {
+  animation-delay: 1s;
+}
+
+@keyframes glitch {
+  0% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0.2; transform: scale(0.9); }
+}
+
+.broken-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(5,5,5,0.95);
+  backdrop-filter: blur(10px);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px;
+  border: 1px solid var(--accent-crimson);
+}
+
+.broken-overlay h2 {
+  color: var(--accent-crimson);
+  text-shadow: 0 0 20px rgba(138, 3, 3, 0.8);
+  margin-bottom: 20px;
+  font-family: var(--font-heading);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.broken-overlay input {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--accent-crimson);
+  color: white;
+  font-size: 1.2rem;
+  text-align: center;
+  padding: 10px;
+  width: 80%;
+  max-width: 400px;
+  font-family: var(--font-heading);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.broken-overlay input:focus {
+  outline: none;
+  box-shadow: 0 10px 20px -10px rgba(138, 3, 3, 0.5);
+}
