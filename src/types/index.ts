@@ -5,6 +5,7 @@ export interface Routine {
   completed: boolean;
   type: 'morning' | 'evening';
   lastCompletedDate?: string;
+  mediaUrl?: string;
 }
 
 export interface DayHistory {
