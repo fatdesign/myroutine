@@ -4,6 +4,7 @@ import { initialRoutines } from './data/mockData';
 import type { Routine, HistoryRecord } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { getTodayStr, calculateLevel, getHistoryGraphData, checkAndResetRoutines } from './utils/habitUtils';
+import { EmotionalScale } from './components/EmotionalScale';
 import './index.css';
 
 // Helper to convert standard video URLs to embeddable Iframe URLs
@@ -238,6 +239,11 @@ function App() {
               </div>
             )
           })}
+        </div>
+
+        {/* Emotional Scale */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+          <EmotionalScale />
         </div>
       </div>
 
