@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Eye, Check, Edit2, Trash2, X, Hexagon, CircleDot, Shield, Waves, BookOpen } from 'lucide-react';
 import type { Routine, HistoryRecord } from './types';
 import * as plannerApi from './services/plannerApi';
-import { getTodayStr, calculateLevel, getHistoryGraphData, checkIsGridBroken } from './utils/habitUtils';
+import { getTodayStr, getDateStr, calculateLevel, getHistoryGraphData, checkIsGridBroken } from './utils/habitUtils';
 import { getDailyQuote } from './data/quotes';
 import { useAudioDrone } from './hooks/useAudioDrone';
 import { EmotionalScale } from './components/EmotionalScale';
@@ -179,7 +179,7 @@ function App() {
         // Repair grid by marking yesterday as level 1 (forgiven) so it doesn't trigger again on reload today
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        const yesterdayStr = getDateStr(yesterday);
 
         const repaired = { date: yesterdayStr, completedCount: 1, totalCount: 1, level: 1 };
         setHistory(prev => ({ ...prev, [yesterdayStr]: repaired }));

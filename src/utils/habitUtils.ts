@@ -1,9 +1,11 @@
 import type { HistoryRecord } from '../types';
 
-export const getTodayStr = () => {
-  const date = new Date();
-  return date.toISOString().split('T')[0]; // YYYY-MM-DD
-};
+// The worker stamps dates in Europe/Berlin (see worker/worker.js); the client must
+// agree on "today" or routine resets / history entries land on the wrong date.
+export const getDateStr = (date: Date): string =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(date);
+
+export const getTodayStr = () => getDateStr(new Date());
 
 export const calculateLevel = (completed: number, total: number): number => {
   if (total === 0) return 0;
@@ -24,8 +26,8 @@ export const getHistoryGraphData = (history: HistoryRecord, days = 90): number[]
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
-    
+    const dateStr = getDateStr(d);
+
     if (history[dateStr]) {
       data.push(history[dateStr].level);
     } else {
@@ -41,10 +43,10 @@ export const checkIsGridBroken = (history: HistoryRecord): boolean => {
   if (dates.length === 0) return false;
   
   const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
+  const todayStr = getDateStr(today);
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  const yesterdayStr = getDateStr(yesterday);
 
   const pastDates = dates.filter(d => d < todayStr);
   if (pastDates.length === 0) return false;
