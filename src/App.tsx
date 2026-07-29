@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Eye, Check, Edit2, Trash2, X, Hexagon, CircleDot, Shield, Waves, BookOpen } from 'lucide-react';
-import { initialRoutines } from './data/mockData';
 import type { Routine, HistoryRecord } from './types';
-import { useLocalStorage } from './hooks/useLocalStorage';
-import { getTodayStr, calculateLevel, getHistoryGraphData, checkAndResetRoutines, checkIsGridBroken } from './utils/habitUtils';
+import * as plannerApi from './services/plannerApi';
+import { getTodayStr, calculateLevel, getHistoryGraphData, checkIsGridBroken } from './utils/habitUtils';
 import { getDailyQuote } from './data/quotes';
 import { useAudioDrone } from './hooks/useAudioDrone';
 import { EmotionalScale } from './components/EmotionalScale';
@@ -34,8 +33,8 @@ const getEmbedUrl = (url: string) => {
 };
 
 function App() {
-  const [routines, setRoutines] = useLocalStorage<Routine[]>('routineflow-routines', initialRoutines);
-  const [history, setHistory] = useLocalStorage<HistoryRecord>('routineflow-history', {});
+  const [routines, setRoutines] = useState<Routine[]>([]);
+  const [history, setHistory] = useState<HistoryRecord>({});
   const { isPlaying: isDronePlaying, toggleDrone } = useAudioDrone();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,50 +59,50 @@ function App() {
   const [oathInput, setOathInput] = useState('');
 
   useEffect(() => {
-    // 1. Reset Routines if new day
-    const updated = checkAndResetRoutines(routines);
-    if (updated !== routines) {
-      setRoutines(updated);
-    }
-    
-    // 2. Load today's journal
-    if (history[todayStr]?.journal) {
-      setJournalEntry(history[todayStr].journal as string);
-    }
+    (async () => {
+      // Server already resets stale-completed routines before returning /tasks
+      const [fetchedRoutines, fetchedHistory] = await Promise.all([
+        plannerApi.fetchRoutines(),
+        plannerApi.fetchHistory(),
+      ]);
+      setRoutines(fetchedRoutines);
+      setHistory(fetchedHistory);
 
-    // 3. Check Price of Failure
-    if (checkIsGridBroken(history)) {
-      setIsGridBroken(true);
-    }
+      if (fetchedHistory[todayStr]?.journal) {
+        setJournalEntry(fetchedHistory[todayStr].journal as string);
+      }
+
+      if (checkIsGridBroken(fetchedHistory)) {
+        setIsGridBroken(true);
+      }
+    })();
   }, []);
 
-  // Save history helper
-  const saveHistory = (currentRoutines: Routine[], journal?: string) => {
+  // Save history helper (persists to the shared planner backend)
+  const saveHistory = async (currentRoutines: Routine[], journal?: string) => {
     const today = getTodayStr();
     const completedCount = currentRoutines.filter(r => r.completed).length;
     const totalCount = currentRoutines.length;
     const level = calculateLevel(completedCount, totalCount);
-    
+    const journalToSave = journal !== undefined ? journal : history[today]?.journal;
+
     setHistory(prev => ({
       ...prev,
-      [today]: { 
-        ...prev[today],
-        date: today, 
-        completedCount, 
-        totalCount, 
-        level,
-        journal: journal !== undefined ? journal : prev[today]?.journal 
-      }
+      [today]: { date: today, completedCount, totalCount, level, journal: journalToSave },
     }));
+
+    await plannerApi.upsertHistory(today, { completedCount, totalCount, level, journal: journalToSave });
   };
 
-  const toggleRoutine = (id: string) => {
+  const toggleRoutine = async (id: string) => {
     if (isGridBroken) return; // Block actions if broken
     const today = getTodayStr();
-    const newRoutines = routines.map(r => 
+    const newRoutines = routines.map(r =>
       r.id === id ? { ...r, completed: !r.completed, lastCompletedDate: !r.completed ? today : r.lastCompletedDate } : r
     );
     setRoutines(newRoutines);
+    const toggled = newRoutines.find(r => r.id === id)!;
+    await plannerApi.setRoutineCompleted(id, toggled.completed);
     saveHistory(newRoutines);
   };
 
@@ -119,6 +118,7 @@ function App() {
     if(confirm('Erase this ritual from the grimoire?')) {
       const newRoutines = routines.filter(r => r.id !== id);
       setRoutines(newRoutines);
+      plannerApi.deleteRoutine(id);
       saveHistory(newRoutines);
     }
   };
@@ -144,26 +144,23 @@ function App() {
     setIsModalOpen(true);
   };
 
-  const saveRoutine = () => {
+  const saveRoutine = async () => {
     if (!title.trim()) return;
 
-    let newRoutines;
     if (editingRoutine) {
-      newRoutines = routines.map(r => r.id === editingRoutine.id ? { ...r, title, time, type, mediaUrl } : r);
+      const updated: Routine = { ...editingRoutine, title, time, type, mediaUrl };
+      await plannerApi.updateRoutine(editingRoutine.id, updated);
+      const newRoutines = routines.map(r => r.id === editingRoutine.id ? updated : r);
+      setRoutines(newRoutines);
+      saveHistory(newRoutines);
     } else {
-      const newRoutine: Routine = {
-        id: Date.now().toString(),
-        title,
-        time,
-        type,
-        mediaUrl,
-        completed: false
-      };
-      newRoutines = [...routines, newRoutine];
+      await plannerApi.createRoutine({ title, time, type, mediaUrl });
+      // Worker doesn't return the new row's id, so refetch to pick it up
+      const newRoutines = await plannerApi.fetchRoutines();
+      setRoutines(newRoutines);
+      saveHistory(newRoutines);
     }
-    
-    setRoutines(newRoutines);
-    saveHistory(newRoutines);
+
     setIsModalOpen(false);
   };
 
@@ -183,16 +180,10 @@ function App() {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toISOString().split('T')[0];
-        
-        setHistory(prev => ({
-          ...prev,
-          [yesterdayStr]: {
-            date: yesterdayStr,
-            completedCount: 1, // Fake count to pass the check
-            totalCount: 1,
-            level: 1 // Lowest positive level
-          }
-        }));
+
+        const repaired = { date: yesterdayStr, completedCount: 1, totalCount: 1, level: 1 };
+        setHistory(prev => ({ ...prev, [yesterdayStr]: repaired }));
+        plannerApi.upsertHistory(yesterdayStr, repaired);
       } else {
         alert('The oath is incorrect. You must vow: "I am bound by discipline"');
       }

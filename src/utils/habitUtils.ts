@@ -1,4 +1,4 @@
-import type { Routine, HistoryRecord } from '../types';
+import type { HistoryRecord } from '../types';
 
 export const getTodayStr = () => {
   const date = new Date();
@@ -34,23 +34,6 @@ export const getHistoryGraphData = (history: HistoryRecord, days = 90): number[]
   }
   
   return data;
-};
-
-// Resets routines if a new day has started
-export const checkAndResetRoutines = (routines: Routine[]): Routine[] => {
-  const today = getTodayStr();
-  let hasChanges = false;
-
-  const updatedRoutines = routines.map(routine => {
-    // If it was completed, but not today, reset it
-    if (routine.completed && routine.lastCompletedDate !== today) {
-      hasChanges = true;
-      return { ...routine, completed: false };
-    }
-    return routine;
-  });
-
-  return hasChanges ? updatedRoutines : routines;
 };
 
 export const checkIsGridBroken = (history: HistoryRecord): boolean => {
