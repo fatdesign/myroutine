@@ -8,6 +8,13 @@ export interface Routine {
   mediaUrl?: string;
 }
 
+export interface OneTimeTask {
+  id: string;
+  title: string;
+  time: string;
+  completed: boolean;
+}
+
 export interface DayHistory {
   date: string; // YYYY-MM-DD
   completedCount: number;

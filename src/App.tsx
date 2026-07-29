@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Eye, Check, Edit2, Trash2, X, Hexagon, CircleDot, Shield, Waves, BookOpen } from 'lucide-react';
-import type { Routine, HistoryRecord } from './types';
+import { Eye, Check, Edit2, Trash2, X, Hexagon, CircleDot, Shield, Waves, BookOpen, ListChecks } from 'lucide-react';
+import type { Routine, OneTimeTask, HistoryRecord } from './types';
 import * as plannerApi from './services/plannerApi';
 import { getTodayStr, getDateStr, calculateLevel, getHistoryGraphData, checkIsGridBroken } from './utils/habitUtils';
 import { getDailyQuote } from './data/quotes';
@@ -34,6 +34,7 @@ const getEmbedUrl = (url: string) => {
 
 function App() {
   const [routines, setRoutines] = useState<Routine[]>([]);
+  const [oneTimeTasks, setOneTimeTasks] = useState<OneTimeTask[]>([]);
   const [history, setHistory] = useState<HistoryRecord>({});
   const { isPlaying: isDronePlaying, toggleDrone } = useAudioDrone();
   
@@ -61,11 +62,12 @@ function App() {
   useEffect(() => {
     (async () => {
       // Server already resets stale-completed routines before returning /tasks
-      const [fetchedRoutines, fetchedHistory] = await Promise.all([
-        plannerApi.fetchRoutines(),
+      const [{ routines: fetchedRoutines, oneTimeTasks: fetchedOneTimeTasks }, fetchedHistory] = await Promise.all([
+        plannerApi.fetchAllTasks(),
         plannerApi.fetchHistory(),
       ]);
       setRoutines(fetchedRoutines);
+      setOneTimeTasks(fetchedOneTimeTasks);
       setHistory(fetchedHistory);
 
       if (fetchedHistory[todayStr]?.journal) {
@@ -102,8 +104,24 @@ function App() {
     );
     setRoutines(newRoutines);
     const toggled = newRoutines.find(r => r.id === id)!;
-    await plannerApi.setRoutineCompleted(id, toggled.completed);
+    await plannerApi.setTaskCompleted(id, toggled.completed);
     saveHistory(newRoutines);
+  };
+
+  const toggleOneTimeTask = async (id: string) => {
+    if (isGridBroken) return;
+    const newTasks = oneTimeTasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+    setOneTimeTasks(newTasks);
+    const toggled = newTasks.find(t => t.id === id)!;
+    await plannerApi.setTaskCompleted(id, toggled.completed);
+  };
+
+  const handleDeleteOneTimeTask = (id: string) => {
+    if (isGridBroken) return;
+    if (confirm('Aufgabe wirklich löschen?')) {
+      setOneTimeTasks(oneTimeTasks.filter(t => t.id !== id));
+      plannerApi.deleteTask(id);
+    }
   };
 
   const handleJournalChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -118,7 +136,7 @@ function App() {
     if(confirm('Erase this ritual from the grimoire?')) {
       const newRoutines = routines.filter(r => r.id !== id);
       setRoutines(newRoutines);
-      plannerApi.deleteRoutine(id);
+      plannerApi.deleteTask(id);
       saveHistory(newRoutines);
     }
   };
@@ -156,7 +174,7 @@ function App() {
     } else {
       await plannerApi.createRoutine({ title, time, type, mediaUrl });
       // Worker doesn't return the new row's id, so refetch to pick it up
-      const newRoutines = await plannerApi.fetchRoutines();
+      const { routines: newRoutines } = await plannerApi.fetchAllTasks();
       setRoutines(newRoutines);
       saveHistory(newRoutines);
     }
@@ -337,6 +355,34 @@ function App() {
               </div>
             )
           })}
+
+          {/* One-time tasks, e.g. added via the Telegram bot */}
+          <div className="glass-panel">
+            <h3 className="section-title"><ListChecks className="lucide-icon" size={20} /> Today's Tasks</h3>
+            <div style={{ marginTop: '20px' }}>
+              {oneTimeTasks.length === 0 ? <p style={{color: 'var(--text-secondary)', fontStyle: 'italic'}}>Silence remains.</p> : null}
+              {oneTimeTasks.map(task => (
+                <div
+                  key={task.id}
+                  className={`routine-item ${task.completed ? 'completed' : ''}`}
+                  onClick={() => toggleOneTimeTask(task.id)}
+                >
+                  <div className="checkbox">
+                    {task.completed && <Check size={14} className="check-icon" color="var(--bg-color)" strokeWidth={3} />}
+                  </div>
+
+                  <div className="routine-info">
+                    <div className="routine-title">{task.title}</div>
+                    <div className="routine-time">{task.time}</div>
+                  </div>
+
+                  <div className="routine-actions">
+                    <button className="action-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteOneTimeTask(task.id); }} title="Erase"><Trash2 size={16} /></button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Emotional Scale */}
