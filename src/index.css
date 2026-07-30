@@ -1,32 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Instrument+Sans:wght@400;500;600&display=swap');
 
 :root {
-  /* Obsidian / Onyx Black Palette */
-  --bg-color: #050505;
-  --panel-bg: #0a0a0c;
-  --text-primary: #ededed;
-  --text-secondary: #8c8c8c;
+  /* Warm Vellum: deep espresso-brown, not pure black */
+  --bg-color: #1c1712;
+  --panel-bg: #221d19;
+  --text-primary: #f2ead9;
+  --text-secondary: #b7a891;
+  --text-muted: #8f8271;
 
-  /* Refined metal accents: warm champagne gold + cool platinum */
-  --accent-gold: #cba14d;
-  --accent-gold-bright: #e4c374;
-  --accent-gold-dark: #8f7333;
-  --accent-glow: rgba(203, 161, 77, 0.15);
-  --accent-platinum: #c8cad0;
-  --accent-crimson: #8a0303;
+  /* Soft brass, not shiny gold */
+  --accent-gold: #c9a35f;
+  --accent-gold-bright: #f3dfae;
+  --accent-gold-dark: #8a6e3f;
+  --accent-glow: rgba(201, 163, 95, 0.18);
+  --accent-crimson: #a8412f;
 
-  --border-color: #1a1a1a;
-  --border-gold: rgba(203, 161, 77, 0.35);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --border-gold: rgba(201, 163, 95, 0.4);
 
-  --font-display: 'Playfair Display', serif;
-  --font-heading: 'Inter', sans-serif;
-  --font-body: 'Inter', sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-heading: 'Instrument Sans', -apple-system, sans-serif;
+  --font-body: 'Instrument Sans', -apple-system, sans-serif;
 
-  --radius-lg: 6px;
-  --radius-md: 3px;
-  --radius-sm: 2px;
+  --radius-lg: 20px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
 
   --transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+@property --angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
 }
 
 * {
@@ -41,11 +47,12 @@ body {
   font-family: var(--font-body);
   min-height: 100vh;
   overflow-x: hidden;
-  /* Subtle dark noise/texture effect via radial gradient */
   background-image:
-    radial-gradient(circle at 50% 0%, var(--panel-bg), var(--bg-color) 70%),
+    radial-gradient(ellipse 1100px 600px at 15% -10%, rgba(201, 163, 95, 0.14), transparent 60%),
+    radial-gradient(ellipse 900px 600px at 110% 25%, rgba(168, 100, 76, 0.10), transparent 60%),
+    radial-gradient(ellipse 1000px 700px at 50% 115%, rgba(0, 0, 0, 0.45), transparent 60%),
     radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: auto, 3px 3px;
+  background-size: auto, auto, auto, 3px 3px;
   background-attachment: fixed;
 }
 
@@ -82,41 +89,45 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Utilities */
 .glass-panel {
-  background: rgba(10, 10, 12, 0.55);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  background: linear-gradient(155deg, rgba(255, 250, 240, 0.06), rgba(255, 250, 240, 0.015));
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 32px;
   transition: var(--transition);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.7);
-}
-
-.glass-panel::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border-gold), transparent);
-  opacity: 0;
-  transition: var(--transition);
+  box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .glass-panel:hover {
   border-color: var(--border-gold);
   transform: translateY(-2px);
-  box-shadow: 0 30px 70px -20px rgba(0,0,0,0.85), 0 0 30px var(--accent-glow);
+  box-shadow: 0 30px 70px -20px rgba(0,0,0,0.7), 0 0 30px var(--accent-glow);
 }
 
-.glass-panel:hover::before {
-  opacity: 1;
+/* The one signature motion moment — a slow rotating light ring, reserved for the hero card */
+.hero-frame {
+  position: relative;
+  border-radius: 21px;
+  padding: 1px;
+  background: conic-gradient(from var(--angle), transparent 0%, transparent 62%, rgba(243, 223, 174, 0.9) 72%, rgba(201, 163, 95, 0.5) 80%, transparent 92%);
+  animation: spin 7s linear infinite;
+}
+
+@keyframes spin {
+  to { --angle: 360deg; }
+}
+
+.hero-frame .glass-panel {
+  border-radius: 20px;
 }
 
 .gradient-text {
   font-family: var(--font-display);
   font-weight: 600;
-  background: linear-gradient(135deg, var(--accent-gold-bright), var(--accent-gold) 45%, var(--accent-platinum) 100%);
+  background: linear-gradient(135deg, var(--accent-gold-bright), var(--accent-gold) 65%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -135,14 +146,13 @@ button {
 
 .btn-primary {
   background: transparent;
-  color: var(--accent-gold);
+  color: var(--accent-gold-bright);
   padding: 13px 30px;
   border-radius: var(--radius-md);
   border: 1px solid var(--accent-gold);
   font-weight: 600;
   font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   position: relative;
   overflow: hidden;
 }
@@ -153,13 +163,13 @@ button {
   top: 0; left: -120%;
   width: 60%;
   height: 100%;
-  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.3), transparent);
   transition: left 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .btn-primary:hover {
   background: var(--accent-gold);
-  color: var(--bg-color);
+  color: #1c1712;
   box-shadow: 0 0 25px var(--accent-glow);
 }
 
@@ -176,7 +186,7 @@ button {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(5, 5, 5, 0.75);
+  background: rgba(28, 23, 18, 0.75);
   backdrop-filter: blur(24px) saturate(160%);
   -webkit-backdrop-filter: blur(24px) saturate(160%);
   border-bottom: 1px solid var(--border-color);
@@ -226,24 +236,35 @@ button {
   position: relative;
   display: flex;
   align-items: center;
-  padding: 16px 20px;
-  margin-bottom: 12px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid transparent;
-  border-left: 2px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  transition: var(--transition);
+  gap: 0.2rem;
+  padding: 16px 18px;
+  margin: 0 -18px 10px;
+  border-radius: 12px;
+  transition: background 0.3s ease;
   cursor: pointer;
+  overflow: hidden;
+}
+
+.routine-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.05) 48%, transparent 66%);
+  transform: translateX(-120%);
+  transition: transform 0.6s ease;
+  pointer-events: none;
 }
 
 .routine-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-  border-left-color: var(--accent-gold);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.routine-item:hover::before {
+  transform: translateX(120%);
 }
 
 .routine-item.completed {
   opacity: 0.5;
-  border-left-color: var(--text-secondary);
 }
 
 .routine-item.completed .routine-title {
@@ -256,7 +277,7 @@ button {
   height: 22px;
   min-width: 22px;
   border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
   margin-right: 18px;
   display: flex;
   align-items: center;
@@ -276,6 +297,7 @@ button {
 
 .routine-info {
   flex: 1;
+  min-width: 0;
 }
 
 .routine-title {
@@ -290,16 +312,14 @@ button {
 .routine-time {
   font-size: 0.8rem;
   color: var(--text-secondary);
-  font-family: var(--font-body);
-  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .routine-days {
-  font-size: 0.72rem;
-  color: var(--accent-gold);
-  opacity: 0.75;
+  font-size: 0.7rem;
+  color: var(--text-muted);
   margin-top: 2px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
 }
 
 /* Progress Circle */
@@ -321,7 +341,7 @@ button {
 }
 
 .progress-ring-circle-bg {
-  stroke: var(--border-color);
+  stroke: rgba(255, 255, 255, 0.08);
   fill: none;
 }
 
@@ -329,6 +349,7 @@ button {
   stroke: var(--accent-gold);
   fill: none;
   stroke-linecap: round;
+  filter: drop-shadow(0 0 10px rgba(201, 163, 95, 0.4));
   transition: stroke-dashoffset 1.5s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
@@ -340,16 +361,19 @@ button {
 }
 
 .progress-percentage {
-  font-size: 2.6rem;
+  font-size: 2.7rem;
   font-family: var(--font-display);
   font-weight: 600;
-  color: var(--accent-gold);
-  text-shadow: 0 0 20px var(--accent-glow);
   line-height: 1;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, var(--accent-gold-bright), var(--accent-gold) 65%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .progress-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.15em;
   color: var(--text-secondary);
@@ -366,15 +390,15 @@ button {
 
 .habit-day {
   aspect-ratio: 1;
-  background: var(--border-color);
-  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
   transition: var(--transition);
 }
 
-/* Levels of Completion - Gold scale */
-.habit-day[data-level="1"] { background: rgba(203, 161, 77, 0.2); }
-.habit-day[data-level="2"] { background: rgba(203, 161, 77, 0.5); }
-.habit-day[data-level="3"] { background: rgba(203, 161, 77, 0.8); }
+/* Levels of Completion - brass scale */
+.habit-day[data-level="1"] { background: rgba(201, 163, 95, 0.22); }
+.habit-day[data-level="2"] { background: rgba(201, 163, 95, 0.5); }
+.habit-day[data-level="3"] { background: rgba(201, 163, 95, 0.8); }
 .habit-day[data-level="4"] {
   background: var(--accent-gold);
   box-shadow: 0 0 8px var(--accent-gold);
@@ -387,17 +411,16 @@ button {
 }
 
 .section-title {
-  font-size: 0.82rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  margin-bottom: 24px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.95rem;
+  margin-bottom: 22px;
   display: flex;
   align-items: center;
   gap: 10px;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 14px;
+  color: var(--accent-gold-bright);
+  letter-spacing: 0.01em;
 }
 
 .lucide-icon {
@@ -408,7 +431,7 @@ button {
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.85);
+  background: rgba(10, 8, 6, 0.8);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
@@ -418,14 +441,15 @@ button {
 }
 
 .modal-content {
-  background: var(--bg-color);
+  background: linear-gradient(155deg, rgba(40, 33, 26, 0.92), rgba(28, 23, 18, 0.96));
+  backdrop-filter: blur(30px);
   width: 90%;
   max-width: 460px;
   max-height: 85vh;
   overflow-y: auto;
-  border: 1px solid var(--accent-gold-dark);
+  border: 1px solid var(--border-gold);
   border-radius: var(--radius-lg);
-  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.9), 0 0 30px rgba(203, 161, 77, 0.1);
+  box-shadow: 0 30px 80px -20px rgba(0,0,0,0.8), 0 0 30px rgba(201, 163, 95, 0.08);
 }
 
 .form-group {
@@ -436,7 +460,6 @@ button {
   display: block;
   margin-bottom: 8px;
   color: var(--text-secondary);
-  font-family: var(--font-heading);
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -490,13 +513,13 @@ button {
 .day-btn.active {
   background: var(--accent-gold);
   border-color: var(--accent-gold);
-  color: var(--bg-color);
+  color: #1c1712;
   font-weight: 700;
 }
 
 .form-hint {
   font-size: 0.75rem;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   margin-top: 8px;
   font-style: italic;
 }
@@ -515,18 +538,17 @@ button {
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
 }
 
 .btn-secondary:hover {
   color: var(--text-primary);
-  border-color: var(--accent-platinum);
+  border-color: var(--text-secondary);
 }
 
 .routine-actions {
   position: absolute;
-  right: 14px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -534,7 +556,7 @@ button {
   gap: 2px;
   opacity: 0;
   padding-left: 28px;
-  background: linear-gradient(90deg, transparent, var(--panel-bg) 40%);
+  background: linear-gradient(90deg, transparent, var(--panel-bg) 45%);
   transition: var(--transition);
   pointer-events: none;
 }
@@ -568,7 +590,7 @@ button {
   max-width: 800px;
   width: 95%;
   padding: 0;
-  border: 1px solid var(--accent-gold-dark);
+  border: 1px solid var(--border-gold);
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
@@ -602,23 +624,22 @@ button {
 .oracle-container {
   text-align: center;
   padding: 32px;
-  background: radial-gradient(circle at center, rgba(203, 161, 77, 0.06) 0%, transparent 70%);
+  background: radial-gradient(circle at center, rgba(201, 163, 95, 0.07) 0%, transparent 70%);
 }
 
 .oracle-quote {
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-style: italic;
   color: var(--accent-gold-bright);
   letter-spacing: 0.01em;
-  text-shadow: 0 0 15px rgba(203, 161, 77, 0.2);
 }
 
 /* The Grimoire (Journal) */
 .grimoire-textarea {
   width: 100%;
   min-height: 120px;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--border-color);
   border-left: 2px solid var(--accent-gold);
   border-radius: var(--radius-sm);
@@ -633,11 +654,11 @@ button {
 .grimoire-textarea:focus {
   outline: none;
   border-color: var(--accent-gold);
-  box-shadow: inset 0 0 10px rgba(203, 161, 77, 0.05);
+  box-shadow: inset 0 0 10px rgba(201, 163, 95, 0.05);
 }
 
 .grimoire-textarea::placeholder {
-  color: var(--text-secondary);
+  color: var(--text-muted);
   font-style: italic;
 }
 
@@ -665,7 +686,7 @@ button {
 .broken-overlay {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(5,5,5,0.95);
+  background: rgba(20, 12, 10, 0.95);
   backdrop-filter: blur(10px);
   z-index: 50;
   display: flex;
@@ -679,24 +700,24 @@ button {
 
 .broken-overlay h2 {
   font-family: var(--font-display);
+  font-style: italic;
   color: var(--accent-crimson);
-  text-shadow: 0 0 20px rgba(138, 3, 3, 0.8);
   margin-bottom: 20px;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 .broken-overlay input {
   background: transparent;
   border: none;
   border-bottom: 2px solid var(--accent-crimson);
-  color: white;
+  color: var(--text-primary);
   font-size: 1.2rem;
   text-align: center;
   padding: 10px;
   width: 80%;
   max-width: 400px;
-  font-family: var(--font-heading);
-  letter-spacing: 0.05em;
+  font-family: var(--font-body);
+  letter-spacing: 0.03em;
 }
 
 .broken-overlay input:focus {

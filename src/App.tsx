@@ -316,24 +316,26 @@ function App() {
         <div className="dashboard-grid">
           <div className="dashboard-column">
             {/* Progress */}
-            <div className="glass-panel" style={{ textAlign: 'center' }}>
-              <h3 className="section-title" style={{ justifyContent: 'center' }}><CircleDot className="lucide-icon" size={20} /> Aufstieg</h3>
-              <div className="progress-container">
-                <svg className="progress-ring" viewBox="0 0 150 150">
-                  <circle className="progress-ring-circle-bg" cx="75" cy="75" r="65" strokeWidth="6" />
-                  <circle
-                    className="progress-ring-circle" cx="75" cy="75" r="65" strokeWidth="6"
-                    strokeDasharray={circumference} style={{ strokeDashoffset }}
-                  />
-                </svg>
-                <div className="progress-text">
-                  <span className="progress-percentage">{progressPercentage}%</span>
-                  <span className="progress-label">Erreicht</span>
+            <div className="hero-frame">
+              <div className="glass-panel" style={{ textAlign: 'center' }}>
+                <h3 className="section-title" style={{ justifyContent: 'center' }}><CircleDot className="lucide-icon" size={20} /> Aufstieg</h3>
+                <div className="progress-container">
+                  <svg className="progress-ring" viewBox="0 0 150 150">
+                    <circle className="progress-ring-circle-bg" cx="75" cy="75" r="65" strokeWidth="6" />
+                    <circle
+                      className="progress-ring-circle" cx="75" cy="75" r="65" strokeWidth="6"
+                      strokeDasharray={circumference} style={{ strokeDashoffset }}
+                    />
+                  </svg>
+                  <div className="progress-text">
+                    <span className="progress-percentage">{progressPercentage}%</span>
+                    <span className="progress-label">Erreicht</span>
+                  </div>
                 </div>
+                <p style={{ color: 'var(--text-secondary)' }}>
+                  {completedCount} / {totalCount} Rituale erfüllt
+                </p>
               </div>
-              <p style={{ color: 'var(--text-secondary)' }}>
-                {completedCount} / {totalCount} Rituale erfüllt
-              </p>
             </div>
 
             {/* Graph */}

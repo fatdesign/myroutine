@@ -40,7 +40,7 @@ export const EmotionalScale = () => {
           <div style={{ color: 'var(--accent-gold)', fontFamily: 'var(--font-heading)', letterSpacing: '0.1em', marginBottom: '8px' }}>GUT FÜHLEN</div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {highVibe.map((item, i) => (
-              <li key={i} style={{ color: `rgba(212, 175, 55, ${1 - i * 0.08})` }}>
+              <li key={i} style={{ color: `rgba(201, 163, 95, ${1 - i * 0.08})` }}>
                 {item}
               </li>
             ))}
@@ -52,7 +52,7 @@ export const EmotionalScale = () => {
           <div style={{ color: 'var(--accent-crimson)', fontFamily: 'var(--font-heading)', letterSpacing: '0.1em', marginBottom: '8px' }}>SCHLECHT FÜHLEN</div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
             {lowVibe.map((item, i) => (
-              <li key={i} style={{ color: `rgba(138, 138, 138, ${1 - i * 0.04})` }}>
+              <li key={i} style={{ color: `rgba(157, 145, 128, ${1 - i * 0.04})` }}>
                 {item}
               </li>
             ))}
