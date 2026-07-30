@@ -1,4 +1,4 @@
-import { Activity } from 'lucide-react';
+import { Activity, Smile, Frown } from 'lucide-react';
 
 export const EmotionalScale = () => {
   const highVibe = [
@@ -35,30 +35,58 @@ export const EmotionalScale = () => {
         <Activity className="lucide-icon" size={18} /> Emotionale Skala
       </h3>
       
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px', fontSize: '0.78rem', fontFamily: 'var(--font-body)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px', fontSize: '0.8rem', fontFamily: 'var(--font-sans)' }}>
         
-        {/* High Frequency */}
-        <div style={{ borderLeft: '2px solid var(--text-gold)', paddingLeft: '14px' }}>
-          <div style={{ color: 'var(--text-gold)', fontFamily: 'var(--font-body)', fontWeight: '700', fontSize: '0.8rem', letterSpacing: '0.08em', marginBottom: '10px' }}>
-            GUT FÜHLEN
+        {/* High Frequency - Emerald / Cyan Theme */}
+        <div style={{
+          background: 'rgba(16, 185, 129, 0.06)',
+          border: '1px solid rgba(16, 185, 129, 0.2)',
+          borderRadius: '14px',
+          padding: '14px'
+        }}>
+          <div style={{
+            color: '#10b981',
+            fontWeight: '700',
+            fontSize: '0.78rem',
+            letterSpacing: '0.06em',
+            marginBottom: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <Smile size={14} /> GUT FÜHLEN
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
             {highVibe.map((item, i) => (
-              <li key={i} style={{ color: `rgba(223, 183, 108, ${1 - i * 0.07})`, fontWeight: i === 0 ? '600' : '400' }}>
+              <li key={i} style={{ color: `rgba(16, 185, 129, ${1 - i * 0.08})`, fontWeight: i === 0 ? '600' : '400' }}>
                 {item}
               </li>
             ))}
           </ul>
         </div>
 
-        {/* Low Frequency */}
-        <div style={{ borderLeft: '2px solid #852f23', paddingLeft: '14px', marginTop: '4px' }}>
-          <div style={{ color: '#b54333', fontFamily: 'var(--font-body)', fontWeight: '700', fontSize: '0.8rem', letterSpacing: '0.08em', marginBottom: '10px' }}>
-            SCHLECHT FÜHLEN
+        {/* Low Frequency - Rose / Amber Theme */}
+        <div style={{
+          background: 'rgba(244, 63, 94, 0.06)',
+          border: '1px solid rgba(244, 63, 94, 0.2)',
+          borderRadius: '14px',
+          padding: '14px'
+        }}>
+          <div style={{
+            color: '#f43f5e',
+            fontWeight: '700',
+            fontSize: '0.78rem',
+            letterSpacing: '0.06em',
+            marginBottom: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            <Frown size={14} /> SCHLECHT FÜHLEN
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {lowVibe.map((item, i) => (
-              <li key={i} style={{ color: `rgba(140, 115, 105, ${1 - i * 0.035})` }}>
+              <li key={i} style={{ color: `rgba(161, 161, 170, ${1 - i * 0.035})` }}>
                 {item}
               </li>
             ))}

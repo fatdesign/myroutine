@@ -290,21 +290,21 @@ function App() {
       <header className="top-bar">
         <div className="top-bar-inner">
           <div>
-            <h1 className="gradient-text" style={{ fontSize: '2.4rem', lineHeight: 1.1 }}>Das Sanktum</h1>
-            <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.05rem', marginTop: '4px' }}>
-              Disziplin ist der ultimative Schutz.
+            <h1 className="gradient-text" style={{ fontSize: '2.2rem', lineHeight: 1.1 }}>myroutine</h1>
+            <p className="hero-subtitle" style={{ marginTop: '2px' }}>
+              Disziplin & Rituale • HeroUI Dashboard
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <button
               className="btn-secondary"
               onClick={toggleDrone}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: isDronePlaying ? 'var(--text-gold)' : 'var(--panel-border)', color: isDronePlaying ? 'var(--text-gold)' : 'var(--text-secondary)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: isDronePlaying ? 'var(--heroui-violet-light)' : undefined, color: isDronePlaying ? 'var(--heroui-violet-light)' : undefined }}
               title="432Hz Aura umschalten"
             >
               <Waves size={16} /> {isDronePlaying ? 'Aura aktiv' : 'Aura entfachen'}
             </button>
-            <button className="btn-primary" onClick={openNewRoutineModal}>Neues Ritual</button>
+            <button className="btn-primary" onClick={openNewRoutineModal}>+ Neues Ritual</button>
           </div>
         </div>
       </header>
@@ -322,9 +322,15 @@ function App() {
               <h3 className="section-title" style={{ justifyContent: 'center' }}><CircleDot className="lucide-icon" size={18} /> Aufstieg</h3>
               <div className="progress-container">
                 <svg className="progress-ring" viewBox="0 0 150 150">
-                  <circle className="progress-ring-circle-bg" cx="75" cy="75" r="65" strokeWidth="6" />
+                  <defs>
+                    <linearGradient id="herouiGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#7c3aed" />
+                      <stop offset="100%" stopColor="#a855f7" />
+                    </linearGradient>
+                  </defs>
+                  <circle className="progress-ring-circle-bg" cx="75" cy="75" r="65" strokeWidth="7" />
                   <circle
-                    className="progress-ring-circle" cx="75" cy="75" r="65" strokeWidth="6"
+                    className="progress-ring-circle" cx="75" cy="75" r="65" strokeWidth="7"
                     strokeDasharray={circumference} style={{ strokeDashoffset }}
                   />
                 </svg>
@@ -333,7 +339,7 @@ function App() {
                   <span className="progress-label">Erreicht</span>
                 </div>
               </div>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
                 {completedCount} / {totalCount} Rituale erfüllt
               </p>
             </div>
@@ -356,11 +362,11 @@ function App() {
               <div className="dashboard-column" key={typeCategory}>
                 <div className="glass-panel">
                   <h3 className="section-title">
-                    <Hexagon className="lucide-icon" size={20} />
+                    <Hexagon className="lucide-icon" size={18} />
                     {typeCategory === 'morning' ? 'Morgenrituale' : 'Abendrituale'}
                   </h3>
-                  <div style={{ marginTop: '20px' }}>
-                    {currentRoutines.length === 0 ? <p style={{color: 'var(--text-secondary)', fontStyle: 'italic'}}>Noch keine Rituale.</p> : null}
+                  <div style={{ marginTop: '16px' }}>
+                    {currentRoutines.length === 0 ? <p style={{color: 'var(--text-subtle)', fontStyle: 'italic', fontSize: '0.9rem'}}>Noch keine Rituale.</p> : null}
                     {currentRoutines.map(routine => (
                       <div
                         key={routine.id}
@@ -368,23 +374,25 @@ function App() {
                         onClick={() => toggleRoutine(routine.id)}
                       >
                         <div className="checkbox">
-                          {routine.completed && <Check size={13} className="check-icon" color="var(--bg-color)" strokeWidth={3} />}
+                          {routine.completed && <Check size={13} className="check-icon" color="#ffffff" strokeWidth={3} />}
                         </div>
 
                         <div className="routine-info">
                           <div className="routine-title">{routine.title}</div>
-                          <div className="routine-time">{routine.time}</div>
-                          <div className="routine-days">{formatWeekdays(routine.weekdays)}</div>
+                          <div className="routine-badges">
+                            <span className="badge-pill time">{routine.time}</span>
+                            {routine.weekdays && <span className="badge-pill days">{formatWeekdays(routine.weekdays)}</span>}
+                          </div>
                         </div>
 
                         <div className="routine-actions">
                           {routine.mediaUrl && (
                             <button className="action-btn" onClick={(e) => playVideo(e, routine)} title="Video ansehen">
-                              <Eye size={15} />
+                              <Eye size={14} />
                             </button>
                           )}
-                          <button className="action-btn" onClick={(e) => handleEditRoutine(e, routine)} title="Bearbeiten"><Edit2 size={14} /></button>
-                          <button className="action-btn delete" onClick={(e) => handleDeleteRoutine(e, routine.id)} title="Löschen"><Trash2 size={14} /></button>
+                          <button className="action-btn" onClick={(e) => handleEditRoutine(e, routine)} title="Bearbeiten"><Edit2 size={13} /></button>
+                          <button className="action-btn delete" onClick={(e) => handleDeleteRoutine(e, routine.id)} title="Löschen"><Trash2 size={13} /></button>
                         </div>
                       </div>
                     ))}
@@ -393,8 +401,8 @@ function App() {
                   {/* The Grimoire specifically for Evening Rites */}
                   {typeCategory === 'evening' && (
                     <div style={{ marginTop: '24px' }}>
-                      <h4 className="section-title" style={{ marginBottom: '8px', fontSize: '1.15rem' }}>
-                        <BookOpen className="lucide-icon" size={18} /> Grimoire
+                      <h4 className="section-title" style={{ marginBottom: '4px', fontSize: '1.05rem' }}>
+                        <BookOpen className="lucide-icon" size={16} /> Grimoire
                       </h4>
                       <textarea
                         className="grimoire-textarea"
@@ -414,8 +422,8 @@ function App() {
           <div className="dashboard-column">
             <div className="glass-panel">
               <h3 className="section-title"><ListChecks className="lucide-icon" size={18} /> Heutige Aufgaben</h3>
-              <div style={{ marginTop: '20px' }}>
-                {oneTimeTasks.length === 0 ? <p style={{color: 'var(--text-secondary)', fontStyle: 'italic'}}>Keine offenen Aufgaben.</p> : null}
+              <div style={{ marginTop: '16px' }}>
+                {oneTimeTasks.length === 0 ? <p style={{color: 'var(--text-subtle)', fontStyle: 'italic', fontSize: '0.9rem'}}>Keine offenen Aufgaben.</p> : null}
                 {oneTimeTasks.map(task => (
                   <div
                     key={task.id}
@@ -423,17 +431,19 @@ function App() {
                     onClick={() => toggleOneTimeTask(task.id)}
                   >
                     <div className="checkbox">
-                      {task.completed && <Check size={13} className="check-icon" color="var(--bg-color)" strokeWidth={3} />}
+                      {task.completed && <Check size={13} className="check-icon" color="#ffffff" strokeWidth={3} />}
                     </div>
 
                     <div className="routine-info">
                       <div className="routine-title">{task.title}</div>
-                      <div className="routine-time">{task.time}</div>
+                      <div className="routine-badges">
+                        <span className="badge-pill time">{task.time}</span>
+                      </div>
                     </div>
 
                     <div className="routine-actions">
-                      <button className="action-btn" onClick={(e) => handleEditOneTimeTask(e, task)} title="Bearbeiten"><Edit2 size={14} /></button>
-                      <button className="action-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteOneTimeTask(task.id); }} title="Löschen"><Trash2 size={14} /></button>
+                      <button className="action-btn" onClick={(e) => handleEditOneTimeTask(e, task)} title="Bearbeiten"><Edit2 size={13} /></button>
+                      <button className="action-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteOneTimeTask(task.id); }} title="Löschen"><Trash2 size={13} /></button>
                     </div>
                   </div>
                 ))}
