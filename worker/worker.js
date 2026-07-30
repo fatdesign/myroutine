@@ -216,7 +216,7 @@ export default {
         let budgetWarning = "";
         try {
           const budgetRes = await fetch("https://fatdesign-trading-bot.f-klavun.workers.dev/weekly-budget-status?account=ALL", {
-            headers: { 'X-Admin-Password': 'coco' }
+            headers: { 'X-Admin-Password': env.ADMIN_PASSWORD }
           });
           if (budgetRes.ok) {
             const b = await budgetRes.json();

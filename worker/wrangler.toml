@@ -9,3 +9,6 @@ database_id = "796e078d-7095-4add-a7c7-4e9749df1e48"
 
 [triggers]
 crons = ["* * * * *"]
+
+[vars]
+ADMIN_PASSWORD = "coco"
