@@ -223,6 +223,7 @@ button {
 
 /* Routine Checkbox */
 .routine-item {
+  position: relative;
   display: flex;
   align-items: center;
   padding: 16px 20px;
@@ -524,21 +525,30 @@ button {
 }
 
 .routine-actions {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 2px;
   opacity: 0;
+  padding-left: 28px;
+  background: linear-gradient(90deg, transparent, var(--panel-bg) 40%);
   transition: var(--transition);
+  pointer-events: none;
 }
 
 .routine-item:hover .routine-actions {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .action-btn {
   background: transparent;
   color: var(--text-secondary);
   border: none;
-  padding: 6px;
+  padding: 5px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;

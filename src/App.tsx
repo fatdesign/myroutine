@@ -347,12 +347,12 @@ function App() {
             </div>
           </div>
 
-          {/* Routines */}
-          <div className="dashboard-column">
-            {['morning', 'evening'].map(typeCategory => {
-              const currentRoutines = routines.filter(r => r.type === typeCategory);
-              return (
-                <div className="glass-panel" key={typeCategory}>
+          {/* Routines — each phase gets its own column, side by side */}
+          {['morning', 'evening'].map(typeCategory => {
+            const currentRoutines = routines.filter(r => r.type === typeCategory);
+            return (
+              <div className="dashboard-column" key={typeCategory}>
+                <div className="glass-panel">
                   <h3 className="section-title">
                     <Hexagon className="lucide-icon" size={20} />
                     {typeCategory === 'morning' ? 'Morgenrituale' : 'Abendrituale'}
@@ -378,11 +378,11 @@ function App() {
                         <div className="routine-actions">
                           {routine.mediaUrl && (
                             <button className="action-btn" onClick={(e) => playVideo(e, routine)} title="Video ansehen">
-                              <Eye size={18} />
+                              <Eye size={15} />
                             </button>
                           )}
-                          <button className="action-btn" onClick={(e) => handleEditRoutine(e, routine)} title="Bearbeiten"><Edit2 size={16} /></button>
-                          <button className="action-btn delete" onClick={(e) => handleDeleteRoutine(e, routine.id)} title="Löschen"><Trash2 size={16} /></button>
+                          <button className="action-btn" onClick={(e) => handleEditRoutine(e, routine)} title="Bearbeiten"><Edit2 size={14} /></button>
+                          <button className="action-btn delete" onClick={(e) => handleDeleteRoutine(e, routine.id)} title="Löschen"><Trash2 size={14} /></button>
                         </div>
                       </div>
                     ))}
@@ -404,9 +404,9 @@ function App() {
                     </div>
                   )}
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            )
+          })}
 
           {/* One-time tasks, e.g. added via the Telegram bot */}
           <div className="dashboard-column">
@@ -430,8 +430,8 @@ function App() {
                     </div>
 
                     <div className="routine-actions">
-                      <button className="action-btn" onClick={(e) => handleEditOneTimeTask(e, task)} title="Bearbeiten"><Edit2 size={16} /></button>
-                      <button className="action-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteOneTimeTask(task.id); }} title="Löschen"><Trash2 size={16} /></button>
+                      <button className="action-btn" onClick={(e) => handleEditOneTimeTask(e, task)} title="Bearbeiten"><Edit2 size={14} /></button>
+                      <button className="action-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteOneTimeTask(task.id); }} title="Löschen"><Trash2 size={14} /></button>
                     </div>
                   </div>
                 ))}
