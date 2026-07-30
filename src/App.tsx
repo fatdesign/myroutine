@@ -2,11 +2,23 @@ import { useState, useEffect } from 'react';
 import { Eye, Check, Edit2, Trash2, X, Hexagon, CircleDot, Shield, Waves, BookOpen, ListChecks } from 'lucide-react';
 import type { Routine, OneTimeTask, HistoryRecord } from './types';
 import * as plannerApi from './services/plannerApi';
-import { getTodayStr, getDateStr, calculateLevel, getHistoryGraphData, checkIsGridBroken } from './utils/habitUtils';
+import { getTodayStr, getDateStr, calculateLevel, getHistoryGraphData, checkIsGridBroken, formatWeekdays } from './utils/habitUtils';
 import { getDailyQuote } from './data/quotes';
 import { useAudioDrone } from './hooks/useAudioDrone';
 import { EmotionalScale } from './components/EmotionalScale';
 import './index.css';
+
+const WEEKDAYS = [
+  { label: 'Mo', value: '1' },
+  { label: 'Di', value: '2' },
+  { label: 'Mi', value: '3' },
+  { label: 'Do', value: '4' },
+  { label: 'Fr', value: '5' },
+  { label: 'Sa', value: '6' },
+  { label: 'So', value: '7' },
+];
+
+const OATH_PHRASE = 'ich bin der disziplin verpflichtet';
 
 // Helper to convert standard video URLs to embeddable Iframe URLs
 const getEmbedUrl = (url: string) => {
@@ -27,7 +39,7 @@ const getEmbedUrl = (url: string) => {
       return `${baseUrl}/embed`;
     }
     return url;
-  } catch (e) {
+  } catch {
     return url;
   }
 };
@@ -37,10 +49,12 @@ function App() {
   const [oneTimeTasks, setOneTimeTasks] = useState<OneTimeTask[]>([]);
   const [history, setHistory] = useState<HistoryRecord>({});
   const { isPlaying: isDronePlaying, toggleDrone } = useAudioDrone();
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalKind, setModalKind] = useState<'routine' | 'task'>('routine');
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
-  
+  const [editingTask, setEditingTask] = useState<OneTimeTask | null>(null);
+
   // Video Modal State
   const [playingVideoUrl, setPlayingVideoUrl] = useState<string | null>(null);
   const [playingVideoTitle, setPlayingVideoTitle] = useState('');
@@ -50,6 +64,7 @@ function App() {
   const [time, setTime] = useState('');
   const [type, setType] = useState<'morning' | 'evening'>('morning');
   const [mediaUrl, setMediaUrl] = useState('');
+  const [weekdays, setWeekdays] = useState<string[]>([]);
 
   // Grimoire State
   const todayStr = getTodayStr();
@@ -130,10 +145,10 @@ function App() {
     saveHistory(routines, text);
   };
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleDeleteRoutine = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (isGridBroken) return;
-    if(confirm('Erase this ritual from the grimoire?')) {
+    if (confirm('Dieses Ritual wirklich aus dem Grimoire löschen?')) {
       const newRoutines = routines.filter(r => r.id !== id);
       setRoutines(newRoutines);
       plannerApi.deleteTask(id);
@@ -141,38 +156,71 @@ function App() {
     }
   };
 
-  const handleEdit = (e: React.MouseEvent, routine: Routine) => {
-    e.stopPropagation();
-    if (isGridBroken) return;
-    setEditingRoutine(routine);
-    setTitle(routine.title);
-    setTime(routine.time);
-    setType(routine.type);
-    setMediaUrl(routine.mediaUrl || '');
-    setIsModalOpen(true);
+  const toggleWeekday = (day: string) => {
+    setWeekdays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]);
   };
 
-  const openNewModal = () => {
+  const openNewRoutineModal = () => {
     if (isGridBroken) return;
+    setModalKind('routine');
     setEditingRoutine(null);
+    setEditingTask(null);
     setTitle('');
     setTime('08:00');
     setType('morning');
     setMediaUrl('');
+    setWeekdays([]);
     setIsModalOpen(true);
   };
 
-  const saveRoutine = async () => {
+  const handleEditRoutine = (e: React.MouseEvent, routine: Routine) => {
+    e.stopPropagation();
+    if (isGridBroken) return;
+    setModalKind('routine');
+    setEditingRoutine(routine);
+    setEditingTask(null);
+    setTitle(routine.title);
+    setTime(routine.time);
+    setType(routine.type);
+    setMediaUrl(routine.mediaUrl || '');
+    setWeekdays(routine.weekdays ? routine.weekdays.split(',') : []);
+    setIsModalOpen(true);
+  };
+
+  const handleEditOneTimeTask = (e: React.MouseEvent, task: OneTimeTask) => {
+    e.stopPropagation();
+    if (isGridBroken) return;
+    setModalKind('task');
+    setEditingTask(task);
+    setEditingRoutine(null);
+    setTitle(task.title);
+    setTime(task.time);
+    setIsModalOpen(true);
+  };
+
+  const handleSave = async () => {
     if (!title.trim()) return;
 
+    if (modalKind === 'task') {
+      if (editingTask) {
+        const updated: OneTimeTask = { ...editingTask, title, time };
+        await plannerApi.updateOneTimeTask(editingTask.id, updated);
+        setOneTimeTasks(oneTimeTasks.map(t => t.id === editingTask.id ? updated : t));
+      }
+      setIsModalOpen(false);
+      return;
+    }
+
+    const weekdaysStr = weekdays.length > 0 ? [...weekdays].sort((a, b) => Number(a) - Number(b)).join(',') : undefined;
+
     if (editingRoutine) {
-      const updated: Routine = { ...editingRoutine, title, time, type, mediaUrl };
+      const updated: Routine = { ...editingRoutine, title, time, type, mediaUrl, weekdays: weekdaysStr };
       await plannerApi.updateRoutine(editingRoutine.id, updated);
       const newRoutines = routines.map(r => r.id === editingRoutine.id ? updated : r);
       setRoutines(newRoutines);
       saveHistory(newRoutines);
     } else {
-      await plannerApi.createRoutine({ title, time, type, mediaUrl });
+      await plannerApi.createRoutine({ title, time, type, mediaUrl, weekdays: weekdaysStr });
       // Worker doesn't return the new row's id, so refetch to pick it up
       const { routines: newRoutines } = await plannerApi.fetchAllTasks();
       setRoutines(newRoutines);
@@ -192,7 +240,7 @@ function App() {
 
   const handleOathSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      if (oathInput.trim().toLowerCase() === 'i am bound by discipline') {
+      if (oathInput.trim().toLowerCase() === OATH_PHRASE) {
         setIsGridBroken(false);
         // Repair grid by marking yesterday as level 1 (forgiven) so it doesn't trigger again on reload today
         const yesterday = new Date();
@@ -203,7 +251,7 @@ function App() {
         setHistory(prev => ({ ...prev, [yesterdayStr]: repaired }));
         plannerApi.upsertHistory(yesterdayStr, repaired);
       } else {
-        alert('The oath is incorrect. You must vow: "I am bound by discipline"');
+        alert('Der Schwur ist falsch. Du musst schwören: "Ich bin der Disziplin verpflichtet"');
       }
     }
   };
@@ -211,183 +259,190 @@ function App() {
   const completedCount = routines.filter(r => r.completed).length;
   const totalCount = routines.length;
   const progressPercentage = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
-  
-  const circumference = 2 * Math.PI * 65; 
+
+  const circumference = 2 * Math.PI * 65;
   const strokeDashoffset = circumference - (progressPercentage / 100) * circumference;
 
   const graphData = getHistoryGraphData(history, 90);
   const dailyQuote = getDailyQuote(todayStr);
 
   return (
-    <div className="app-container">
+    <div className="app-shell">
       {/* Broken Grid Overlay */}
       {isGridBroken && (
         <div className="broken-overlay">
-          <h2>The Protection Grid is Fractured.</h2>
+          <h2>Das Schutzraster ist zerbrochen.</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '40px', maxWidth: '600px', lineHeight: '1.6' }}>
-            Discipline was compromised. To re-enter The Sanctum and repair the grid, you must swear the oath. 
-            Type exactly: <strong>I am bound by discipline</strong> and press Enter.
+            Die Disziplin wurde gebrochen. Um in Das Sanktum zurückzukehren und das Raster zu reparieren, musst du den Schwur ablegen.
+            Gib genau ein: <strong>Ich bin der Disziplin verpflichtet</strong> und drücke Enter.
           </p>
-          <input 
-            type="text" 
-            value={oathInput} 
-            onChange={(e) => setOathInput(e.target.value)} 
+          <input
+            type="text"
+            value={oathInput}
+            onChange={(e) => setOathInput(e.target.value)}
             onKeyDown={handleOathSubmit}
-            placeholder="Type your oath..."
+            placeholder="Schwöre hier..."
             autoFocus
           />
         </div>
       )}
 
-      <header>
-        <div>
-          <h1 className="gradient-text" style={{ fontSize: '2.5rem' }}>The Sanctum</h1>
-          <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Discipline is the ultimate protector.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <button 
-            className="btn-secondary" 
-            onClick={toggleDrone} 
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: isDronePlaying ? 'var(--accent-gold)' : 'var(--border-color)', color: isDronePlaying ? 'var(--accent-gold)' : 'var(--text-secondary)' }}
-            title="Toggle 432Hz Aura"
-          >
-            <Waves size={18} /> {isDronePlaying ? 'Aura Active' : 'Ignite Aura'}
-          </button>
-          <button className="btn-primary" onClick={openNewModal}>Forge Ritual</button>
+      <header className="top-bar">
+        <div className="top-bar-inner">
+          <div>
+            <h1 className="gradient-text" style={{ fontSize: '2.5rem' }}>Das Sanktum</h1>
+            <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Disziplin ist der ultimative Schutz.</p>
+          </div>
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <button
+              className="btn-secondary"
+              onClick={toggleDrone}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: isDronePlaying ? 'var(--accent-gold)' : 'var(--border-color)', color: isDronePlaying ? 'var(--accent-gold)' : 'var(--text-secondary)' }}
+              title="432Hz Aura umschalten"
+            >
+              <Waves size={18} /> {isDronePlaying ? 'Aura aktiv' : 'Aura entfachen'}
+            </button>
+            <button className="btn-primary" onClick={openNewRoutineModal}>Neues Ritual</button>
+          </div>
         </div>
       </header>
 
-      {/* The Oracle */}
-      <div className="oracle-container glass-panel">
-        <p className="oracle-quote">"{dailyQuote}"</p>
-      </div>
-
-      <div className="dashboard-grid">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-          
-          {/* Progress */}
-          <div className="glass-panel" style={{ textAlign: 'center' }}>
-            <h3 className="section-title" style={{ justifyContent: 'center' }}><CircleDot className="lucide-icon" size={20} /> Ascension</h3>
-            <div className="progress-container">
-              <svg className="progress-ring" viewBox="0 0 150 150">
-                <circle className="progress-ring-circle-bg" cx="75" cy="75" r="65" strokeWidth="6" />
-                <circle 
-                  className="progress-ring-circle" cx="75" cy="75" r="65" strokeWidth="6"
-                  strokeDasharray={circumference} style={{ strokeDashoffset }}
-                />
-              </svg>
-              <div className="progress-text">
-                <span className="progress-percentage">{progressPercentage}%</span>
-                <span className="progress-label">Manifested</span>
-              </div>
-            </div>
-            <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-heading)' }}>
-              {completedCount} / {totalCount} Rites Completed
-            </p>
-          </div>
-
-          {/* Graph */}
-          <div className="glass-panel">
-            <h3 className="section-title"><Shield className="lucide-icon" size={20} /> Protection Grid</h3>
-            <div className={`habit-graph ${isGridBroken ? 'broken' : ''}`}>
-              {graphData.map((level, i) => (
-                <div key={i} className="habit-day" data-level={level}></div>
-              ))}
-            </div>
-          </div>
+      <div className="app-container">
+        {/* The Oracle */}
+        <div className="oracle-container glass-panel">
+          <p className="oracle-quote">"{dailyQuote}"</p>
         </div>
 
-        {/* Routines */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-          {['morning', 'evening'].map(typeCategory => {
-            const currentRoutines = routines.filter(r => r.type === typeCategory);
-            return (
-              <div className="glass-panel" key={typeCategory}>
-                <h3 className="section-title">
-                  <Hexagon className="lucide-icon" size={20} /> 
-                  {typeCategory === 'morning' ? 'Awakening Rites' : 'Dusk Rites'}
-                </h3>
-                <div style={{ marginTop: '20px' }}>
-                  {currentRoutines.length === 0 ? <p style={{color: 'var(--text-secondary)', fontStyle: 'italic'}}>Silence remains.</p> : null}
-                  {currentRoutines.map(routine => (
-                    <div 
-                      key={routine.id} 
-                      className={`routine-item ${routine.completed ? 'completed' : ''}`}
-                      onClick={() => toggleRoutine(routine.id)}
-                    >
-                      <div className="checkbox">
-                        {routine.completed && <Check size={14} className="check-icon" color="var(--bg-color)" strokeWidth={3} />}
-                      </div>
-                      
-                      <div className="routine-info">
-                        <div className="routine-title">{routine.title}</div>
-                        <div className="routine-time">{routine.time}</div>
-                      </div>
-
-                      <div className="routine-actions">
-                        {routine.mediaUrl && (
-                          <button className="action-btn" onClick={(e) => playVideo(e, routine)} title="View Vision">
-                            <Eye size={18} />
-                          </button>
-                        )}
-                        <button className="action-btn" onClick={(e) => handleEdit(e, routine)} title="Alter"><Edit2 size={16} /></button>
-                        <button className="action-btn delete" onClick={(e) => handleDelete(e, routine.id)} title="Erase"><Trash2 size={16} /></button>
-                      </div>
-                    </div>
-                  ))}
+        <div className="dashboard-grid">
+          <div className="dashboard-column">
+            {/* Progress */}
+            <div className="glass-panel" style={{ textAlign: 'center' }}>
+              <h3 className="section-title" style={{ justifyContent: 'center' }}><CircleDot className="lucide-icon" size={20} /> Aufstieg</h3>
+              <div className="progress-container">
+                <svg className="progress-ring" viewBox="0 0 150 150">
+                  <circle className="progress-ring-circle-bg" cx="75" cy="75" r="65" strokeWidth="6" />
+                  <circle
+                    className="progress-ring-circle" cx="75" cy="75" r="65" strokeWidth="6"
+                    strokeDasharray={circumference} style={{ strokeDashoffset }}
+                  />
+                </svg>
+                <div className="progress-text">
+                  <span className="progress-percentage">{progressPercentage}%</span>
+                  <span className="progress-label">Erreicht</span>
                 </div>
-
-                {/* The Grimoire specifically for Evening Rites */}
-                {typeCategory === 'evening' && (
-                  <div style={{ marginTop: '30px' }}>
-                    <h4 style={{ color: 'var(--accent-gold)', fontFamily: 'var(--font-heading)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <BookOpen size={16} /> The Grimoire
-                    </h4>
-                    <textarea 
-                      className="grimoire-textarea"
-                      placeholder="Transcribe your manifestations, gratitude, or reflections of the day..."
-                      value={journalEntry}
-                      onChange={handleJournalChange}
-                      disabled={isGridBroken}
-                    />
-                  </div>
-                )}
               </div>
-            )
-          })}
+              <p style={{ color: 'var(--text-secondary)' }}>
+                {completedCount} / {totalCount} Rituale erfüllt
+              </p>
+            </div>
+
+            {/* Graph */}
+            <div className="glass-panel">
+              <h3 className="section-title"><Shield className="lucide-icon" size={20} /> Schutzraster</h3>
+              <div className={`habit-graph ${isGridBroken ? 'broken' : ''}`}>
+                {graphData.map((level, i) => (
+                  <div key={i} className="habit-day" data-level={level}></div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Routines */}
+          <div className="dashboard-column">
+            {['morning', 'evening'].map(typeCategory => {
+              const currentRoutines = routines.filter(r => r.type === typeCategory);
+              return (
+                <div className="glass-panel" key={typeCategory}>
+                  <h3 className="section-title">
+                    <Hexagon className="lucide-icon" size={20} />
+                    {typeCategory === 'morning' ? 'Morgenrituale' : 'Abendrituale'}
+                  </h3>
+                  <div style={{ marginTop: '20px' }}>
+                    {currentRoutines.length === 0 ? <p style={{color: 'var(--text-secondary)', fontStyle: 'italic'}}>Noch keine Rituale.</p> : null}
+                    {currentRoutines.map(routine => (
+                      <div
+                        key={routine.id}
+                        className={`routine-item ${routine.completed ? 'completed' : ''}`}
+                        onClick={() => toggleRoutine(routine.id)}
+                      >
+                        <div className="checkbox">
+                          {routine.completed && <Check size={13} className="check-icon" color="var(--bg-color)" strokeWidth={3} />}
+                        </div>
+
+                        <div className="routine-info">
+                          <div className="routine-title">{routine.title}</div>
+                          <div className="routine-time">{routine.time}</div>
+                          <div className="routine-days">{formatWeekdays(routine.weekdays)}</div>
+                        </div>
+
+                        <div className="routine-actions">
+                          {routine.mediaUrl && (
+                            <button className="action-btn" onClick={(e) => playVideo(e, routine)} title="Video ansehen">
+                              <Eye size={18} />
+                            </button>
+                          )}
+                          <button className="action-btn" onClick={(e) => handleEditRoutine(e, routine)} title="Bearbeiten"><Edit2 size={16} /></button>
+                          <button className="action-btn delete" onClick={(e) => handleDeleteRoutine(e, routine.id)} title="Löschen"><Trash2 size={16} /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* The Grimoire specifically for Evening Rites */}
+                  {typeCategory === 'evening' && (
+                    <div style={{ marginTop: '30px' }}>
+                      <h4 style={{ color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
+                        <BookOpen size={16} /> Grimoire
+                      </h4>
+                      <textarea
+                        className="grimoire-textarea"
+                        placeholder="Trage deine Manifestationen, Dankbarkeit oder Gedanken des Tages ein…"
+                        value={journalEntry}
+                        onChange={handleJournalChange}
+                        disabled={isGridBroken}
+                      />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
 
           {/* One-time tasks, e.g. added via the Telegram bot */}
-          <div className="glass-panel">
-            <h3 className="section-title"><ListChecks className="lucide-icon" size={20} /> Today's Tasks</h3>
-            <div style={{ marginTop: '20px' }}>
-              {oneTimeTasks.length === 0 ? <p style={{color: 'var(--text-secondary)', fontStyle: 'italic'}}>Silence remains.</p> : null}
-              {oneTimeTasks.map(task => (
-                <div
-                  key={task.id}
-                  className={`routine-item ${task.completed ? 'completed' : ''}`}
-                  onClick={() => toggleOneTimeTask(task.id)}
-                >
-                  <div className="checkbox">
-                    {task.completed && <Check size={14} className="check-icon" color="var(--bg-color)" strokeWidth={3} />}
-                  </div>
+          <div className="dashboard-column">
+            <div className="glass-panel">
+              <h3 className="section-title"><ListChecks className="lucide-icon" size={20} /> Heutige Aufgaben</h3>
+              <div style={{ marginTop: '20px' }}>
+                {oneTimeTasks.length === 0 ? <p style={{color: 'var(--text-secondary)', fontStyle: 'italic'}}>Keine offenen Aufgaben.</p> : null}
+                {oneTimeTasks.map(task => (
+                  <div
+                    key={task.id}
+                    className={`routine-item ${task.completed ? 'completed' : ''}`}
+                    onClick={() => toggleOneTimeTask(task.id)}
+                  >
+                    <div className="checkbox">
+                      {task.completed && <Check size={13} className="check-icon" color="var(--bg-color)" strokeWidth={3} />}
+                    </div>
 
-                  <div className="routine-info">
-                    <div className="routine-title">{task.title}</div>
-                    <div className="routine-time">{task.time}</div>
-                  </div>
+                    <div className="routine-info">
+                      <div className="routine-title">{task.title}</div>
+                      <div className="routine-time">{task.time}</div>
+                    </div>
 
-                  <div className="routine-actions">
-                    <button className="action-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteOneTimeTask(task.id); }} title="Erase"><Trash2 size={16} /></button>
+                    <div className="routine-actions">
+                      <button className="action-btn" onClick={(e) => handleEditOneTimeTask(e, task)} title="Bearbeiten"><Edit2 size={16} /></button>
+                      <button className="action-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteOneTimeTask(task.id); }} title="Löschen"><Trash2 size={16} /></button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Emotional Scale */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-          <EmotionalScale />
+          {/* Emotional Scale */}
+          <div className="dashboard-column">
+            <EmotionalScale />
+          </div>
         </div>
       </div>
 
@@ -396,36 +451,59 @@ function App() {
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="glass-panel modal-content" onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ color: 'var(--accent-gold)' }}>{editingRoutine ? 'Alter Ritual' : 'Forge New Ritual'}</h2>
+              <h2 style={{ color: 'var(--accent-gold)', fontFamily: 'var(--font-display)', fontSize: '1.4rem' }}>
+                {modalKind === 'task' ? 'Aufgabe bearbeiten' : editingRoutine ? 'Ritual bearbeiten' : 'Neues Ritual erschaffen'}
+              </h2>
               <button className="action-btn" onClick={() => setIsModalOpen(false)}><X size={24} /></button>
             </div>
-            
+
             <div className="form-group">
-              <label>Incantation (Title)</label>
-              <input type="text" className="form-input" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g., Sphinx Pose" autoFocus />
+              <label>Bezeichnung</label>
+              <input type="text" className="form-input" value={title} onChange={e => setTitle(e.target.value)} placeholder="z. B. Meditation" autoFocus />
             </div>
-            
+
             <div className="form-group">
-              <label>Hour of Alignment (Time)</label>
+              <label>Uhrzeit</label>
               <input type="time" className="form-input" value={time} onChange={e => setTime(e.target.value)} />
             </div>
 
-            <div className="form-group">
-              <label>Vision Link (YouTube / Instagram URL)</label>
-              <input type="url" className="form-input" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} placeholder="https://..." />
-            </div>
+            {modalKind === 'routine' && (
+              <>
+                <div className="form-group">
+                  <label>Video-Link (YouTube / Instagram URL)</label>
+                  <input type="url" className="form-input" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} placeholder="https://..." />
+                </div>
 
-            <div className="form-group">
-              <label>Phase</label>
-              <select className="form-select" value={type} onChange={e => setType(e.target.value as 'morning'|'evening')}>
-                <option value="morning">Awakening (Morning)</option>
-                <option value="evening">Dusk (Evening)</option>
-              </select>
-            </div>
+                <div className="form-group">
+                  <label>Tageszeit</label>
+                  <select className="form-select" value={type} onChange={e => setType(e.target.value as 'morning'|'evening')}>
+                    <option value="morning">Morgens</option>
+                    <option value="evening">Abends</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Wochentage</label>
+                  <div className="day-picker">
+                    {WEEKDAYS.map(d => (
+                      <button
+                        key={d.value}
+                        type="button"
+                        className={`day-btn ${weekdays.includes(d.value) ? 'active' : ''}`}
+                        onClick={() => toggleWeekday(d.value)}
+                      >
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="form-hint">Keine Auswahl = jeden Tag.</p>
+                </div>
+              </>
+            )}
 
             <div className="modal-actions">
-              <button className="btn-secondary" onClick={() => setIsModalOpen(false)}>Abandon</button>
-              <button className="btn-primary" onClick={saveRoutine}>Seal Ritual</button>
+              <button className="btn-secondary" onClick={() => setIsModalOpen(false)}>Abbrechen</button>
+              <button className="btn-primary" onClick={handleSave}>Speichern</button>
             </div>
           </div>
         </div>
@@ -440,9 +518,9 @@ function App() {
               <button className="action-btn" onClick={() => setPlayingVideoUrl(null)}><X size={24} /></button>
             </div>
             <div className="video-container">
-              <iframe 
-                src={playingVideoUrl} 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+              <iframe
+                src={playingVideoUrl}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               ></iframe>
             </div>

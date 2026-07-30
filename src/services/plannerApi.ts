@@ -37,6 +37,7 @@ const toRoutine = (t: WireTask): Routine => ({
   type: t.type === 'evening' ? 'evening' : 'morning',
   lastCompletedDate: t.last_completed_date || undefined,
   mediaUrl: t.media_url || undefined,
+  weekdays: t.weekdays || undefined,
 });
 
 const toOneTimeTask = (t: WireTask): OneTimeTask => ({
@@ -68,6 +69,7 @@ export async function createRoutine(routine: Omit<Routine, 'id' | 'completed'>):
       is_routine: true,
       type: routine.type,
       mediaUrl: routine.mediaUrl || null,
+      weekdays: routine.weekdays || null,
     }),
   });
   if (!res.ok) throw new Error('Failed to create routine');
@@ -84,9 +86,25 @@ export async function updateRoutine(id: string, routine: Omit<Routine, 'id'>): P
       completed: routine.completed,
       type: routine.type,
       mediaUrl: routine.mediaUrl || null,
+      weekdays: routine.weekdays || null,
     }),
   });
   if (!res.ok) throw new Error('Failed to update routine');
+}
+
+export async function updateOneTimeTask(id: string, task: Omit<OneTimeTask, 'id'>): Promise<void> {
+  const res = await fetch(`${WORKER_URL}/tasks/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      text: task.title,
+      time: task.time,
+      is_routine: false,
+      completed: task.completed,
+      weekdays: null,
+    }),
+  });
+  if (!res.ok) throw new Error('Failed to update task');
 }
 
 // Shared by routines and one-time tasks alike — both are rows in the same /tasks table

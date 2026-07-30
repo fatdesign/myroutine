@@ -38,6 +38,16 @@ export const getHistoryGraphData = (history: HistoryRecord, days = 90): number[]
   return data;
 };
 
+const DAY_LABELS: Record<string, string> = { '1': 'Mo', '2': 'Di', '3': 'Mi', '4': 'Do', '5': 'Fr', '6': 'Sa', '7': 'So' };
+
+export const formatWeekdays = (weekdays?: string): string => {
+  if (!weekdays) return 'Täglich';
+  const days = weekdays.split(',').filter(Boolean);
+  if (days.length === 0 || days.length === 7) return 'Täglich';
+  if (days.length === 5 && ['1', '2', '3', '4', '5'].every(d => days.includes(d))) return 'Mo–Fr';
+  return days.map(d => DAY_LABELS[d] || d).join(', ');
+};
+
 export const checkIsGridBroken = (history: HistoryRecord): boolean => {
   const dates = Object.keys(history).sort();
   if (dates.length === 0) return false;

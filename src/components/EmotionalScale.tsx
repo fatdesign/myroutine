@@ -31,7 +31,7 @@ export const EmotionalScale = () => {
 
   return (
     <div className="glass-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <h3 className="section-title" style={{ fontSize: '1rem' }}><Activity className="lucide-icon" size={18} /> Emotional Scale</h3>
+      <h3 className="section-title" style={{ fontSize: '1rem' }}><Activity className="lucide-icon" size={18} /> Emotionale Skala</h3>
       
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '0.75rem', fontFamily: 'var(--font-body)' }}>
         

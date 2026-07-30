@@ -6,6 +6,7 @@ export interface Routine {
   type: 'morning' | 'evening';
   lastCompletedDate?: string;
   mediaUrl?: string;
+  weekdays?: string; // e.g. "1,2,3,4,5" (1=Mo..7=So), empty/undefined = every day
 }
 
 export interface OneTimeTask {

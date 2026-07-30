@@ -1,18 +1,18 @@
 export const quotes = [
-  "Discipline is the bridge between goals and accomplishment. – Jim Rohn",
-  "We suffer more often in imagination than in reality. – Seneca",
-  "He who conquers himself is the mightiest warrior. – Confucius",
-  "You have power over your mind - not outside events. Realize this, and you will find strength. – Marcus Aurelius",
-  "The more you sweat in peace, the less you bleed in war. – Norman Schwarzkopf",
-  "To rule yourself is the ultimate power. – The Sanctum",
-  "The obstacle in the path becomes the path. Never forget, within every obstacle is an opportunity. – Zen Proverb",
-  "Mastering others is strength. Mastering yourself is true power. – Lao Tzu",
-  "Do not pray for an easy life, pray for the strength to endure a difficult one. – Bruce Lee",
-  "First we make our habits, then our habits make us. – Charles C. Noble",
-  "Waste no more time arguing about what a good man should be. Be one. – Marcus Aurelius",
-  "If you want to be a master, act like one before you become one. – The Sanctum",
-  "Consistency is the weapon of the elite. – Unknown",
-  "Victory is reserved for those who are willing to pay its price. – Sun Tzu"
+  "Disziplin ist die Brücke zwischen Zielen und Erfolg. – Jim Rohn",
+  "Wir leiden öfter in der Vorstellung als in der Wirklichkeit. – Seneca",
+  "Wer sich selbst besiegt, ist der mächtigste Krieger. – Konfuzius",
+  "Du hast Macht über deinen Geist – nicht über äußere Ereignisse. Erkenne das, und du findest Stärke. – Marcus Aurelius",
+  "Je mehr du in Friedenszeiten schwitzt, desto weniger blutest du im Krieg. – Norman Schwarzkopf",
+  "Sich selbst zu beherrschen ist die höchste Macht. – Das Sanktum",
+  "Das Hindernis auf dem Weg wird zum Weg. Vergiss nie: In jedem Hindernis steckt eine Chance. – Zen-Sprichwort",
+  "Andere zu beherrschen ist Stärke. Sich selbst zu beherrschen ist wahre Macht. – Laotse",
+  "Bete nicht um ein leichtes Leben, bete um die Kraft, ein schweres zu ertragen. – Bruce Lee",
+  "Zuerst formen wir unsere Gewohnheiten, dann formen unsere Gewohnheiten uns. – Charles C. Noble",
+  "Verschwende keine Zeit mehr mit Diskussionen darüber, wie ein guter Mensch sein sollte. Sei einer. – Marcus Aurelius",
+  "Wenn du ein Meister sein willst, verhalte dich wie einer, bevor du einer wirst. – Das Sanktum",
+  "Beständigkeit ist die Waffe der Elite. – Unbekannt",
+  "Der Sieg ist denen vorbehalten, die bereit sind, seinen Preis zu zahlen. – Sun Tzu"
 ];
 
 export const getDailyQuote = (dateStr: string) => {
