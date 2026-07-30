@@ -290,17 +290,19 @@ function App() {
       <header className="top-bar">
         <div className="top-bar-inner">
           <div>
-            <h1 className="gradient-text" style={{ fontSize: '2.5rem' }}>Das Sanktum</h1>
-            <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Disziplin ist der ultimative Schutz.</p>
+            <h1 className="gradient-text" style={{ fontSize: '2.4rem', lineHeight: 1.1 }}>Das Sanktum</h1>
+            <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '1.05rem', marginTop: '4px' }}>
+              Disziplin ist der ultimative Schutz.
+            </p>
           </div>
-          <div style={{ display: 'flex', gap: '16px' }}>
+          <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
             <button
               className="btn-secondary"
               onClick={toggleDrone}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: isDronePlaying ? 'var(--accent-gold)' : 'var(--border-color)', color: isDronePlaying ? 'var(--accent-gold)' : 'var(--text-secondary)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: isDronePlaying ? 'var(--text-gold)' : 'var(--panel-border)', color: isDronePlaying ? 'var(--text-gold)' : 'var(--text-secondary)' }}
               title="432Hz Aura umschalten"
             >
-              <Waves size={18} /> {isDronePlaying ? 'Aura aktiv' : 'Aura entfachen'}
+              <Waves size={16} /> {isDronePlaying ? 'Aura aktiv' : 'Aura entfachen'}
             </button>
             <button className="btn-primary" onClick={openNewRoutineModal}>Neues Ritual</button>
           </div>
@@ -308,8 +310,8 @@ function App() {
       </header>
 
       <div className="app-container">
-        {/* The Oracle */}
-        <div className="oracle-container glass-panel">
+        {/* The Oracle Quote */}
+        <div className="oracle-container">
           <p className="oracle-quote">"{dailyQuote}"</p>
         </div>
 
@@ -317,7 +319,7 @@ function App() {
           <div className="dashboard-column">
             {/* Progress */}
             <div className="glass-panel" style={{ textAlign: 'center' }}>
-              <h3 className="section-title" style={{ justifyContent: 'center' }}><CircleDot className="lucide-icon" size={20} /> Aufstieg</h3>
+              <h3 className="section-title" style={{ justifyContent: 'center' }}><CircleDot className="lucide-icon" size={18} /> Aufstieg</h3>
               <div className="progress-container">
                 <svg className="progress-ring" viewBox="0 0 150 150">
                   <circle className="progress-ring-circle-bg" cx="75" cy="75" r="65" strokeWidth="6" />
@@ -331,14 +333,14 @@ function App() {
                   <span className="progress-label">Erreicht</span>
                 </div>
               </div>
-              <p style={{ color: 'var(--text-secondary)' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                 {completedCount} / {totalCount} Rituale erfüllt
               </p>
             </div>
 
-            {/* Graph */}
+            {/* Schutzraster Graph */}
             <div className="glass-panel">
-              <h3 className="section-title"><Shield className="lucide-icon" size={20} /> Schutzraster</h3>
+              <h3 className="section-title"><Shield className="lucide-icon" size={18} /> Schutzraster</h3>
               <div className={`habit-graph ${isGridBroken ? 'broken' : ''}`}>
                 {graphData.map((level, i) => (
                   <div key={i} className="habit-day" data-level={level}></div>
@@ -390,9 +392,9 @@ function App() {
 
                   {/* The Grimoire specifically for Evening Rites */}
                   {typeCategory === 'evening' && (
-                    <div style={{ marginTop: '30px' }}>
-                      <h4 style={{ color: 'var(--accent-gold)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
-                        <BookOpen size={16} /> Grimoire
+                    <div style={{ marginTop: '24px' }}>
+                      <h4 className="section-title" style={{ marginBottom: '8px', fontSize: '1.15rem' }}>
+                        <BookOpen className="lucide-icon" size={18} /> Grimoire
                       </h4>
                       <textarea
                         className="grimoire-textarea"
@@ -408,10 +410,10 @@ function App() {
             )
           })}
 
-          {/* One-time tasks, e.g. added via the Telegram bot */}
+          {/* One-time tasks */}
           <div className="dashboard-column">
             <div className="glass-panel">
-              <h3 className="section-title"><ListChecks className="lucide-icon" size={20} /> Heutige Aufgaben</h3>
+              <h3 className="section-title"><ListChecks className="lucide-icon" size={18} /> Heutige Aufgaben</h3>
               <div style={{ marginTop: '20px' }}>
                 {oneTimeTasks.length === 0 ? <p style={{color: 'var(--text-secondary)', fontStyle: 'italic'}}>Keine offenen Aufgaben.</p> : null}
                 {oneTimeTasks.map(task => (

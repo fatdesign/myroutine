@@ -31,16 +31,20 @@ export const EmotionalScale = () => {
 
   return (
     <div className="glass-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <h3 className="section-title" style={{ fontSize: '1rem' }}><Activity className="lucide-icon" size={18} /> Emotionale Skala</h3>
+      <h3 className="section-title">
+        <Activity className="lucide-icon" size={18} /> Emotionale Skala
+      </h3>
       
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '0.75rem', fontFamily: 'var(--font-body)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px', fontSize: '0.78rem', fontFamily: 'var(--font-body)' }}>
         
         {/* High Frequency */}
-        <div style={{ borderLeft: '2px solid var(--accent-gold)', paddingLeft: '12px' }}>
-          <div style={{ color: 'var(--accent-gold)', fontFamily: 'var(--font-heading)', letterSpacing: '0.1em', marginBottom: '8px' }}>GUT FÜHLEN</div>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        <div style={{ borderLeft: '2px solid var(--text-gold)', paddingLeft: '14px' }}>
+          <div style={{ color: 'var(--text-gold)', fontFamily: 'var(--font-body)', fontWeight: '700', fontSize: '0.8rem', letterSpacing: '0.08em', marginBottom: '10px' }}>
+            GUT FÜHLEN
+          </div>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
             {highVibe.map((item, i) => (
-              <li key={i} style={{ color: `rgba(201, 163, 95, ${1 - i * 0.08})` }}>
+              <li key={i} style={{ color: `rgba(223, 183, 108, ${1 - i * 0.07})`, fontWeight: i === 0 ? '600' : '400' }}>
                 {item}
               </li>
             ))}
@@ -48,11 +52,13 @@ export const EmotionalScale = () => {
         </div>
 
         {/* Low Frequency */}
-        <div style={{ borderLeft: '2px solid var(--accent-crimson)', paddingLeft: '12px', marginTop: 'auto' }}>
-          <div style={{ color: 'var(--accent-crimson)', fontFamily: 'var(--font-heading)', letterSpacing: '0.1em', marginBottom: '8px' }}>SCHLECHT FÜHLEN</div>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+        <div style={{ borderLeft: '2px solid #852f23', paddingLeft: '14px', marginTop: '4px' }}>
+          <div style={{ color: '#b54333', fontFamily: 'var(--font-body)', fontWeight: '700', fontSize: '0.8rem', letterSpacing: '0.08em', marginBottom: '10px' }}>
+            SCHLECHT FÜHLEN
+          </div>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {lowVibe.map((item, i) => (
-              <li key={i} style={{ color: `rgba(157, 145, 128, ${1 - i * 0.04})` }}>
+              <li key={i} style={{ color: `rgba(140, 115, 105, ${1 - i * 0.035})` }}>
                 {item}
               </li>
             ))}
