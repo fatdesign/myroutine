@@ -180,8 +180,8 @@ export function WorkoutDashboard() {
         const gain = ctx.createGain();
         osc.type = 'sine';
         osc.frequency.value = idx === 2 ? 880 : 587.33; // D5 -> A5 tone
-        gain.gain.setValueAtTime(0.3, now + delay);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.12);
+        gain.gain.setValueAtTime(0.55, now + delay); // +50-80% lauter & deutlicher im Gym
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.15);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(now + delay);
