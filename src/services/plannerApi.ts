@@ -498,6 +498,20 @@ export async function generateAiNutritionPlan(
   throw new Error('Fehler bei der KI-Ernährungsplan Generierung');
 }
 
+export async function sendTelegramNutritionPlan(plan: NutritionPlan): Promise<{ success: boolean; message?: string; error?: string }> {
+  try {
+    const res = await fetch(`${WORKER_URL}/send-telegram-nutrition`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan })
+    });
+    const data = await res.json();
+    return data;
+  } catch (e: any) {
+    return { success: false, error: e.message || 'Verbindungsfehler zum Telegram Server' };
+  }
+}
+
 export interface BodyMetricsCalculatorInputs {
   gender: 'male' | 'female';
   age: number;

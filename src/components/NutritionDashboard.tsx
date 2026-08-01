@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Utensils, ShoppingBag, Sparkles, Check, Clock, Save, RefreshCw, ChefHat } from 'lucide-react';
+import { Utensils, ShoppingBag, Sparkles, Check, Clock, Save, RefreshCw, ChefHat, Send, Share2 } from 'lucide-react';
 import type { NutritionProfile, NutritionPlan } from '../types';
-import { fetchNutritionProfile, upsertNutritionProfile, fetchNutritionPlan, generateAiNutritionPlan, fetchBodyMetricsInputs } from '../services/plannerApi';
+import { fetchNutritionProfile, upsertNutritionProfile, fetchNutritionPlan, generateAiNutritionPlan, fetchBodyMetricsInputs, sendTelegramNutritionPlan } from '../services/plannerApi';
 import { WORKOUT_PLAN } from '../data/workouts';
 import { getLiveBodyMetrics, type BodyMetrics } from '../utils/bodyMetrics';
 
@@ -58,6 +58,8 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
   const [checkedShoppingItems, setCheckedShoppingItems] = useState<Record<string, boolean>>({});
   const [dayFocus, setDayFocus] = useState<string>(() => selectedDayFocus || getTodayFocus());
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string>('');
+  const [isTelegramSending, setIsTelegramSending] = useState<boolean>(false);
+  const [telegramFeedback, setTelegramFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     fetchBodyMetricsInputs().then(() => setLiveMetrics(getLiveBodyMetrics()));
@@ -88,6 +90,48 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
       ...prev,
       [itemKey]: !prev[itemKey]
     }));
+  };
+
+  const handleSendTelegramBot = async () => {
+    if (!currentPlan) return;
+    setIsTelegramSending(true);
+    setTelegramFeedback(null);
+    try {
+      const res = await sendTelegramNutritionPlan(currentPlan);
+      if (res.success) {
+        setTelegramFeedback({ type: 'success', text: '✓ Ernährungsplan & Einkaufsliste an Telegram gesendet!' });
+      } else {
+        setTelegramFeedback({ type: 'error', text: res.error || 'Fehler beim Senden an Telegram.' });
+      }
+    } catch (e: any) {
+      setTelegramFeedback({ type: 'error', text: 'Fehler bei der Verbindung zum Telegram Bot.' });
+    } finally {
+      setIsTelegramSending(false);
+      setTimeout(() => setTelegramFeedback(null), 6000);
+    }
+  };
+
+  const handleOpenTelegramShare = () => {
+    if (!currentPlan) return;
+    let text = `🥗 *V-Shape KI Tages-Ernährungsplan*\n📅 *${currentPlan.dayName}*\n🔥 *${currentPlan.totalCalories} kcal* (P: ${currentPlan.totalProtein}g | F: ${currentPlan.totalFat}g | C: ${currentPlan.totalCarbs}g)\n\n`;
+    if (currentPlan.meals) {
+      text += `🍽️ *MAHLZEITEN:*\n`;
+      currentPlan.meals.forEach(m => {
+        text += `• *${m.time || ''}* ${m.name} (${m.calories} kcal)\n`;
+      });
+    }
+    if (currentPlan.shoppingList && currentPlan.shoppingList.length > 0) {
+      text += `\n🛒 *EINKAUFSLISTE*`;
+      if (currentPlan.estimatedSupermarketReceiptEur) {
+        text += ` (🇦🇹 ca. ${currentPlan.estimatedSupermarketReceiptEur.toFixed(2)} €)`;
+      }
+      text += `:\n`;
+      currentPlan.shoppingList.forEach(item => {
+        text += `☐ ${item.item}\n`;
+      });
+    }
+    const shareUrl = `https://t.me/share/url?url=&text=${encodeURIComponent(text)}`;
+    window.open(shareUrl, '_blank');
   };
 
   return (
@@ -314,20 +358,80 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                 </h3>
               </div>
 
-              <div style={{ display: 'flex', gap: '14px', fontSize: '0.85rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ background: 'rgba(34, 197, 94, 0.1)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
-                  🔥 <strong>{currentPlan.totalCalories}</strong> kcal <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(Ziel: {liveMetrics.targetCalories} kcal)</span>
-                </span>
-                {currentPlan.estimatedTotalPriceEur !== undefined && (
-                  <span style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(234, 179, 8, 0.3)' }}>
-                    🏷️ <strong>ca. {currentPlan.estimatedTotalPriceEur.toFixed(2)} €</strong> <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>(Portionen)</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '14px', fontSize: '0.85rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ background: 'rgba(34, 197, 94, 0.1)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                    🔥 <strong>{currentPlan.totalCalories}</strong> kcal <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(Ziel: {liveMetrics.targetCalories} kcal)</span>
                   </span>
-                )}
-                <span style={{ color: '#ef4444' }}>🥩 <strong>{currentPlan.totalProtein}g</strong> Prot</span>
-                <span style={{ color: '#eab308' }}>🥑 <strong>{currentPlan.totalFat}g</strong> Fett</span>
-                <span style={{ color: '#38bdf8' }}>🍚 <strong>{currentPlan.totalCarbs}g</strong> Carbs</span>
+                  {currentPlan.estimatedTotalPriceEur !== undefined && (
+                    <span style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(234, 179, 8, 0.3)' }}>
+                      🏷️ <strong>ca. {currentPlan.estimatedTotalPriceEur.toFixed(2)} €</strong> <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>(Portionen)</span>
+                    </span>
+                  )}
+                  <span style={{ color: '#ef4444' }}>🥩 <strong>{currentPlan.totalProtein}g</strong> Prot</span>
+                  <span style={{ color: '#eab308' }}>🥑 <strong>{currentPlan.totalFat}g</strong> Fett</span>
+                  <span style={{ color: '#38bdf8' }}>🍚 <strong>{currentPlan.totalCarbs}g</strong> Carbs</span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={handleSendTelegramBot}
+                    disabled={isTelegramSending}
+                    style={{
+                      padding: '6px 14px',
+                      fontSize: '0.8rem',
+                      background: 'rgba(0, 136, 204, 0.18)',
+                      color: '#38bdf8',
+                      border: '1px solid rgba(0, 136, 204, 0.4)',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    <Send size={14} />
+                    {isTelegramSending ? 'Sende an Telegram...' : '📱 Per Telegram Bot senden'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenTelegramShare}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '0.8rem',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      color: '#fff',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Share2 size={14} />
+                    🔗 In Telegram teilen
+                  </button>
+                </div>
               </div>
             </div>
+
+            {telegramFeedback && (
+              <div style={{
+                marginTop: '12px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
+                background: telegramFeedback.type === 'success' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                color: telegramFeedback.type === 'success' ? '#22c55e' : '#ef4444',
+                border: `1px solid ${telegramFeedback.type === 'success' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+              }}>
+                {telegramFeedback.text}
+              </div>
+            )}
           </div>
 
           {/* Meal Cards */}
@@ -394,9 +498,33 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                     </span>
                   )}
                 </div>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  {Object.values(checkedShoppingItems).filter(Boolean).length} / {currentPlan.shoppingList.length} abgehakt
-                </span>
+                
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={handleSendTelegramBot}
+                    disabled={isTelegramSending}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '0.78rem',
+                      background: 'rgba(0, 136, 204, 0.2)',
+                      color: '#38bdf8',
+                      border: '1px solid rgba(0, 136, 204, 0.4)',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold'
+                    }}
+                  >
+                    <Send size={13} />
+                    📱 Einkaufsliste an Telegram
+                  </button>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    {Object.values(checkedShoppingItems).filter(Boolean).length} / {currentPlan.shoppingList.length} abgehakt
+                  </span>
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>

@@ -446,7 +446,79 @@ export default {
 
           return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
         }
-}
+      }
+
+      if (path === '/send-telegram-nutrition' || path === '/send-telegram-nutrition/') {
+        if (request.method === 'POST') {
+          const chatIdResult = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram_chat_id'").first();
+          if (!chatIdResult || !chatIdResult.value) {
+            return new Response(JSON.stringify({ 
+              success: false, 
+              error: "Keine Telegram Chat-ID gefunden! Bitte schreibe zuerst einmal '/start' an deinen Telegram Bot." 
+            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+          }
+
+          const { plan } = await request.json();
+          if (!plan) {
+            return new Response(JSON.stringify({ success: false, error: "Kein Ernährungsplan vorhanden." }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+          }
+
+          let msg = `🥗 *V-Shape KI Tages-Ernährungsplan*\n`;
+          msg += `📅 *${plan.dayName || 'Tagesplan'}*\n`;
+          msg += `🔥 *${plan.totalCalories} kcal* (P: ${plan.totalProtein}g | F: ${plan.totalFat}g | C: ${plan.totalCarbs}g)\n`;
+          if (plan.estimatedTotalPriceEur) {
+            msg += `🏷️ *Teller-Kosten:* ca. ${Number(plan.estimatedTotalPriceEur).toFixed(2)} €\n`;
+          }
+          msg += `\n-------------------------------\n\n`;
+
+          msg += `🍽️ *MAHLZEITEN:*\n`;
+          if (plan.meals && plan.meals.length > 0) {
+            plan.meals.forEach((meal) => {
+              msg += `\n⏰ *${meal.time || ''} UHR* - *${meal.name}*\n`;
+              msg += `🔥 ${meal.calories} kcal (P: ${meal.protein}g | F: ${meal.fat}g | C: ${meal.carbs}g)`;
+              if (meal.estimatedPriceEur) {
+                msg += ` | 🏷️ ca. ${Number(meal.estimatedPriceEur).toFixed(2)} €`;
+              }
+              if (meal.ingredients && meal.ingredients.length > 0) {
+                msg += `\n*Zutaten:* ${meal.ingredients.join(', ')}`;
+              }
+              msg += `\n`;
+            });
+          }
+
+          if (plan.shoppingList && plan.shoppingList.length > 0) {
+            msg += `\n-------------------------------\n\n`;
+            msg += `🛒 *EINKAUFSLISTE*`;
+            if (plan.estimatedSupermarketReceiptEur) {
+              msg += ` (🇦🇹 Kassenbon: ca. ${Number(plan.estimatedSupermarketReceiptEur).toFixed(2)} €)`;
+            }
+            msg += `:\n\n`;
+
+            const categories = {};
+            plan.shoppingList.forEach(item => {
+              const cat = item.category || 'Sonstiges';
+              if (!categories[cat]) categories[cat] = [];
+              categories[cat].push(item.item);
+            });
+
+            for (const [cat, items] of Object.entries(categories)) {
+              msg += `📌 *${cat}:*\n`;
+              items.forEach(it => {
+                msg += `[ ] ${it}\n`;
+              });
+              msg += `\n`;
+            }
+          }
+
+          msg += `💪 _Generiert mit myroutine V-Shape AI_`;
+
+          await sendTelegramMessage(chatIdResult.value, msg, env);
+
+          return new Response(JSON.stringify({ success: true, message: "Ernährungsplan & Einkaufsliste erfolgreich an deinen Telegram Bot gesendet!" }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
 
       if (path === '/generate-nutrition-plan' || path === '/generate-nutrition-plan/') {
         if (request.method === 'POST') {
