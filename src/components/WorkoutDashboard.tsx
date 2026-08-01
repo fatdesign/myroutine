@@ -1054,14 +1054,18 @@ export function WorkoutDashboard() {
                         🔥 Kalorien-Tagesziel & Fatloss Prognose
                       </h4>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
                         <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 10px', borderRadius: '8px' }}>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Gesamtumsatz (TDEE)</span>
-                          <strong style={{ fontSize: '1.1rem', color: '#fff' }}>{metrics.tdee} kcal</strong>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Grundumsatz (BMR)</span>
+                          <strong style={{ fontSize: '1.05rem', color: '#94a3b8' }}>{metrics.bmr} kcal</strong>
+                        </div>
+                        <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 10px', borderRadius: '8px' }}>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>Gesamtumsatz (TDEE)</span>
+                          <strong style={{ fontSize: '1.05rem', color: '#fff' }}>{metrics.tdee} kcal</strong>
                         </div>
                         <div style={{ background: 'rgba(124,58,237,0.2)', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--heroui-violet)' }}>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--heroui-violet-light)', display: 'block', fontWeight: 'bold' }}>Ziel-Kalorien/Tag</span>
-                          <strong style={{ fontSize: '1.2rem', color: '#fff' }}>{metrics.targetCalories} kcal</strong>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--heroui-violet-light)', display: 'block', fontWeight: 'bold' }}>Ziel-Kalorien/Tag</span>
+                          <strong style={{ fontSize: '1.1rem', color: '#fff' }}>{metrics.targetCalories} kcal</strong>
                         </div>
                       </div>
 
