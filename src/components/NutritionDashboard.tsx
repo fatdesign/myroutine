@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Utensils, ShoppingBag, Sparkles, Check, Clock, Save, RefreshCw, ChefHat } from 'lucide-react';
 import type { NutritionProfile, NutritionPlan } from '../types';
-import { fetchNutritionProfile, upsertNutritionProfile, fetchNutritionPlan, generateAiNutritionPlan } from '../services/plannerApi';
+import { fetchNutritionProfile, upsertNutritionProfile, fetchNutritionPlan, generateAiNutritionPlan, fetchBodyMetricsInputs } from '../services/plannerApi';
 import { WORKOUT_PLAN } from '../data/workouts';
 import { getLiveBodyMetrics, type BodyMetrics } from '../utils/bodyMetrics';
 
@@ -48,6 +48,7 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string>('');
 
   useEffect(() => {
+    fetchBodyMetricsInputs().then(() => setLiveMetrics(getLiveBodyMetrics()));
     fetchNutritionProfile().then(p => setProfile(p));
     fetchNutritionPlan().then(p => setCurrentPlan(p));
   }, []);

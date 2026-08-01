@@ -281,6 +281,93 @@ export default {
         }
       }
 
+      // --- Body Metrics Calculator Inputs Endpoint ---
+      if (path === '/body-metrics-inputs' || path === '/body-metrics-inputs/') {
+        await env.DB.prepare(
+          `CREATE TABLE IF NOT EXISTS body_metrics_inputs (
+            id TEXT PRIMARY KEY DEFAULT 'user_default',
+            gender TEXT DEFAULT 'male',
+            age INTEGER DEFAULT 27,
+            weight REAL DEFAULT 90,
+            height REAL DEFAULT 186,
+            neck REAL DEFAULT 44,
+            waist REAL DEFAULT 100,
+            hip REAL DEFAULT 100,
+            target_kfa REAL DEFAULT 7.0,
+            activity_level REAL DEFAULT 1.55,
+            target_deficit_mode REAL DEFAULT 500,
+            updated_at TEXT
+          )`
+        ).run();
+
+        if (request.method === 'GET') {
+          const row = await env.DB.prepare("SELECT * FROM body_metrics_inputs WHERE id = 'user_default'").first();
+          if (row) {
+            return new Response(JSON.stringify({
+              gender: row.gender || 'male',
+              age: Number(row.age) || 27,
+              weight: Number(row.weight) || 90,
+              height: Number(row.height) || 186,
+              neck: Number(row.neck) || 44,
+              waist: Number(row.waist) || 100,
+              hip: Number(row.hip) || 100,
+              targetKfa: Number(row.target_kfa) || 7.0,
+              activityLevel: Number(row.activity_level) || 1.55,
+              targetDeficitMode: Number(row.target_deficit_mode) || 500
+            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+          return new Response(JSON.stringify({
+            gender: 'male',
+            age: 27,
+            weight: 90,
+            height: 186,
+            neck: 44,
+            waist: 100,
+            hip: 100,
+            targetKfa: 7.0,
+            activityLevel: 1.55,
+            targetDeficitMode: 500
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        if (request.method === 'PUT' || request.method === 'POST') {
+          const body = await request.json();
+          const now = new Date().toISOString();
+          await env.DB.prepare(
+            `INSERT INTO body_metrics_inputs (id, gender, age, weight, height, neck, waist, hip, target_kfa, activity_level, target_deficit_mode, updated_at)
+             VALUES ('user_default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+               gender = excluded.gender,
+               age = excluded.age,
+               weight = excluded.weight,
+               height = excluded.height,
+               neck = excluded.neck,
+               waist = excluded.waist,
+               hip = excluded.hip,
+               target_kfa = excluded.target_kfa,
+               activity_level = excluded.activity_level,
+               target_deficit_mode = excluded.target_deficit_mode,
+               updated_at = excluded.updated_at`
+          )
+            .bind(
+              body.gender || 'male',
+              body.age ?? 27,
+              body.weight ?? 90,
+              body.height ?? 186,
+              body.neck ?? 44,
+              body.waist ?? 100,
+              body.hip ?? 100,
+              body.targetKfa ?? body.target_kfa ?? 7.0,
+              body.activityLevel ?? body.activity_level ?? 1.55,
+              body.targetDeficitMode ?? body.target_deficit_mode ?? 500,
+              now
+            )
+            .run();
+
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        }
+      }
+
       // --- Nutrition Profile & Plans Endpoints ---
       if (path === '/nutrition-profile' || path === '/nutrition-profile/') {
         await env.DB.prepare(

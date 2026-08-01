@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { WORKOUT_PLAN } from '../data/workouts';
 import { getTodayStr, getDateStr } from '../utils/habitUtils';
 import { getStoredCalculatorInputs, calculateMetricsFromInputs } from '../utils/bodyMetrics';
-import { fetchWorkoutHistory, upsertWorkoutHistory, fetchWorkoutSessions, upsertWorkoutSession, uploadImage } from '../services/plannerApi';
+import { fetchWorkoutHistory, upsertWorkoutHistory, fetchWorkoutSessions, upsertWorkoutSession, uploadImage, fetchBodyMetricsInputs, upsertBodyMetricsInputs } from '../services/plannerApi';
 import type { WorkoutHistoryRecord, WorkoutSessionRecord, WorkoutSession } from '../types';
 import { Check, Dumbbell, Timer, Flame, CalendarDays, Activity, Play, StopCircle, Upload, Weight, Camera, X, Save, Trophy, Sparkles, TrendingDown } from 'lucide-react';
 
@@ -76,21 +76,36 @@ export function WorkoutDashboard() {
   const [activityLevel, setActivityLevel] = useState<number>(initialCalcInputs.activityLevel);
   const [targetDeficitMode, setTargetDeficitMode] = useState<number>(initialCalcInputs.targetDeficitMode);
 
-  // Auto-save calculator inputs whenever user modifies any field
+  // Fetch persisted calculator inputs from Cloudflare D1 Database on mount
   useEffect(() => {
-    localStorage.setItem('myroutine_calc_gender', calcGender);
-    localStorage.setItem('myroutine_calc_age', String(calcAge));
-    localStorage.setItem('myroutine_calc_weight', String(calcWeight));
-    localStorage.setItem('myroutine_calc_height', String(calcHeight));
-    localStorage.setItem('myroutine_calc_neck', String(calcNeck));
-    localStorage.setItem('myroutine_calc_waist', String(calcWaist));
-    localStorage.setItem('myroutine_calc_hip', String(calcHip));
-    localStorage.setItem('myroutine_calc_target_kfa', String(calcTargetKfa));
-    localStorage.setItem('myroutine_calc_activity', String(activityLevel));
-    localStorage.setItem('myroutine_calc_deficit', String(targetDeficitMode));
+    fetchBodyMetricsInputs().then(inputs => {
+      setCalcGender(inputs.gender);
+      setCalcAge(inputs.age);
+      setCalcWeight(inputs.weight);
+      setCalcHeight(inputs.height);
+      setCalcNeck(inputs.neck);
+      setCalcWaist(inputs.waist);
+      setCalcHip(inputs.hip);
+      setCalcTargetKfa(inputs.targetKfa);
+      setActivityLevel(inputs.activityLevel);
+      setTargetDeficitMode(inputs.targetDeficitMode);
+    });
+  }, []);
 
-    // Broadcast event so NutritionDashboard updates live
-    window.dispatchEvent(new Event('myroutine_body_metrics_updated'));
+  // Auto-save calculator inputs to D1 & localStorage whenever user modifies any field
+  useEffect(() => {
+    upsertBodyMetricsInputs({
+      gender: calcGender,
+      age: calcAge,
+      weight: calcWeight,
+      height: calcHeight,
+      neck: calcNeck,
+      waist: calcWaist,
+      hip: calcHip,
+      targetKfa: calcTargetKfa,
+      activityLevel,
+      targetDeficitMode
+    });
   }, [calcGender, calcAge, calcWeight, calcHeight, calcNeck, calcWaist, calcHip, calcTargetKfa, activityLevel, targetDeficitMode]);
 
   const calculateBodyFatMetrics = () => {

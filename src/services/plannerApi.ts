@@ -498,3 +498,88 @@ export async function generateAiNutritionPlan(
   throw new Error('Fehler bei der KI-Ernährungsplan Generierung');
 }
 
+export interface BodyMetricsCalculatorInputs {
+  gender: 'male' | 'female';
+  age: number;
+  weight: number;
+  height: number;
+  neck: number;
+  waist: number;
+  hip: number;
+  targetKfa: number;
+  activityLevel: number;
+  targetDeficitMode: number;
+}
+
+export async function fetchBodyMetricsInputs(): Promise<BodyMetricsCalculatorInputs> {
+  try {
+    const res = await fetch(`${WORKER_URL}/body-metrics-inputs`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data) {
+        localStorage.setItem('myroutine_calc_gender', data.gender || 'male');
+        localStorage.setItem('myroutine_calc_age', String(data.age || 27));
+        localStorage.setItem('myroutine_calc_weight', String(data.weight || 90));
+        localStorage.setItem('myroutine_calc_height', String(data.height || 186));
+        localStorage.setItem('myroutine_calc_neck', String(data.neck || 44));
+        localStorage.setItem('myroutine_calc_waist', String(data.waist || 100));
+        localStorage.setItem('myroutine_calc_hip', String(data.hip || 100));
+        localStorage.setItem('myroutine_calc_target_kfa', String(data.targetKfa || 7.0));
+        localStorage.setItem('myroutine_calc_activity', String(data.activityLevel || 1.55));
+        localStorage.setItem('myroutine_calc_deficit', String(data.targetDeficitMode || 500));
+        window.dispatchEvent(new Event('myroutine_body_metrics_updated'));
+        return {
+          gender: data.gender || 'male',
+          age: Number(data.age) || 27,
+          weight: Number(data.weight) || 90,
+          height: Number(data.height) || 186,
+          neck: Number(data.neck) || 44,
+          waist: Number(data.waist) || 100,
+          hip: Number(data.hip) || 100,
+          targetKfa: Number(data.targetKfa) || 7.0,
+          activityLevel: Number(data.activityLevel) || 1.55,
+          targetDeficitMode: Number(data.targetDeficitMode) || 500,
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Fetch body metrics inputs error:', e);
+  }
+  return {
+    gender: (localStorage.getItem('myroutine_calc_gender') as 'male' | 'female') || 'male',
+    age: Number(localStorage.getItem('myroutine_calc_age')) || 27,
+    weight: Number(localStorage.getItem('myroutine_calc_weight')) || 90,
+    height: Number(localStorage.getItem('myroutine_calc_height')) || 186,
+    neck: Number(localStorage.getItem('myroutine_calc_neck')) || 44,
+    waist: Number(localStorage.getItem('myroutine_calc_waist')) || 100,
+    hip: Number(localStorage.getItem('myroutine_calc_hip')) || 100,
+    targetKfa: Number(localStorage.getItem('myroutine_calc_target_kfa')) || 7.0,
+    activityLevel: Number(localStorage.getItem('myroutine_calc_activity')) || 1.55,
+    targetDeficitMode: Number(localStorage.getItem('myroutine_calc_deficit')) || 500
+  };
+}
+
+export async function upsertBodyMetricsInputs(inputs: BodyMetricsCalculatorInputs): Promise<void> {
+  localStorage.setItem('myroutine_calc_gender', inputs.gender);
+  localStorage.setItem('myroutine_calc_age', String(inputs.age));
+  localStorage.setItem('myroutine_calc_weight', String(inputs.weight));
+  localStorage.setItem('myroutine_calc_height', String(inputs.height));
+  localStorage.setItem('myroutine_calc_neck', String(inputs.neck));
+  localStorage.setItem('myroutine_calc_waist', String(inputs.waist));
+  localStorage.setItem('myroutine_calc_hip', String(inputs.hip));
+  localStorage.setItem('myroutine_calc_target_kfa', String(inputs.targetKfa));
+  localStorage.setItem('myroutine_calc_activity', String(inputs.activityLevel));
+  localStorage.setItem('myroutine_calc_deficit', String(inputs.targetDeficitMode));
+  window.dispatchEvent(new Event('myroutine_body_metrics_updated'));
+
+  try {
+    await fetch(`${WORKER_URL}/body-metrics-inputs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(inputs)
+    });
+  } catch (e) {
+    console.warn('Upsert body metrics inputs error:', e);
+  }
+}
+
