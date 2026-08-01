@@ -60,6 +60,50 @@ export function WorkoutDashboard() {
     }
   };
 
+  // Active Rest Timer State (Pause per Exercise)
+  const [activeRestTimer, setActiveRestTimer] = useState<{ exerciseId: string; secondsLeft: number; totalSeconds: number } | null>(null);
+
+  const playBeepSound = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+      [0, 0.15, 0.3].forEach((delay, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = idx === 2 ? 880 : 587.33; // D5 -> A5 tone
+        gain.gain.setValueAtTime(0.3, now + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.12);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + delay);
+        osc.stop(now + delay + 0.12);
+      });
+    } catch (e) {
+      console.warn("Audio beep failed:", e);
+    }
+  };
+
+  // Rest Timer Interval Countdown
+  useEffect(() => {
+    if (!activeRestTimer) return;
+
+    const interval = setInterval(() => {
+      setActiveRestTimer(prev => {
+        if (!prev) return null;
+        if (prev.secondsLeft <= 1) {
+          playBeepSound();
+          return null;
+        }
+        return { ...prev, secondsLeft: prev.secondsLeft - 1 };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeRestTimer?.exerciseId, activeRestTimer?.secondsLeft]);
+
   // Timer State
   const [isTimerActive, setIsTimerActive] = useState<boolean>(() => {
     return localStorage.getItem('myroutine_timer_active') === 'true';
@@ -127,6 +171,19 @@ export function WorkoutDashboard() {
     }));
 
     upsertWorkoutHistory(todayStr, nextDaySets);
+
+    // Trigger Rest Timer if a set was completed
+    if (newCount > currentCount) {
+      const exercise = allExercises.find(e => e.id === exerciseId);
+      if (exercise) {
+        const secs = parseInt(exercise.restTime.replace('s', '')) || 45;
+        setActiveRestTimer({
+          exerciseId,
+          secondsLeft: secs,
+          totalSeconds: secs
+        });
+      }
+    }
   };
 
   const handleStartWorkoutClick = () => {
@@ -242,12 +299,27 @@ export function WorkoutDashboard() {
             color: isSelected ? '#fff' : (hasWorkout ? 'var(--heroui-violet-light)' : 'var(--text-muted)'),
             fontWeight: hasWorkout ? 'bold' : 'normal',
             transition: 'all 0.2s ease',
-            position: 'relative'
+            position: 'relative',
+            padding: '2px'
           }}
         >
-          <span>{i}</span>
+          <span style={{ fontSize: '0.85rem' }}>{i}</span>
+          {daySession && daySession.durationSeconds > 0 && (
+            <span style={{ 
+              fontSize: '0.65rem', 
+              color: isSelected ? '#fff' : '#a855f7', 
+              fontWeight: 'bold', 
+              lineHeight: 1, 
+              marginTop: '2px',
+              background: isSelected ? 'rgba(255,255,255,0.2)' : 'rgba(168,85,247,0.15)',
+              padding: '1px 4px',
+              borderRadius: '4px'
+            }}>
+              {Math.round(daySession.durationSeconds / 60)}m
+            </span>
+          )}
           {daySession?.photoUrl && (
-            <div style={{ position: 'absolute', bottom: '3px', width: '6px', height: '6px', borderRadius: '50%', background: '#a855f7' }} />
+            <div style={{ position: 'absolute', top: '3px', right: '3px', width: '5px', height: '5px', borderRadius: '50%', background: '#38bdf8' }} title="Check-in Foto vorhanden" />
           )}
         </div>
       );
@@ -492,13 +564,41 @@ export function WorkoutDashboard() {
                             <Flame size={12} /> {ex.sets} Sets × {ex.reps} Reps
                           </span>
                           <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Timer size={12} /> {ex.restTime}
+                            <Timer size={12} /> {ex.restTime} Pause
                           </span>
                           <span className="badge-pill days" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-muted)' }}>
                             {ex.equipment}
                           </span>
                         </div>
                       </div>
+
+                      {/* Active Rest Timer Widget for this Exercise */}
+                      {activeRestTimer?.exerciseId === ex.id && (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(168, 85, 247, 0.2))',
+                          border: '1px solid var(--heroui-violet-light)',
+                          padding: '6px 14px',
+                          borderRadius: '20px',
+                          boxShadow: '0 0 15px rgba(124, 58, 237, 0.5)',
+                          marginRight: '8px',
+                          animation: 'pulse 1.5s infinite'
+                        }}>
+                          <Timer size={16} className="animate-spin" style={{ color: 'var(--heroui-violet-light)' }} />
+                          <span style={{ fontWeight: 'bold', fontSize: '1rem', color: '#fff', fontFamily: 'monospace' }}>
+                            {activeRestTimer.secondsLeft}s Pause
+                          </span>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setActiveRestTimer(null); }}
+                            style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginLeft: '4px' }}
+                            title="Pause abbrechen"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      )}
 
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         {Array.from({ length: ex.sets }).map((_, setIdx) => {
