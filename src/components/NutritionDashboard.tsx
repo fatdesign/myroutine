@@ -16,7 +16,19 @@ interface NutritionDashboardProps {
   selectedDayFocus?: string;
 }
 
-export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selectedDayFocus = 'Trainingstag (V-Shape Focus)' }) => {
+const getTodayFocus = (): string => {
+  const dayOfWeek = new Date().getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  if (dayOfWeek === 0) {
+    return 'Erholungstag (Sonntag: Rest Day & Regeneration)';
+  }
+  const workoutDay = WORKOUT_PLAN.find(w => w.dayId === String(dayOfWeek));
+  if (workoutDay) {
+    return `Trainingstag (${workoutDay.dayName}: ${workoutDay.focus})`;
+  }
+  return 'Trainingstag (V-Shape Focus)';
+};
+
+export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selectedDayFocus }) => {
   const [liveMetrics, setLiveMetrics] = useState<BodyMetrics>(() => getLiveBodyMetrics());
 
   useEffect(() => {
@@ -44,7 +56,7 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
   const [currentPlan, setCurrentPlan] = useState<NutritionPlan | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [checkedShoppingItems, setCheckedShoppingItems] = useState<Record<string, boolean>>({});
-  const [dayFocus, setDayFocus] = useState<string>(selectedDayFocus);
+  const [dayFocus, setDayFocus] = useState<string>(() => selectedDayFocus || getTodayFocus());
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string>('');
 
   useEffect(() => {
@@ -238,7 +250,7 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                     🏋️ Tag {day.dayId}: {day.dayName} – {day.focus}
                   </option>
                 ))}
-                <option value="Erholungstag (Rest Day / Regeneration)">
+                <option value="Erholungstag (Sonntag: Rest Day & Regeneration)">
                   🧘 Tag 7: Sonntag – Rest Day (Erholung & Regeneration)
                 </option>
               </select>
