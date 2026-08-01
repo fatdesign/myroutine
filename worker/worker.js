@@ -281,6 +281,203 @@ export default {
         }
       }
 
+      // --- Nutrition Profile & Plans Endpoints ---
+      if (path === '/nutrition-profile' || path === '/nutrition-profile/') {
+        await env.DB.prepare(
+          `CREATE TABLE IF NOT EXISTS nutrition_profile (
+            id TEXT PRIMARY KEY DEFAULT 'user_default',
+            meals_per_day INTEGER DEFAULT 3,
+            breakfast_type TEXT DEFAULT 'normal',
+            diet_focus TEXT DEFAULT 'high_protein',
+            preferences TEXT DEFAULT '',
+            allergies TEXT DEFAULT '',
+            updated_at TEXT
+          )`
+        ).run();
+
+        if (request.method === 'GET') {
+          const profile = await env.DB.prepare("SELECT * FROM nutrition_profile WHERE id = 'user_default'").first();
+          return new Response(JSON.stringify(profile || {
+            meals_per_day: 3,
+            breakfast_type: 'normal',
+            diet_focus: 'high_protein',
+            preferences: '',
+            allergies: ''
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        if (request.method === 'PUT' || request.method === 'POST') {
+          const { meals_per_day, breakfast_type, diet_focus, preferences, allergies } = await request.json();
+          const now = new Date().toISOString();
+          await env.DB.prepare(
+            `INSERT INTO nutrition_profile (id, meals_per_day, breakfast_type, diet_focus, preferences, allergies, updated_at)
+             VALUES ('user_default', ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+               meals_per_day = excluded.meals_per_day,
+               breakfast_type = excluded.breakfast_type,
+               diet_focus = excluded.diet_focus,
+               preferences = excluded.preferences,
+               allergies = excluded.allergies,
+               updated_at = excluded.updated_at`
+          )
+          .bind(meals_per_day ?? 3, breakfast_type ?? 'normal', diet_focus ?? 'high_protein', preferences ?? '', allergies ?? '', now)
+          .run();
+
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        }
+      }
+
+      if (path === '/nutrition-plans' || path === '/nutrition-plans/') {
+        await env.DB.prepare(
+          `CREATE TABLE IF NOT EXISTS nutrition_plans (
+            id TEXT PRIMARY KEY DEFAULT 'current_plan',
+            plan_json TEXT,
+            updated_at TEXT
+          )`
+        ).run();
+
+        if (request.method === 'GET') {
+          const row = await env.DB.prepare("SELECT * FROM nutrition_plans WHERE id = 'current_plan'").first();
+          let planData = null;
+          if (row && row.plan_json) {
+            try { planData = JSON.parse(row.plan_json); } catch(e){}
+          }
+          return new Response(JSON.stringify({ plan: planData }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        if (request.method === 'PUT' || request.method === 'POST') {
+          const { plan } = await request.json();
+          const now = new Date().toISOString();
+          const jsonStr = JSON.stringify(plan);
+          await env.DB.prepare(
+            `INSERT INTO nutrition_plans (id, plan_json, updated_at)
+             VALUES ('current_plan', ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+               plan_json = excluded.plan_json,
+               updated_at = excluded.updated_at`
+          ).bind(jsonStr, now).run();
+
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        }
+      }
+
+      if (path === '/generate-nutrition-plan' || path === '/generate-nutrition-plan/') {
+        if (request.method === 'POST') {
+          const { profile, metrics, dayFocus } = await request.json();
+
+          const prompt = `Du bist ein professioneller V-Shape Fitness Ernährungsberater & Chefkoch.
+Erstelle einen maßgeschneiderten Tages-Ernährungsplan sowie eine gesammelte Einkaufsliste für diesen Tag auf Deutsch.
+
+METRIKEN & ZIELE:
+- Ziel-Kalorien: ${metrics?.targetCalories || 2200} kcal/Tag
+- Protein-Ziel: ${metrics?.proteinGrams || 160}g
+- Fett-Ziel: ${metrics?.fatGrams || 70}g
+- Kohlenhydrate-Ziel: ${metrics?.carbsGrams || 200}g
+- Tag-Fokus: ${dayFocus || 'Trainingstag (Brust & Bizeps)'}
+- Mahlzeiten pro Tag: ${profile?.meals_per_day || 3}
+- Frühstücks-Typ: ${profile?.breakfast_type || 'normal'} (wenn 'intermittent_fasting' 16:8, dann erstes Essen erst mittags!)
+- Diät-Fokus: ${profile?.diet_focus || 'high_protein'}
+- Vorlieben: ${profile?.preferences || 'keine'}
+- Allergien/Ausschlüsse: ${profile?.allergies || 'keine'}
+
+Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Formattierung:
+{
+  "dayName": "${dayFocus || 'Trainingstag'}",
+  "totalCalories": ${metrics?.targetCalories || 2200},
+  "totalProtein": ${metrics?.proteinGrams || 160},
+  "totalFat": ${metrics?.fatGrams || 70},
+  "totalCarbs": ${metrics?.carbsGrams || 200},
+  "meals": [
+    {
+      "time": "08:30",
+      "name": "Name der Mahlzeit",
+      "calories": 500,
+      "protein": 40,
+      "fat": 15,
+      "carbs": 50,
+      "ingredients": ["100g Haferflocken", "30g Whey Protein", "200ml Mandelmilch"],
+      "instructions": "Kurze einfache Zubereitungsinstruktionen..."
+    }
+  ],
+  "shoppingList": [
+    { "category": "Protein & Fleisch", "item": "Hähnchenbrust 500g" },
+    { "category": "Gemüse & Obst", "item": "Brokkoli 1 Kopf" }
+  ]
+}`;
+
+          let aiPlanResult = null;
+
+          if (env.AI) {
+            try {
+              console.log("Calling Cloudflare Workers AI @cf/meta/llama-3.1-8b-instruct...");
+              const aiRes = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+                messages: [
+                  { role: 'system', content: 'Du antwortest ausschließlich im gültigen JSON Format.' },
+                  { role: 'user', content: prompt }
+                ]
+              });
+              let responseText = aiRes.response || aiRes.text || (typeof aiRes === 'string' ? aiRes : JSON.stringify(aiRes));
+              if (responseText.includes('```')) {
+                responseText = responseText.replace(/```json|```/g, '').trim();
+              }
+              aiPlanResult = JSON.parse(responseText);
+            } catch (err) {
+              console.warn("Cloudflare Workers AI call failed, falling back to Gemini:", err.message);
+            }
+          }
+
+          if (!aiPlanResult && env.PLANNER_KI_API) {
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${env.PLANNER_KI_API}`;
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+              })
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              let content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (content) {
+                if (content.includes('```')) {
+                  content = content.replace(/```json|```/g, '').trim();
+                }
+                aiPlanResult = JSON.parse(content);
+              }
+            }
+          }
+
+          if (aiPlanResult) {
+            const now = new Date().toISOString();
+            await env.DB.prepare(
+              `CREATE TABLE IF NOT EXISTS nutrition_plans (
+                id TEXT PRIMARY KEY DEFAULT 'current_plan',
+                plan_json TEXT,
+                updated_at TEXT
+              )`
+            ).run();
+
+            await env.DB.prepare(
+              `INSERT INTO nutrition_plans (id, plan_json, updated_at)
+               VALUES ('current_plan', ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                 plan_json = excluded.plan_json,
+                 updated_at = excluded.updated_at`
+            ).bind(JSON.stringify(aiPlanResult), now).run();
+
+            return new Response(JSON.stringify({ success: true, plan: aiPlanResult }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          } else {
+            return new Response(JSON.stringify({ success: false, error: 'AI generation failed' }), {
+              status: 500,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+        }
+      }
+
       // --- Telegram Webhook ---
       if ((path === '/webhook' || path === '/webhook/') ) {
         if (request.method === 'POST') {

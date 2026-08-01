@@ -420,3 +420,81 @@ export async function upsertWorkoutSession(date: string, session: Partial<Workou
   localStorage.setItem('sanktum_workout_sessions', JSON.stringify(record));
 }
 
+// --- Nutrition API Methods ---
+import type { NutritionProfile, NutritionPlan } from '../types';
+
+export async function fetchNutritionProfile(): Promise<NutritionProfile> {
+  try {
+    const res = await fetch(`${WORKER_URL}/nutrition-profile`);
+    if (res.ok) {
+      const data = await res.json();
+      localStorage.setItem('sanktum_nutrition_profile', JSON.stringify(data));
+      return data;
+    }
+  } catch (e) {
+    console.warn('Fetch nutrition profile error:', e);
+  }
+  const local = localStorage.getItem('sanktum_nutrition_profile');
+  return local ? JSON.parse(local) : {
+    meals_per_day: 3,
+    breakfast_type: 'normal',
+    diet_focus: 'high_protein',
+    preferences: '',
+    allergies: ''
+  };
+}
+
+export async function upsertNutritionProfile(profile: NutritionProfile): Promise<void> {
+  try {
+    await fetch(`${WORKER_URL}/nutrition-profile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile)
+    });
+  } catch (e) {
+    console.warn('Upsert nutrition profile error:', e);
+  }
+  localStorage.setItem('sanktum_nutrition_profile', JSON.stringify(profile));
+}
+
+export async function fetchNutritionPlan(): Promise<NutritionPlan | null> {
+  try {
+    const res = await fetch(`${WORKER_URL}/nutrition-plans`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.plan) {
+        localStorage.setItem('sanktum_nutrition_plan', JSON.stringify(data.plan));
+        return data.plan;
+      }
+    }
+  } catch (e) {
+    console.warn('Fetch nutrition plan error:', e);
+  }
+  const local = localStorage.getItem('sanktum_nutrition_plan');
+  return local ? JSON.parse(local) : null;
+}
+
+export async function generateAiNutritionPlan(
+  profile: NutritionProfile,
+  metrics: { targetCalories: number; proteinGrams: number; fatGrams: number; carbsGrams: number },
+  dayFocus: string
+): Promise<NutritionPlan> {
+  try {
+    const res = await fetch(`${WORKER_URL}/generate-nutrition-plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile, metrics, dayFocus })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.plan) {
+        localStorage.setItem('sanktum_nutrition_plan', JSON.stringify(data.plan));
+        return data.plan;
+      }
+    }
+  } catch (e) {
+    console.warn('Generate AI plan error:', e);
+  }
+  throw new Error('Fehler bei der KI-Ernährungsplan Generierung');
+}
+

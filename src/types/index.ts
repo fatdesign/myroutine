@@ -39,4 +39,38 @@ export interface WorkoutSession {
 
 export type WorkoutSessionRecord = Record<string, WorkoutSession>;
 
+export interface NutritionProfile {
+  meals_per_day: number;
+  breakfast_type: 'normal' | 'intermittent_fasting' | 'shake_only' | 'high_protein';
+  diet_focus: 'high_protein' | 'v_shape_shred' | 'balanced' | 'low_carb';
+  preferences: string;
+  allergies: string;
+}
+
+export interface Meal {
+  time: string;
+  name: string;
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  ingredients: string[];
+  instructions: string;
+}
+
+export interface ShoppingItem {
+  category: string;
+  item: string;
+}
+
+export interface NutritionPlan {
+  dayName: string;
+  totalCalories: number;
+  totalProtein: number;
+  totalFat: number;
+  totalCarbs: number;
+  meals: Meal[];
+  shoppingList: ShoppingItem[];
+}
+
 

@@ -7,6 +7,7 @@ import { getDailyQuote } from './data/quotes';
 import { useAudioDrone } from './hooks/useAudioDrone';
 import { EmotionalScale } from './components/EmotionalScale';
 import { WorkoutDashboard } from './components/WorkoutDashboard';
+import { NutritionDashboard } from './components/NutritionDashboard';
 import './index.css';
 
 const WEEKDAYS = [
@@ -51,7 +52,7 @@ function App() {
   const [history, setHistory] = useState<HistoryRecord>({});
   const { isPlaying: isDronePlaying, toggleDrone } = useAudioDrone();
   
-  const [activeTab, setActiveTab] = useState<'habits' | 'workouts'>('habits');
+  const [activeTab, setActiveTab] = useState<'habits' | 'workouts' | 'nutrition'>('habits');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalKind, setModalKind] = useState<'routine' | 'task'>('routine');
@@ -419,6 +420,15 @@ function App() {
                   color: activeTab === 'workouts' ? '#fff' : 'var(--text-muted)' 
                 }}
               >Workouts</button>
+              <button 
+                onClick={() => setActiveTab('nutrition')}
+                style={{ 
+                  padding: '4px 12px', borderRadius: '20px', fontSize: '0.9rem', border: '1px solid', cursor: 'pointer',
+                  borderColor: activeTab === 'nutrition' ? 'var(--heroui-violet)' : 'transparent', 
+                  background: activeTab === 'nutrition' ? 'rgba(124,58,237,0.1)' : 'transparent', 
+                  color: activeTab === 'nutrition' ? '#fff' : 'var(--text-muted)' 
+                }}
+              >Ernährung</button>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -603,8 +613,16 @@ function App() {
           </div>
         </div>
         </>
-        ) : (
+        ) : activeTab === 'workouts' ? (
           <WorkoutDashboard />
+        ) : (
+          <NutritionDashboard metrics={{
+            targetCalories: 2150,
+            proteinGrams: 165,
+            fatGrams: 68,
+            carbsGrams: 210,
+            kfa: 14.0
+          }} />
         )}
       </div>
 
