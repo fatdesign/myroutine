@@ -583,7 +583,7 @@ export function WorkoutDashboard() {
                 {(!history[selectedHistoryDate] || Object.values(history[selectedHistoryDate]).every(s => s === 0)) ? (
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Keine Übungen an diesem Tag.</p>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {Object.entries(history[selectedHistoryDate]).map(([exId, sets]) => {
                       if (sets === 0) return null;
                       const exercise = allExercises.find(e => e.id === exId);

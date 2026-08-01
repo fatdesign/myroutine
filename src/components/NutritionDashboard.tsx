@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Utensils, ShoppingBag, Sparkles, Check, Clock, Save, RefreshCw, ChefHat } from 'lucide-react';
 import type { NutritionProfile, NutritionPlan } from '../types';
 import { fetchNutritionProfile, upsertNutritionProfile, fetchNutritionPlan, generateAiNutritionPlan } from '../services/plannerApi';
+import { WORKOUT_PLAN } from '../data/workouts';
 import { getLiveBodyMetrics, type BodyMetrics } from '../utils/bodyMetrics';
 
 interface NutritionDashboardProps {
@@ -231,10 +232,14 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                 onChange={e => setDayFocus(e.target.value)}
                 style={{ width: '100%', padding: '8px 12px', fontSize: '0.85rem' }}
               >
-                <option value="Trainingstag (Brust, Schultern, Bizeps)">🏋️ Tag 1: Push (Brust, Schultern, Bizeps)</option>
-                <option value="Trainingstag (Rücken, Trizeps, Bauch)">🏋️ Tag 2: Pull (Rücken, Trizeps, Bauch)</option>
-                <option value="Trainingstag (Beine & Waden)">🏋️ Tag 3: Legs (Beine & Waden)</option>
-                <option value="Erholungstag (Rest Day)">🧘 Tag 4: Rest Day (Erholung & Regeneration)</option>
+                {WORKOUT_PLAN.map(day => (
+                  <option key={day.dayId} value={`Trainingstag (${day.dayName}: ${day.focus})`}>
+                    🏋️ Tag {day.dayId}: {day.dayName} – {day.focus}
+                  </option>
+                ))}
+                <option value="Erholungstag (Rest Day / Regeneration)">
+                  🧘 Tag 7: Sonntag – Rest Day (Erholung & Regeneration)
+                </option>
               </select>
             </div>
 
