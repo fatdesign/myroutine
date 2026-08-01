@@ -19,14 +19,16 @@ export const WORKOUT_PLAN: WorkoutDay[] = [
   {
     dayId: '1',
     dayName: 'Montag',
-    focus: 'Oberkörper (Push & Pull)',
+    focus: 'Oberkörper (Push, Pull & V-Taper)',
     exercises: [
       { id: 'u1_1', name: 'Liegestütze (Push-ups)', sets: 3, reps: 15, restTime: '60s', equipment: 'Körpergewicht', imageUrl: './exercises/pushups.png' },
       { id: 'u1_2', name: 'Langhantel Rudern vorgebeugt', sets: 3, reps: 12, restTime: '60s', equipment: '23kg Langhantel', imageUrl: './exercises/barbell_rows.png' },
       { id: 'u1_3', name: 'Kurzhantel Schulterdrücken stehend', sets: 3, reps: 10, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: './exercises/dumbbell_shoulder_press.png' },
-      { id: 'u1_4', name: 'Kurzhantel Floor Press', sets: 3, reps: 12, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: './exercises/dumbbell_floor_press.png' },
-      { id: 'u1_5', name: 'Langhantel Bizeps Curls', sets: 3, reps: 12, restTime: '45s', equipment: '23kg Langhantel', imageUrl: './exercises/barbell_biceps_curls.png' },
-      { id: 'u1_6', name: 'Kurzhantel Trizeps-Strecken über Kopf', sets: 3, reps: 12, restTime: '45s', equipment: '1x 13kg Kurzhantel', imageUrl: './exercises/dumbbell_overhead_triceps.png' }
+      { id: 'u1_4', name: 'Kurzhantel Seitheben (V-Schultern)', sets: 3, reps: 15, restTime: '45s', equipment: '2x 13kg Kurzhanteln', imageUrl: './exercises/dumbbell_lateral_raises.png' },
+      { id: 'u1_5', name: 'Kurzhantel Überzüge (V-Lat & Serratus)', sets: 3, reps: 12, restTime: '60s', equipment: '1x 13kg Kurzhantel', imageUrl: './exercises/dumbbell_pullover.png' },
+      { id: 'u1_6', name: 'Kurzhantel Floor Press', sets: 3, reps: 12, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: './exercises/dumbbell_floor_press.png' },
+      { id: 'u1_7', name: 'Langhantel Bizeps Curls', sets: 3, reps: 12, restTime: '45s', equipment: '23kg Langhantel', imageUrl: './exercises/barbell_biceps_curls.png' },
+      { id: 'u1_8', name: 'Kurzhantel Trizeps-Strecken über Kopf', sets: 3, reps: 12, restTime: '45s', equipment: '1x 13kg Kurzhantel', imageUrl: './exercises/dumbbell_overhead_triceps.png' }
     ]
   },
   {
@@ -45,14 +47,16 @@ export const WORKOUT_PLAN: WorkoutDay[] = [
   {
     dayId: '3',
     dayName: 'Mittwoch',
-    focus: 'Oberkörper (Push & Pull)',
+    focus: 'Oberkörper (Push, Pull & V-Taper)',
     exercises: [
       { id: 'u2_1', name: 'Liegestütze (Push-ups)', sets: 3, reps: 15, restTime: '60s', equipment: 'Körpergewicht', imageUrl: './exercises/pushups.png' },
       { id: 'u2_2', name: 'Langhantel Rudern vorgebeugt', sets: 3, reps: 12, restTime: '60s', equipment: '23kg Langhantel', imageUrl: './exercises/barbell_rows.png' },
       { id: 'u2_3', name: 'Kurzhantel Schulterdrücken stehend', sets: 3, reps: 10, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: './exercises/dumbbell_shoulder_press.png' },
-      { id: 'u2_4', name: 'Kurzhantel Floor Press', sets: 3, reps: 12, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: './exercises/dumbbell_floor_press.png' },
-      { id: 'u2_5', name: 'Langhantel Bizeps Curls', sets: 3, reps: 12, restTime: '45s', equipment: '23kg Langhantel', imageUrl: './exercises/barbell_biceps_curls.png' },
-      { id: 'u2_6', name: 'Kurzhantel Trizeps-Strecken über Kopf', sets: 3, reps: 12, restTime: '45s', equipment: '1x 13kg Kurzhantel', imageUrl: './exercises/dumbbell_overhead_triceps.png' }
+      { id: 'u2_4', name: 'Kurzhantel Seitheben (V-Schultern)', sets: 3, reps: 15, restTime: '45s', equipment: '2x 13kg Kurzhanteln', imageUrl: './exercises/dumbbell_lateral_raises.png' },
+      { id: 'u2_5', name: 'Kurzhantel Überzüge (V-Lat & Serratus)', sets: 3, reps: 12, restTime: '60s', equipment: '1x 13kg Kurzhantel', imageUrl: './exercises/dumbbell_pullover.png' },
+      { id: 'u2_6', name: 'Kurzhantel Floor Press', sets: 3, reps: 12, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: './exercises/dumbbell_floor_press.png' },
+      { id: 'u2_7', name: 'Langhantel Bizeps Curls', sets: 3, reps: 12, restTime: '45s', equipment: '23kg Langhantel', imageUrl: './exercises/barbell_biceps_curls.png' },
+      { id: 'u2_8', name: 'Kurzhantel Trizeps-Strecken über Kopf', sets: 3, reps: 12, restTime: '45s', equipment: '1x 13kg Kurzhantel', imageUrl: './exercises/dumbbell_overhead_triceps.png' }
     ]
   },
   {
@@ -71,14 +75,16 @@ export const WORKOUT_PLAN: WorkoutDay[] = [
   {
     dayId: '5',
     dayName: 'Freitag',
-    focus: 'Oberkörper (Push & Pull)',
+    focus: 'Oberkörper (Push, Pull & V-Taper)',
     exercises: [
       { id: 'u3_1', name: 'Liegestütze (Push-ups)', sets: 3, reps: 15, restTime: '60s', equipment: 'Körpergewicht', imageUrl: './exercises/pushups.png' },
       { id: 'u3_2', name: 'Langhantel Rudern vorgebeugt', sets: 3, reps: 12, restTime: '60s', equipment: '23kg Langhantel', imageUrl: './exercises/barbell_rows.png' },
       { id: 'u3_3', name: 'Kurzhantel Schulterdrücken stehend', sets: 3, reps: 10, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: './exercises/dumbbell_shoulder_press.png' },
-      { id: 'u3_4', name: 'Kurzhantel Floor Press', sets: 3, reps: 12, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: './exercises/dumbbell_floor_press.png' },
-      { id: 'u3_5', name: 'Langhantel Bizeps Curls', sets: 3, reps: 12, restTime: '45s', equipment: '23kg Langhantel', imageUrl: './exercises/barbell_biceps_curls.png' },
-      { id: 'u3_6', name: 'Kurzhantel Trizeps-Strecken über Kopf', sets: 3, reps: 12, restTime: '45s', equipment: '1x 13kg Kurzhantel', imageUrl: './exercises/dumbbell_overhead_triceps.png' }
+      { id: 'u3_4', name: 'Kurzhantel Seitheben (V-Schultern)', sets: 3, reps: 15, restTime: '45s', equipment: '2x 13kg Kurzhanteln', imageUrl: './exercises/dumbbell_lateral_raises.png' },
+      { id: 'u3_5', name: 'Kurzhantel Überzüge (V-Lat & Serratus)', sets: 3, reps: 12, restTime: '60s', equipment: '1x 13kg Kurzhantel', imageUrl: './exercises/dumbbell_pullover.png' },
+      { id: 'u3_6', name: 'Kurzhantel Floor Press', sets: 3, reps: 12, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: './exercises/dumbbell_floor_press.png' },
+      { id: 'u3_7', name: 'Langhantel Bizeps Curls', sets: 3, reps: 12, restTime: '45s', equipment: '23kg Langhantel', imageUrl: './exercises/barbell_biceps_curls.png' },
+      { id: 'u3_8', name: 'Kurzhantel Trizeps-Strecken über Kopf', sets: 3, reps: 12, restTime: '45s', equipment: '1x 13kg Kurzhantel', imageUrl: './exercises/dumbbell_overhead_triceps.png' }
     ]
   },
   {
