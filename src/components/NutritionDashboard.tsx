@@ -294,16 +294,18 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
           <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div>
-                <span style={{ fontSize: '0.75rem', color: 'var(--heroui-violet-light)', fontWeight: 'bold', textTransform: 'uppercase' }}>
-                  Aktueller KI-Plan
+                <span style={{ fontSize: '0.75rem', color: '#22c55e', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                  Generierter KI-Tagesplan (Mahlzeiten-Summe)
                 </span>
                 <h3 style={{ margin: '4px 0 0 0', fontSize: '1.3rem', color: '#fff' }}>
                   {currentPlan.dayName}
                 </h3>
               </div>
 
-              <div style={{ display: 'flex', gap: '16px', fontSize: '0.85rem' }}>
-                <span>🔥 <strong>{currentPlan.totalCalories}</strong> kcal</span>
+              <div style={{ display: 'flex', gap: '14px', fontSize: '0.85rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span style={{ background: 'rgba(34, 197, 94, 0.1)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
+                  🔥 <strong>{currentPlan.totalCalories}</strong> kcal <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(Ziel: {liveMetrics.targetCalories} kcal)</span>
+                </span>
                 <span style={{ color: '#ef4444' }}>🥩 <strong>{currentPlan.totalProtein}g</strong> Prot</span>
                 <span style={{ color: '#eab308' }}>🥑 <strong>{currentPlan.totalFat}g</strong> Fett</span>
                 <span style={{ color: '#38bdf8' }}>🍚 <strong>{currentPlan.totalCarbs}g</strong> Carbs</span>
