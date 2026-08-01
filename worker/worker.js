@@ -240,8 +240,13 @@ export default {
       if (path === '/workout-sessions' || path === '/workout-sessions/') {
         if (request.method === 'GET') {
           await env.DB.prepare(
-            "CREATE TABLE IF NOT EXISTS workout_sessions (date TEXT PRIMARY KEY, duration_seconds INTEGER DEFAULT 0, body_weight REAL, photo_url TEXT)"
+            "CREATE TABLE IF NOT EXISTS workout_sessions (date TEXT PRIMARY KEY, duration_seconds INTEGER DEFAULT 0, body_weight REAL, photo_url TEXT, body_fat REAL)"
           ).run();
+
+          // Try adding body_fat column if table existed without it
+          try {
+            await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN body_fat REAL").run();
+          } catch (e) { /* column exists */ }
 
           const { results } = await env.DB.prepare("SELECT * FROM workout_sessions ORDER BY date ASC").all();
           return new Response(JSON.stringify(results), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -251,20 +256,25 @@ export default {
       if (path.startsWith('/workout-sessions/')) {
         const date = path.split('/').pop();
         if (request.method === 'PUT') {
-          const { durationSeconds, bodyWeight, photoUrl } = await request.json();
+          const { durationSeconds, bodyWeight, photoUrl, bodyFat } = await request.json();
           
           await env.DB.prepare(
-            "CREATE TABLE IF NOT EXISTS workout_sessions (date TEXT PRIMARY KEY, duration_seconds INTEGER DEFAULT 0, body_weight REAL, photo_url TEXT)"
+            "CREATE TABLE IF NOT EXISTS workout_sessions (date TEXT PRIMARY KEY, duration_seconds INTEGER DEFAULT 0, body_weight REAL, photo_url TEXT, body_fat REAL)"
           ).run();
 
+          try {
+            await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN body_fat REAL").run();
+          } catch (e) { /* column exists */ }
+
           await env.DB.prepare(
-            `INSERT INTO workout_sessions (date, duration_seconds, body_weight, photo_url) VALUES (?, ?, ?, ?)
+            `INSERT INTO workout_sessions (date, duration_seconds, body_weight, photo_url, body_fat) VALUES (?, ?, ?, ?, ?)
              ON CONFLICT(date) DO UPDATE SET
                duration_seconds = COALESCE(excluded.duration_seconds, workout_sessions.duration_seconds),
                body_weight = COALESCE(excluded.body_weight, workout_sessions.body_weight),
-               photo_url = COALESCE(excluded.photo_url, workout_sessions.photo_url)`
+               photo_url = COALESCE(excluded.photo_url, workout_sessions.photo_url),
+               body_fat = COALESCE(excluded.body_fat, workout_sessions.body_fat)`
           )
-            .bind(date, durationSeconds ?? 0, bodyWeight ?? null, photoUrl ?? null)
+            .bind(date, durationSeconds ?? 0, bodyWeight ?? null, photoUrl ?? null, bodyFat ?? null)
             .run();
 
           return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });

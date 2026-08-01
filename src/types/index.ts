@@ -33,6 +33,7 @@ export interface WorkoutSession {
   date: string;
   durationSeconds: number;
   bodyWeight?: number;
+  bodyFat?: number;
   photoUrl?: string;
 }
 

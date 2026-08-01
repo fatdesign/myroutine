@@ -39,8 +39,26 @@ export function WorkoutDashboard() {
   // Session & Timer State
   const [isPreModalOpen, setIsPreModalOpen] = useState(false);
   const [bodyWeightInput, setBodyWeightInput] = useState<string>('');
+  const [bodyFatInput, setBodyFatInput] = useState<string>('');
+  const [showKfaCalc, setShowKfaCalc] = useState(false);
+  const [calcHeight, setCalcHeight] = useState<string>('');
+  const [calcNeck, setCalcNeck] = useState<string>('');
+  const [calcWaist, setCalcWaist] = useState<string>('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  const calculateNavyKfa = () => {
+    const h = parseFloat(calcHeight);
+    const n = parseFloat(calcNeck);
+    const w = parseFloat(calcWaist);
+    if (h > 0 && n > 0 && w > n) {
+      const kfa = 86.010 * Math.log10(w - n) - 70.041 * Math.log10(h) + 36.76;
+      if (kfa > 2 && kfa < 50) {
+        setBodyFatInput(kfa.toFixed(1));
+        setShowKfaCalc(false);
+      }
+    }
+  };
 
   // Timer State
   const [isTimerActive, setIsTimerActive] = useState<boolean>(() => {
@@ -124,6 +142,7 @@ export function WorkoutDashboard() {
     }
 
     const weightNum = bodyWeightInput ? parseFloat(bodyWeightInput) : undefined;
+    const fatNum = bodyFatInput ? parseFloat(bodyFatInput) : undefined;
     const now = Date.now();
 
     setIsTimerActive(true);
@@ -134,6 +153,7 @@ export function WorkoutDashboard() {
     // Save initial session info
     const sessionData: Partial<WorkoutSession> = {
       bodyWeight: weightNum,
+      bodyFat: fatNum,
       photoUrl: uploadedPhotoUrl,
     };
 
@@ -260,8 +280,8 @@ export function WorkoutDashboard() {
                   Training am {selectedHistoryDate.split('-').reverse().join('.')}
                 </h3>
 
-                {/* Session stats (Duration & Weight & Photo) */}
-                {selectedSession && (selectedSession.durationSeconds > 0 || selectedSession.bodyWeight || selectedSession.photoUrl) && (
+                {/* Session stats (Duration & Weight & KFA & Photo) */}
+                {selectedSession && (selectedSession.durationSeconds > 0 || selectedSession.bodyWeight || selectedSession.bodyFat || selectedSession.photoUrl) && (
                   <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(124,58,237,0.1)', padding: '10px', borderRadius: '8px' }}>
                     {selectedSession.photoUrl && (
                       <div 
@@ -278,11 +298,18 @@ export function WorkoutDashboard() {
                           <Timer size={12} /> {formatTime(selectedSession.durationSeconds)}
                         </span>
                       )}
-                      {selectedSession.bodyWeight && (
-                        <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
-                          <Weight size={12} /> {selectedSession.bodyWeight} kg
-                        </span>
-                      )}
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {selectedSession.bodyWeight && (
+                          <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
+                            <Weight size={12} /> {selectedSession.bodyWeight} kg
+                          </span>
+                        )}
+                        {selectedSession.bodyFat && (
+                          <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', background: 'var(--heroui-violet)' }}>
+                            <Flame size={12} /> {selectedSession.bodyFat}% KFA
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -515,18 +542,63 @@ export function WorkoutDashboard() {
               <button className="action-btn" onClick={() => setIsPreModalOpen(false)}><X size={20} /></button>
             </div>
 
-            <div className="form-group">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Weight size={16} /> Tagesgewicht (kg)</label>
-              <input 
-                type="number" 
-                step="0.1" 
-                className="form-input" 
-                placeholder="z. B. 78.5" 
-                value={bodyWeightInput} 
-                onChange={e => setBodyWeightInput(e.target.value)} 
-                autoFocus 
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Weight size={16} /> Gewicht (kg)</label>
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  className="form-input" 
+                  placeholder="z. B. 78.5" 
+                  value={bodyWeightInput} 
+                  onChange={e => setBodyWeightInput(e.target.value)} 
+                  autoFocus 
+                />
+              </div>
+
+              <div className="form-group">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Flame size={16} /> KFA (%)</label>
+                  <button 
+                    type="button"
+                    onClick={() => setShowKfaCalc(!showKfaCalc)}
+                    style={{ background: 'none', border: 'none', color: 'var(--heroui-violet-light)', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    {showKfaCalc ? 'Schließen' : 'Rechner'}
+                  </button>
+                </div>
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  className="form-input" 
+                  placeholder="z. B. 14.5" 
+                  value={bodyFatInput} 
+                  onChange={e => setBodyFatInput(e.target.value)} 
+                />
+              </div>
             </div>
+
+            {/* US Navy KFA Rechner Pop-Down */}
+            {showKfaCalc && (
+              <div style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid var(--heroui-violet)', padding: '12px', borderRadius: '8px', marginBottom: '16px' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--heroui-violet-light)', marginBottom: '8px' }}>
+                  US Navy KFA-Schätzer
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '8px' }}>
+                  <input type="number" placeholder="Größe cm" className="form-input" style={{ fontSize: '0.75rem', padding: '6px' }} value={calcHeight} onChange={e => setCalcHeight(e.target.value)} />
+                  <input type="number" placeholder="Nacken cm" className="form-input" style={{ fontSize: '0.75rem', padding: '6px' }} value={calcNeck} onChange={e => setCalcNeck(e.target.value)} />
+                  <input type="number" placeholder="Bauch cm" className="form-input" style={{ fontSize: '0.75rem', padding: '6px' }} value={calcWaist} onChange={e => setCalcWaist(e.target.value)} />
+                </div>
+                <button 
+                  type="button"
+                  className="btn-secondary" 
+                  onClick={calculateNavyKfa}
+                  style={{ width: '100%', padding: '6px', fontSize: '0.75rem', borderColor: 'var(--heroui-violet)' }}
+                >
+                  Berechnen & Übernehmen
+                </button>
+              </div>
+            )}
 
             <div className="form-group">
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Upload size={16} /> Check-in Foto</label>
