@@ -71,6 +71,7 @@ export interface NutritionPlan {
   totalFat: number;
   totalCarbs: number;
   estimatedTotalPriceEur?: number;
+  estimatedSupermarketReceiptEur?: number;
   meals: Meal[];
   shoppingList: ShoppingItem[];
 }

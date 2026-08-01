@@ -308,7 +308,7 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                 </span>
                 {currentPlan.estimatedTotalPriceEur !== undefined && (
                   <span style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(234, 179, 8, 0.3)' }}>
-                    🏷️ <strong>ca. {currentPlan.estimatedTotalPriceEur.toFixed(2)} €</strong> <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>(🇦🇹 Supermarkt)</span>
+                    🏷️ <strong>ca. {currentPlan.estimatedTotalPriceEur.toFixed(2)} €</strong> <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>(Portionen)</span>
                   </span>
                 )}
                 <span style={{ color: '#ef4444' }}>🥩 <strong>{currentPlan.totalProtein}g</strong> Prot</span>
@@ -333,8 +333,8 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                     {meal.estimatedPriceEur !== undefined && (
-                      <span className="badge-pill" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid rgba(234, 179, 8, 0.3)', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                        🏷️ ca. {meal.estimatedPriceEur.toFixed(2)} €
+                      <span className="badge-pill" title="Anteiliger Portionspreis der verbrauchten Zutaten" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid rgba(234, 179, 8, 0.3)', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                        🏷️ ca. {meal.estimatedPriceEur.toFixed(2)} € (Portion)
                       </span>
                     )}
                     <span className="badge-pill time" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', border: '1px solid rgba(34, 197, 94, 0.3)', fontSize: '0.75rem' }}>
@@ -370,11 +370,18 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
           {/* Interactive Shopping List Card */}
           {currentPlan.shoppingList && currentPlan.shoppingList.length > 0 && (
             <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <ShoppingBag size={20} style={{ color: '#22c55e' }} />
-                  Einkaufsliste für deine Kochen-Session
-                </h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <ShoppingBag size={20} style={{ color: '#22c55e' }} />
+                    Einkaufsliste für deine Kochen-Session
+                  </h3>
+                  {currentPlan.estimatedSupermarketReceiptEur !== undefined && (
+                    <span style={{ fontSize: '0.8rem', color: '#eab308', display: 'block', marginTop: '4px', fontWeight: '500' }}>
+                      🛒 Geschätzter Kassenbon an der Kasse (Supermarkt Gekaufte Packungen): <strong>ca. {currentPlan.estimatedSupermarketReceiptEur.toFixed(2)} €</strong>
+                    </span>
+                  )}
+                </div>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   {Object.values(checkedShoppingItems).filter(Boolean).length} / {currentPlan.shoppingList.length} abgehakt
                 </span>

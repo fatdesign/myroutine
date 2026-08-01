@@ -446,7 +446,7 @@ export default {
 
           return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
         }
-      }
+}
 
       if (path === '/generate-nutrition-plan' || path === '/generate-nutrition-plan/') {
         if (request.method === 'POST') {
@@ -454,7 +454,10 @@ export default {
 
           const prompt = `Du bist ein professioneller V-Shape Fitness Ernährungsberater & Chefkoch.
 Erstelle einen maßgeschneiderten Tages-Ernährungsplan sowie eine gesammelte Einkaufsliste für diesen Tag auf Deutsch.
-BERECHNE ZUDEM DIE UNGEFÄHREN KOSTEN (IN EUR €) BASSIONSREICH AUF ÖSTERREICHISCHE SUPERMARKT-PREISE (BILLA, SPAR, HOFER, LIDL IN ÖSTERREICH).
+BERECHNE DIE KOSTEN (IN EUR €) FÜR ÖSTERREICHISCHE SUPERMÄRKTE (HOFER, BILLA, SPAR):
+1. "estimatedPriceEur": Anteiliger PORTIONSPREIS für diesen einen Teller (z.B. 250g Hähnchen anteilig von 500g Packung ~2.95€ + Reis + Brokkoli = ca. 4.60€ Portionspreis).
+2. "estimatedTotalPriceEur": Summe der Teller-Portionspreise des Tages (z.B. ca. 9.80€/Tag).
+3. "estimatedSupermarketReceiptEur": Geschätzter KASSENBON-TOTALBETRAG an der Supermarktkasse für alle GANZEN Packungen aus der Einkaufsliste (z.B. 500g Packung Hähnchen + 1kg Sack Reis + Brokkoli + Olivenöl usw. = ca. 18.50€ Kassenbon).
 
 METRIKEN & ZIELE:
 - Ziel-Kalorien: ${metrics?.targetCalories || 2200} kcal/Tag
@@ -475,7 +478,8 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
   "totalProtein": ${metrics?.proteinGrams || 160},
   "totalFat": ${metrics?.fatGrams || 70},
   "totalCarbs": ${metrics?.carbsGrams || 200},
-  "estimatedTotalPriceEur": 8.50,
+  "estimatedTotalPriceEur": 9.80,
+  "estimatedSupermarketReceiptEur": 18.50,
   "meals": [
     {
       "time": "08:30",
@@ -490,7 +494,7 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
     }
   ],
   "shoppingList": [
-    { "category": "Protein & Fleisch", "item": "Hähnchenbrust 500g" },
+    { "category": "Protein & Fleisch", "item": "Hähnchenbrust 500g Packung" },
     { "category": "Gemüse & Obst", "item": "Brokkoli 1 Kopf" }
   ]
 }`;
