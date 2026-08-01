@@ -12,3 +12,8 @@ crons = ["* * * * *"]
 
 [vars]
 ADMIN_PASSWORD = "coco"
+
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "myroutine-assets"
+

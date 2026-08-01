@@ -3,12 +3,13 @@ export interface Exercise {
   name: string;
   sets: number;
   reps: number;
-  restTime: string; // z.B. "30s"
+  restTime: string;
+  equipment: string;
   imageUrl: string;
 }
 
 export interface WorkoutDay {
-  dayId: string; // "1" für Montag, "2" für Dienstag, etc.
+  dayId: string; // "1" .. "6"
   dayName: string;
   focus: string;
   exercises: Exercise[];
@@ -18,79 +19,79 @@ export const WORKOUT_PLAN: WorkoutDay[] = [
   {
     dayId: '1',
     dayName: 'Montag',
-    focus: 'Brust',
+    focus: 'Oberkörper (Push & Pull)',
     exercises: [
-      { id: 'm1', name: 'Barbell Bench Press with Band Suspended Kettlebell', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/4414.png' },
-      { id: 'm2', name: 'Seated Decline Chest Press on a Chair', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/8620.png' },
-      { id: 'm3', name: 'Dumbbell Fly (knees at 90 degrees)', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/3175.png' },
-      { id: 'm4', name: 'Dumbbell Rotational Grip Bench Press', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/4835.png' },
-      { id: 'm5', name: 'Dumbbell One Arm Press (on stability ball)', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/0357.png' }
+      { id: 'u1_1', name: 'Liegestütze (Push-ups)', sets: 3, reps: 15, restTime: '60s', equipment: 'Körpergewicht', imageUrl: 'https://images.unsplash.com/photo-1598971639058-fab3c3109a00?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u1_2', name: 'Langhantel Rudern vorgebeugt', sets: 3, reps: 12, restTime: '60s', equipment: '23kg Langhantel', imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u1_3', name: 'Kurzhantel Schulterdrücken stehend', sets: 3, reps: 10, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u1_4', name: 'Kurzhantel Floor Press', sets: 3, reps: 12, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u1_5', name: 'Langhantel Bizeps Curls', sets: 3, reps: 12, restTime: '45s', equipment: '23kg Langhantel', imageUrl: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u1_6', name: 'Kurzhantel Trizeps-Strecken über Kopf', sets: 3, reps: 12, restTime: '45s', equipment: '1x 13kg Kurzhantel', imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=300&q=80' }
     ]
   },
   {
     dayId: '2',
     dayName: 'Dienstag',
-    focus: 'Rücken',
+    focus: 'Unterkörper & Core',
     exercises: [
-      { id: 'tu1', name: 'Top Pull-up Hold', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/4983.png' },
-      { id: 'tu2', name: 'Barbell Pullover', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/0073.png' },
-      { id: 'tu3', name: 'Inverted Shrug', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/4049.png' },
-      { id: 'tu4', name: 'Lying Prone T', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/5041.png' },
-      { id: 'tu5', name: 'Dumbbell Lying Row on Rack', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/5697.png' }
+      { id: 'l1_1', name: 'Langhantel Front-Kniebeugen', sets: 3, reps: 12, restTime: '60s', equipment: '23kg Langhantel', imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l1_2', name: 'Kurzhantel Ausfallschritte (Lunges)', sets: 3, reps: 10, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: 'https://images.unsplash.com/photo-1434682881908-b43d0467b798?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l1_3', name: 'Langhantel Rumänisches Kreuzheben', sets: 3, reps: 15, restTime: '60s', equipment: '23kg Langhantel', imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l1_4', name: 'Kurzhantel Wadenheben stehend', sets: 3, reps: 20, restTime: '45s', equipment: '2x 13kg Kurzhanteln', imageUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l1_5', name: 'Plank (Unterarmstütz)', sets: 3, reps: 60, restTime: '45s', equipment: 'Körpergewicht (Sekunden)', imageUrl: 'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l1_6', name: 'Leg Raises (Beinheben liegend)', sets: 3, reps: 15, restTime: '45s', equipment: 'Körpergewicht', imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=300&q=80' }
     ]
   },
   {
     dayId: '3',
     dayName: 'Mittwoch',
-    focus: 'Beine & Po',
+    focus: 'Oberkörper (Push & Pull)',
     exercises: [
-      { id: 'w1', name: 'Barbell Olympic Squat', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/1527.png' },
-      { id: 'w2', name: 'Barbell Bench Squat', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/0026.png' },
-      { id: 'w3', name: 'Side Squat', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/4789.png' },
-      { id: 'w4', name: 'Lying Single Straight Leg Hip Extension', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/1776.png' },
-      { id: 'w5', name: 'Dumbbell Stiff Leg Deadlift', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/3340.png' },
-      { id: 'w6', name: 'Barbell Hook grip Deadlift', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/7237.png' },
-      { id: 'w7', name: 'Alternate Leg Raise', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/4826.png' }
+      { id: 'u2_1', name: 'Liegestütze (Push-ups)', sets: 3, reps: 15, restTime: '60s', equipment: 'Körpergewicht', imageUrl: 'https://images.unsplash.com/photo-1598971639058-fab3c3109a00?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u2_2', name: 'Langhantel Rudern vorgebeugt', sets: 3, reps: 12, restTime: '60s', equipment: '23kg Langhantel', imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u2_3', name: 'Kurzhantel Schulterdrücken stehend', sets: 3, reps: 10, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u2_4', name: 'Kurzhantel Floor Press', sets: 3, reps: 12, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u2_5', name: 'Langhantel Bizeps Curls', sets: 3, reps: 12, restTime: '45s', equipment: '23kg Langhantel', imageUrl: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u2_6', name: 'Kurzhantel Trizeps-Strecken über Kopf', sets: 3, reps: 12, restTime: '45s', equipment: '1x 13kg Kurzhantel', imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=300&q=80' }
     ]
   },
   {
     dayId: '4',
     dayName: 'Donnerstag',
-    focus: 'Schultern',
+    focus: 'Unterkörper & Core',
     exercises: [
-      { id: 'th1', name: 'Dumbbell Incline Front Raise with Chest Support', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/3980.png' },
-      { id: 'th2', name: 'Dumbbell Alternate Shoulder Press', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/3972.png' },
-      { id: 'th3', name: 'Dumbbell Arnold Press', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/0287.png' },
-      { id: 'th4', name: 'Barbell Standing Front Raise Over Head', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/0107.png' },
-      { id: 'th5', name: 'Dumbbell Standing Lateral Raise', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/2234.png' }
+      { id: 'l2_1', name: 'Langhantel Front-Kniebeugen', sets: 3, reps: 12, restTime: '60s', equipment: '23kg Langhantel', imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l2_2', name: 'Kurzhantel Ausfallschritte (Lunges)', sets: 3, reps: 10, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: 'https://images.unsplash.com/photo-1434682881908-b43d0467b798?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l2_3', name: 'Langhantel Rumänisches Kreuzheben', sets: 3, reps: 15, restTime: '60s', equipment: '23kg Langhantel', imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l2_4', name: 'Kurzhantel Wadenheben stehend', sets: 3, reps: 20, restTime: '45s', equipment: '2x 13kg Kurzhanteln', imageUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l2_5', name: 'Plank (Unterarmstütz)', sets: 3, reps: 60, restTime: '45s', equipment: 'Körpergewicht (Sekunden)', imageUrl: 'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l2_6', name: 'Leg Raises (Beinheben liegend)', sets: 3, reps: 15, restTime: '45s', equipment: 'Körpergewicht', imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=300&q=80' }
     ]
   },
   {
     dayId: '5',
     dayName: 'Freitag',
-    focus: 'Bizeps & Trizeps',
+    focus: 'Oberkörper (Push & Pull)',
     exercises: [
-      { id: 'f1', name: 'Cross Arms Push up', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/3784.png' },
-      { id: 'f2', name: 'Dumbbell Lying One Arm Pronated Triceps Extension', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/0344.png' },
-      { id: 'f3', name: 'Dumbbell Alternate Hammer Strict Curl', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/6147.png' },
-      { id: 'f4', name: 'Dumbbell Reverse Spider Curl', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/1675.png' },
-      { id: 'f5', name: 'Dumbbell One Arm Kickback', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/0354.png' },
-      { id: 'f6', name: 'Overhead Triceps Extension with Bed Sheet', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/3745.png' },
-      { id: 'f7', name: 'Dumbbell Biceps Curl (with arm blaster)', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/2401.png' }
+      { id: 'u3_1', name: 'Liegestütze (Push-ups)', sets: 3, reps: 15, restTime: '60s', equipment: 'Körpergewicht', imageUrl: 'https://images.unsplash.com/photo-1598971639058-fab3c3109a00?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u3_2', name: 'Langhantel Rudern vorgebeugt', sets: 3, reps: 12, restTime: '60s', equipment: '23kg Langhantel', imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u3_3', name: 'Kurzhantel Schulterdrücken stehend', sets: 3, reps: 10, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u3_4', name: 'Kurzhantel Floor Press', sets: 3, reps: 12, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u3_5', name: 'Langhantel Bizeps Curls', sets: 3, reps: 12, restTime: '45s', equipment: '23kg Langhantel', imageUrl: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=300&q=80' },
+      { id: 'u3_6', name: 'Kurzhantel Trizeps-Strecken über Kopf', sets: 3, reps: 12, restTime: '45s', equipment: '1x 13kg Kurzhantel', imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=300&q=80' }
     ]
   },
   {
     dayId: '6',
     dayName: 'Samstag',
-    focus: 'Taille & Waden',
+    focus: 'Unterkörper & Core',
     exercises: [
-      { id: 'sa1', name: 'Dumbbell Military Press Russian Twist with Legs Floor Off', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/6806.png' },
-      { id: 'sa2', name: 'Dumbbell Side Plank with Rear Fly', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/3664.png' },
-      { id: 'sa3', name: 'Half Sit-up', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/3202.png' },
-      { id: 'sa4', name: 'Lying Leg Raise', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/1163.png' },
-      { id: 'sa5', name: 'Dumbbell Seated One Leg Calf Raise - Hammer Grip', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/1380.png' },
-      { id: 'sa6', name: 'Exercise Ball on the Wall Calf Raise', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/1382.png' },
-      { id: 'sa7', name: 'Standing Single Leg Calf Raise with Support', sets: 3, reps: 8, restTime: '30s', imageUrl: 'https://exercises.loadmuscle.com/thumbnails/3712.png' }
+      { id: 'l3_1', name: 'Langhantel Front-Kniebeugen', sets: 3, reps: 12, restTime: '60s', equipment: '23kg Langhantel', imageUrl: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l3_2', name: 'Kurzhantel Ausfallschritte (Lunges)', sets: 3, reps: 10, restTime: '60s', equipment: '2x 13kg Kurzhanteln', imageUrl: 'https://images.unsplash.com/photo-1434682881908-b43d0467b798?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l3_3', name: 'Langhantel Rumänisches Kreuzheben', sets: 3, reps: 15, restTime: '60s', equipment: '23kg Langhantel', imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l3_4', name: 'Kurzhantel Wadenheben stehend', sets: 3, reps: 20, restTime: '45s', equipment: '2x 13kg Kurzhanteln', imageUrl: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l3_5', name: 'Plank (Unterarmstütz)', sets: 3, reps: 60, restTime: '45s', equipment: 'Körpergewicht (Sekunden)', imageUrl: 'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?auto=format&fit=crop&w=300&q=80' },
+      { id: 'l3_6', name: 'Leg Raises (Beinheben liegend)', sets: 3, reps: 15, restTime: '45s', equipment: 'Körpergewicht', imageUrl: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=300&q=80' }
     ]
   }
 ];

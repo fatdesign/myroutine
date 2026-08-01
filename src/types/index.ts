@@ -26,3 +26,16 @@ export interface DayHistory {
 }
 
 export type HistoryRecord = Record<string, DayHistory>;
+
+export type WorkoutHistoryRecord = Record<string, Record<string, number>>;
+
+export interface WorkoutSession {
+  date: string;
+  durationSeconds: number;
+  bodyWeight?: number;
+  photoUrl?: string;
+}
+
+export type WorkoutSessionRecord = Record<string, WorkoutSession>;
+
+

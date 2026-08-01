@@ -1,4 +1,4 @@
-import type { Routine, OneTimeTask, HistoryRecord } from '../types';
+import type { Routine, OneTimeTask, HistoryRecord, WorkoutHistoryRecord, WorkoutSession, WorkoutSessionRecord } from '../types';
 
 const WORKER_URL = 'https://planner-ai.f-klavun.workers.dev';
 
@@ -314,5 +314,107 @@ export async function verifyPassword(password: string): Promise<boolean> {
   // Fallback: check stored local password or default fallback
   const stored = localStorage.getItem('myroutine_pass') || 'sanktum2026';
   return password.trim() === stored.trim() || password.trim() === 'sanktum2026';
+}
+
+export async function fetchWorkoutHistory(): Promise<WorkoutHistoryRecord> {
+  try {
+    const res = await fetch(`${WORKER_URL}/workout-history`);
+    if (!res.ok) throw new Error('Failed to fetch workout history');
+    const data: { date: string, exercise_id: string, completed_sets: number }[] = await res.json();
+    const record: WorkoutHistoryRecord = {};
+    for (const row of data) {
+      if (!record[row.date]) record[row.date] = {};
+      record[row.date][row.exercise_id] = row.completed_sets;
+    }
+    localStorage.setItem('sanktum_workout_history', JSON.stringify(record));
+    return record;
+  } catch (e) {
+    console.warn('Worker workout history error:', e);
+    const local = localStorage.getItem('sanktum_workout_history');
+    return local ? JSON.parse(local) : {};
+  }
+}
+
+export async function upsertWorkoutHistory(date: string, exercises: Record<string, number>): Promise<void> {
+  try {
+    await fetch(`${WORKER_URL}/workout-history/${date}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ exercises }),
+    });
+  } catch (e) {
+    console.warn('Worker workout history upsert error:', e);
+  }
+
+  const local = localStorage.getItem('sanktum_workout_history');
+  const record: WorkoutHistoryRecord = local ? JSON.parse(local) : {};
+  record[date] = exercises;
+  localStorage.setItem('sanktum_workout_history', JSON.stringify(record));
+}
+
+export async function uploadImage(file: File): Promise<string> {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const res = await fetch(`${WORKER_URL}/upload`, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type || 'image/jpeg' },
+      body: arrayBuffer,
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.url) return data.url;
+    }
+  } catch (e) {
+    console.warn('R2 Upload error:', e);
+  }
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function fetchWorkoutSessions(): Promise<WorkoutSessionRecord> {
+  try {
+    const res = await fetch(`${WORKER_URL}/workout-sessions`);
+    if (!res.ok) throw new Error('Failed to fetch workout sessions');
+    const data: { date: string; duration_seconds: number; body_weight?: number; photo_url?: string }[] = await res.json();
+    const record: WorkoutSessionRecord = {};
+    for (const row of data) {
+      record[row.date] = {
+        date: row.date,
+        durationSeconds: row.duration_seconds,
+        bodyWeight: row.body_weight,
+        photoUrl: row.photo_url,
+      };
+    }
+    localStorage.setItem('sanktum_workout_sessions', JSON.stringify(record));
+    return record;
+  } catch (e) {
+    console.warn('Worker workout sessions error:', e);
+    const local = localStorage.getItem('sanktum_workout_sessions');
+    return local ? JSON.parse(local) : {};
+  }
+}
+
+export async function upsertWorkoutSession(date: string, session: Partial<WorkoutSession>): Promise<void> {
+  try {
+    await fetch(`${WORKER_URL}/workout-sessions/${date}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        durationSeconds: session.durationSeconds,
+        bodyWeight: session.bodyWeight,
+        photoUrl: session.photoUrl,
+      }),
+    });
+  } catch (e) {
+    console.warn('Worker workout session upsert error:', e);
+  }
+
+  const local = localStorage.getItem('sanktum_workout_sessions');
+  const record: WorkoutSessionRecord = local ? JSON.parse(local) : {};
+  record[date] = { ...record[date], ...session, date };
+  localStorage.setItem('sanktum_workout_sessions', JSON.stringify(record));
 }
 

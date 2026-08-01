@@ -160,6 +160,117 @@ export default {
         }
       }
 
+      // --- Workout History Endpoints ---
+      if (path === '/workout-history' || path === '/workout-history/') {
+        if (request.method === 'GET') {
+          await env.DB.prepare(
+            "CREATE TABLE IF NOT EXISTS workout_history (date TEXT, exercise_id TEXT, completed_sets INTEGER, PRIMARY KEY (date, exercise_id))"
+          ).run();
+
+          const { results } = await env.DB.prepare("SELECT * FROM workout_history ORDER BY date ASC").all();
+          return new Response(JSON.stringify(results), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
+      if (path.startsWith('/workout-history/')) {
+        const date = path.split('/').pop();
+        if (request.method === 'PUT') {
+          const { exercises } = await request.json();
+          
+          await env.DB.prepare(
+            "CREATE TABLE IF NOT EXISTS workout_history (date TEXT, exercise_id TEXT, completed_sets INTEGER, PRIMARY KEY (date, exercise_id))"
+          ).run();
+
+          // We delete all existing records for the date and insert the new ones
+          // to handle when a user unchecks all sets for an exercise.
+          await env.DB.prepare("DELETE FROM workout_history WHERE date = ?").bind(date).run();
+
+          for (const [exerciseId, sets] of Object.entries(exercises)) {
+            if (sets > 0) {
+              await env.DB.prepare(
+                "INSERT INTO workout_history (date, exercise_id, completed_sets) VALUES (?, ?, ?)"
+              )
+                .bind(date, exerciseId, sets)
+                .run();
+            }
+          }
+
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        }
+      }
+
+      // --- R2 Upload & Serve Endpoints ---
+      if (path === '/upload' || path === '/upload/') {
+        if (request.method === 'POST') {
+          const contentType = request.headers.get('Content-Type') || 'image/jpeg';
+          const filename = `photo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.jpg`;
+          const arrayBuffer = await request.arrayBuffer();
+
+          if (env.ASSETS) {
+            await env.ASSETS.put(filename, arrayBuffer, {
+              httpMetadata: { contentType },
+            });
+            const publicUrl = `https://planner-ai.f-klavun.workers.dev/media/${filename}`;
+            return new Response(JSON.stringify({ success: true, url: publicUrl, filename }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+          } else {
+            return new Response(JSON.stringify({ success: false, error: 'R2 ASSETS binding not found' }), {
+              status: 500,
+              headers: corsHeaders,
+            });
+          }
+        }
+      }
+
+      if (path.startsWith('/media/')) {
+        const filename = path.split('/')[2];
+        if (request.method === 'GET') {
+          if (!env.ASSETS) return new Response('R2 Binding missing', { status: 500 });
+          const object = await env.ASSETS.get(filename);
+          if (!object) return new Response('Not found', { status: 404 });
+          const headers = new Headers(corsHeaders);
+          object.writeHttpMetadata(headers);
+          headers.set('etag', object.httpEtag);
+          return new Response(object.body, { headers });
+        }
+      }
+
+      // --- Workout Sessions Endpoints ---
+      if (path === '/workout-sessions' || path === '/workout-sessions/') {
+        if (request.method === 'GET') {
+          await env.DB.prepare(
+            "CREATE TABLE IF NOT EXISTS workout_sessions (date TEXT PRIMARY KEY, duration_seconds INTEGER DEFAULT 0, body_weight REAL, photo_url TEXT)"
+          ).run();
+
+          const { results } = await env.DB.prepare("SELECT * FROM workout_sessions ORDER BY date ASC").all();
+          return new Response(JSON.stringify(results), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
+      if (path.startsWith('/workout-sessions/')) {
+        const date = path.split('/').pop();
+        if (request.method === 'PUT') {
+          const { durationSeconds, bodyWeight, photoUrl } = await request.json();
+          
+          await env.DB.prepare(
+            "CREATE TABLE IF NOT EXISTS workout_sessions (date TEXT PRIMARY KEY, duration_seconds INTEGER DEFAULT 0, body_weight REAL, photo_url TEXT)"
+          ).run();
+
+          await env.DB.prepare(
+            `INSERT INTO workout_sessions (date, duration_seconds, body_weight, photo_url) VALUES (?, ?, ?, ?)
+             ON CONFLICT(date) DO UPDATE SET
+               duration_seconds = COALESCE(excluded.duration_seconds, workout_sessions.duration_seconds),
+               body_weight = COALESCE(excluded.body_weight, workout_sessions.body_weight),
+               photo_url = COALESCE(excluded.photo_url, workout_sessions.photo_url)`
+          )
+            .bind(date, durationSeconds ?? 0, bodyWeight ?? null, photoUrl ?? null)
+            .run();
+
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        }
+      }
+
       // --- Telegram Webhook ---
       if ((path === '/webhook' || path === '/webhook/') ) {
         if (request.method === 'POST') {
