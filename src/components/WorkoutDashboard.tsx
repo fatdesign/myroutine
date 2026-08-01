@@ -4,7 +4,7 @@ import { getTodayStr, getDateStr } from '../utils/habitUtils';
 import { getStoredCalculatorInputs, calculateMetricsFromInputs } from '../utils/bodyMetrics';
 import { fetchWorkoutHistory, upsertWorkoutHistory, fetchWorkoutSessions, upsertWorkoutSession, uploadImage } from '../services/plannerApi';
 import type { WorkoutHistoryRecord, WorkoutSessionRecord, WorkoutSession } from '../types';
-import { Check, Dumbbell, Timer, Flame, CalendarDays, Activity, Play, StopCircle, Upload, Weight, Camera, X, Save, Trophy, Sparkles } from 'lucide-react';
+import { Check, Dumbbell, Timer, Flame, CalendarDays, Activity, Play, StopCircle, Upload, Weight, Camera, X, Save, Trophy, Sparkles, TrendingDown } from 'lucide-react';
 
 export function WorkoutDashboard() {
   const [viewMode, setViewMode] = useState<'today' | 'calendar'>('today');
@@ -522,9 +522,28 @@ export function WorkoutDashboard() {
     const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
     const selectedSession = selectedHistoryDate ? sessions[selectedHistoryDate] : null;
 
+    // Process logged body weight & KFA history chronologically to compute deltas
+    const bodyMetricsHistory = Object.values(sessions)
+      .filter(s => s.bodyWeight || s.bodyFat)
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    const progressLogs = bodyMetricsHistory.map((s, idx) => {
+      const prev = idx > 0 ? bodyMetricsHistory[idx - 1] : null;
+      const weightDelta = prev && s.bodyWeight && prev.bodyWeight ? (s.bodyWeight - prev.bodyWeight).toFixed(1) : null;
+      const kfaDelta = prev && s.bodyFat && prev.bodyFat ? (s.bodyFat - prev.bodyFat).toFixed(1) : null;
+
+      return {
+        ...s,
+        weightDeltaStr: weightDelta ? (Number(weightDelta) > 0 ? `+${weightDelta}` : `${weightDelta}`) : null,
+        kfaDeltaStr: kfaDelta ? (Number(kfaDelta) > 0 ? `+${kfaDelta}` : `${kfaDelta}`) : null
+      };
+    }).reverse();
+
     return (
-      <div className="glass-panel" style={{ padding: '16px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+      <div className="glass-panel" style={{ padding: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
+          
+          {/* Panel 1: Calendar Grid */}
           <div>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--heroui-violet-light)', marginBottom: '12px', fontSize: '1.1rem' }}>
               <CalendarDays size={20} />
@@ -539,9 +558,10 @@ export function WorkoutDashboard() {
             </div>
           </div>
 
+          {/* Panel 2: Selected Day Exercises */}
           <div>
             {selectedHistoryDate ? (
-              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', height: '100%' }}>
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px', borderRadius: '12px', height: '100%', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <h3 style={{ marginBottom: '12px', color: 'var(--text-secondary)', fontSize: '1rem' }}>
                   Training am {selectedHistoryDate.split('-').reverse().join('.')}
                 </h3>
@@ -553,7 +573,7 @@ export function WorkoutDashboard() {
                       <div 
                         onClick={() => setPreviewPhotoUrl(selectedSession.photoUrl!)}
                         title="Klicken für Vergrößerung"
-                        style={{ width: '60px', height: '60px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0, cursor: 'pointer', border: '2px solid var(--heroui-violet)' }}
+                        style={{ width: '50px', height: '50px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0, cursor: 'pointer', border: '2px solid var(--heroui-violet)' }}
                       >
                         <img src={selectedSession.photoUrl} alt="Checkin" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
@@ -607,6 +627,88 @@ export function WorkoutDashboard() {
               </div>
             )}
           </div>
+
+          {/* Panel 3: Body Weight & KFA Progress History Dashboard */}
+          <div>
+            <div style={{ background: 'rgba(255,255,255,0.02)', padding: '14px', borderRadius: '12px', height: '100%', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h3 style={{ margin: 0, color: '#22c55e', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <TrendingDown size={18} />
+                Körper-Entwicklung & KFA
+              </h3>
+
+              {progressLogs.length === 0 ? (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', background: 'rgba(0,0,0,0.2)', padding: '12px', borderRadius: '8px', fontStyle: 'italic' }}>
+                  Noch keine Gewichts- oder KFA-Einträge vorhanden. Klicke im Rechner auf "Stand für heute speichern", um deinen Fortschritt zu tracken!
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {progressLogs.map(log => (
+                    <div 
+                      key={log.date}
+                      onClick={() => setSelectedHistoryDate(log.date)}
+                      style={{
+                        background: selectedHistoryDate === log.date ? 'rgba(34, 197, 94, 0.15)' : 'rgba(0,0,0,0.3)',
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: selectedHistoryDate === log.date ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(255,255,255,0.06)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', fontWeight: 'bold' }}>
+                          📅 {log.date.split('-').reverse().join('.')}
+                        </span>
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '3px', alignItems: 'center' }}>
+                          {log.bodyWeight && (
+                            <span style={{ fontSize: '0.88rem', color: '#fff', fontWeight: 'bold' }}>
+                              {log.bodyWeight} kg
+                            </span>
+                          )}
+                          {log.bodyFat && (
+                            <span style={{ fontSize: '0.82rem', color: '#22c55e', fontWeight: 'bold' }}>
+                              {log.bodyFat}% KFA
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                        {log.weightDeltaStr && (
+                          <span style={{
+                            fontSize: '0.7rem',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: log.weightDeltaStr.startsWith('-') ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                            color: log.weightDeltaStr.startsWith('-') ? '#22c55e' : '#ef4444',
+                            fontWeight: 'bold'
+                          }}>
+                            {log.weightDeltaStr} kg
+                          </span>
+                        )}
+                        {log.kfaDeltaStr && (
+                          <span style={{
+                            fontSize: '0.7rem',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            background: log.kfaDeltaStr.startsWith('-') ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                            color: log.kfaDeltaStr.startsWith('-') ? '#22c55e' : '#ef4444',
+                            fontWeight: 'bold'
+                          }}>
+                            {log.kfaDeltaStr}% KFA
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       </div>
     );
