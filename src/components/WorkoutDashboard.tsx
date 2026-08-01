@@ -13,6 +13,29 @@ export function WorkoutDashboard() {
   const [selectedHistoryDate, setSelectedHistoryDate] = useState<string | null>(null);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
 
+  // Vision / Motivations-Ziel Photo State
+  const [visionImageUrl, setVisionImageUrl] = useState<string | null>(() => {
+    return localStorage.getItem('myroutine_vision_image') || null;
+  });
+  const [isUploadingVision, setIsUploadingVision] = useState(false);
+
+  const handleVisionPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingVision(true);
+    try {
+      const url = await uploadImage(file);
+      if (url) {
+        setVisionImageUrl(url);
+        localStorage.setItem('myroutine_vision_image', url);
+      }
+    } catch (err) {
+      console.error("Vision upload error:", err);
+    } finally {
+      setIsUploadingVision(false);
+    }
+  };
+
   // Session & Timer State
   const [isPreModalOpen, setIsPreModalOpen] = useState(false);
   const [bodyWeightInput, setBodyWeightInput] = useState<string>('');
@@ -340,6 +363,59 @@ export function WorkoutDashboard() {
 
       {viewMode === 'calendar' ? renderCalendar() : (
         <>
+          {/* Motivations-Ziel Card (Vision Physique) */}
+          <div className="glass-panel" style={{ 
+            marginBottom: '24px', 
+            padding: '16px 20px', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            gap: '16px', 
+            flexWrap: 'wrap',
+            background: 'linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(18,18,22,0.85) 100%)',
+            border: '1px solid rgba(124,58,237,0.4)',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)'
+          }}>
+            <div style={{ flex: '1 1 240px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span className="badge-pill time" style={{ background: 'var(--heroui-violet)', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                  <Flame size={12} /> Target: ~7% KFA
+                </span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--heroui-violet-light)', fontWeight: '600' }}>Physique Goal</span>
+              </div>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff', fontWeight: 'bold' }}>
+                Dein KI Motivations-Ziel 🎯
+              </h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Lade dein KI-generiertes Ziel-Foto hoch – für tägliche Motivation beim Training!
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {visionImageUrl ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div 
+                    onClick={() => setPreviewPhotoUrl(visionImageUrl)}
+                    title="Klicken für Vollbild"
+                    style={{ width: '75px', height: '75px', borderRadius: '12px', overflow: 'hidden', cursor: 'pointer', border: '2px solid var(--heroui-violet)', boxShadow: '0 0 15px rgba(124,58,237,0.4)', flexShrink: 0 }}
+                  >
+                    <img src={visionImageUrl} alt="Physique Goal" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <label className="btn-secondary" style={{ cursor: 'pointer', padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Camera size={14} /> {isUploadingVision ? 'Lädt...' : 'Ändern'}
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleVisionPhotoUpload} disabled={isUploadingVision} />
+                  </label>
+                </div>
+              ) : (
+                <label className="btn-primary" style={{ cursor: 'pointer', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--heroui-violet)', fontSize: '0.85rem' }}>
+                  <Upload size={16} /> {isUploadingVision ? 'Speichere in R2...' : 'Ziel-Foto hochladen'}
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleVisionPhotoUpload} disabled={isUploadingVision} />
+                </label>
+              )}
+            </div>
+          </div>
+
           {/* Day Selector */}
           <div className="day-picker" style={{ marginBottom: '24px', flexWrap: 'wrap' }}>
             {WORKOUT_PLAN.map(day => (
