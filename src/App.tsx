@@ -616,13 +616,7 @@ function App() {
         ) : activeTab === 'workouts' ? (
           <WorkoutDashboard />
         ) : (
-          <NutritionDashboard metrics={{
-            targetCalories: 2150,
-            proteinGrams: 165,
-            fatGrams: 68,
-            carbsGrams: 210,
-            kfa: 14.0
-          }} />
+          <NutritionDashboard />
         )}
       </div>
 

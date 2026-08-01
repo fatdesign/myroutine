@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Utensils, ShoppingBag, Sparkles, Check, Clock, Save, RefreshCw, ChefHat } from 'lucide-react';
 import type { NutritionProfile, NutritionPlan } from '../types';
 import { fetchNutritionProfile, upsertNutritionProfile, fetchNutritionPlan, generateAiNutritionPlan } from '../services/plannerApi';
+import { getLiveBodyMetrics, type BodyMetrics } from '../utils/bodyMetrics';
 
 interface NutritionDashboardProps {
-  metrics: {
+  metrics?: {
     targetCalories: number;
     proteinGrams: number;
     fatGrams: number;
@@ -14,7 +15,23 @@ interface NutritionDashboardProps {
   selectedDayFocus?: string;
 }
 
-export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ metrics, selectedDayFocus = 'Trainingstag (V-Shape Focus)' }) => {
+export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selectedDayFocus = 'Trainingstag (V-Shape Focus)' }) => {
+  const [liveMetrics, setLiveMetrics] = useState<BodyMetrics>(() => getLiveBodyMetrics());
+
+  useEffect(() => {
+    const updateMetrics = () => {
+      setLiveMetrics(getLiveBodyMetrics());
+    };
+    updateMetrics();
+
+    window.addEventListener('myroutine_body_metrics_updated', updateMetrics);
+    window.addEventListener('storage', updateMetrics);
+    return () => {
+      window.removeEventListener('myroutine_body_metrics_updated', updateMetrics);
+      window.removeEventListener('storage', updateMetrics);
+    };
+  }, []);
+
   const [profile, setProfile] = useState<NutritionProfile>({
     meals_per_day: 3,
     breakfast_type: 'normal',
@@ -43,7 +60,7 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ metrics,
   const handleGeneratePlan = async () => {
     setIsLoading(true);
     try {
-      const plan = await generateAiNutritionPlan(profile, metrics, dayFocus);
+      const plan = await generateAiNutritionPlan(profile, liveMetrics, dayFocus);
       setCurrentPlan(plan);
     } catch (e: any) {
       alert("Fehler bei der KI-Generierung. Bitte erneut versuchen!");
@@ -83,15 +100,15 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ metrics,
           <div style={{ display: 'flex', gap: '12px', background: 'rgba(0,0,0,0.3)', padding: '10px 16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
             <div>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Ziel-Kalorien</span>
-              <strong style={{ fontSize: '1.1rem', color: '#22c55e' }}>{metrics.targetCalories} kcal</strong>
+              <strong style={{ fontSize: '1.1rem', color: '#22c55e' }}>{liveMetrics.targetCalories} kcal</strong>
             </div>
             <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '12px' }}>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Protein</span>
-              <strong style={{ fontSize: '1.1rem', color: '#ef4444' }}>{metrics.proteinGrams}g</strong>
+              <strong style={{ fontSize: '1.1rem', color: '#ef4444' }}>{liveMetrics.proteinGrams}g</strong>
             </div>
             <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '12px' }}>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Carbs</span>
-              <strong style={{ fontSize: '1.1rem', color: '#38bdf8' }}>{metrics.carbsGrams}g</strong>
+              <strong style={{ fontSize: '1.1rem', color: '#38bdf8' }}>{liveMetrics.carbsGrams}g</strong>
             </div>
           </div>
         </div>

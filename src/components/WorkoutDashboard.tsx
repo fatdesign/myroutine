@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { WORKOUT_PLAN } from '../data/workouts';
 import { getTodayStr, getDateStr } from '../utils/habitUtils';
+import { getStoredCalculatorInputs, calculateMetricsFromInputs } from '../utils/bodyMetrics';
 import { fetchWorkoutHistory, upsertWorkoutHistory, fetchWorkoutSessions, upsertWorkoutSession, uploadImage } from '../services/plannerApi';
 import type { WorkoutHistoryRecord, WorkoutSessionRecord, WorkoutSession } from '../types';
-import { Check, Dumbbell, Timer, Flame, CalendarDays, Activity, Play, StopCircle, Upload, Weight, Camera, X, Save } from 'lucide-react';
+import { Check, Dumbbell, Timer, Flame, CalendarDays, Activity, Play, StopCircle, Upload, Weight, Camera, X, Save, Trophy, Sparkles } from 'lucide-react';
 
 export function WorkoutDashboard() {
   const [viewMode, setViewMode] = useState<'today' | 'calendar'>('today');
@@ -61,91 +62,50 @@ export function WorkoutDashboard() {
     }
   };
 
-  // Body Fat Calculator Card State
+  // Body Fat Calculator Card State (persisted in localStorage)
+  const initialCalcInputs = getStoredCalculatorInputs();
   const [isCalcCardOpen, setIsCalcCardOpen] = useState<boolean>(true);
-  const [calcGender, setCalcGender] = useState<'male' | 'female'>('male');
-  const [calcAge, setCalcAge] = useState<number>(27);
-  const [calcWeight, setCalcWeight] = useState<number>(90);
-  const [calcHeight, setCalcHeight] = useState<number>(186);
-  const [calcNeck, setCalcNeck] = useState<number>(44);
-  const [calcWaist, setCalcWaist] = useState<number>(100);
-  const [calcHip, setCalcHip] = useState<number>(100);
-  const [calcTargetKfa, setCalcTargetKfa] = useState<number>(7.0);
-  const [activityLevel, setActivityLevel] = useState<number>(1.55); // 1.55 = 3-5 Workouts/Woche
-  const [targetDeficitMode, setTargetDeficitMode] = useState<number>(500); // 500 kcal Defizit/Tag
+  const [calcGender, setCalcGender] = useState<'male' | 'female'>(initialCalcInputs.gender);
+  const [calcAge, setCalcAge] = useState<number>(initialCalcInputs.age);
+  const [calcWeight, setCalcWeight] = useState<number>(initialCalcInputs.weight);
+  const [calcHeight, setCalcHeight] = useState<number>(initialCalcInputs.height);
+  const [calcNeck, setCalcNeck] = useState<number>(initialCalcInputs.neck);
+  const [calcWaist, setCalcWaist] = useState<number>(initialCalcInputs.waist);
+  const [calcHip, setCalcHip] = useState<number>(initialCalcInputs.hip);
+  const [calcTargetKfa, setCalcTargetKfa] = useState<number>(initialCalcInputs.targetKfa);
+  const [activityLevel, setActivityLevel] = useState<number>(initialCalcInputs.activityLevel);
+  const [targetDeficitMode, setTargetDeficitMode] = useState<number>(initialCalcInputs.targetDeficitMode);
+
+  // Auto-save calculator inputs whenever user modifies any field
+  useEffect(() => {
+    localStorage.setItem('myroutine_calc_gender', calcGender);
+    localStorage.setItem('myroutine_calc_age', String(calcAge));
+    localStorage.setItem('myroutine_calc_weight', String(calcWeight));
+    localStorage.setItem('myroutine_calc_height', String(calcHeight));
+    localStorage.setItem('myroutine_calc_neck', String(calcNeck));
+    localStorage.setItem('myroutine_calc_waist', String(calcWaist));
+    localStorage.setItem('myroutine_calc_hip', String(calcHip));
+    localStorage.setItem('myroutine_calc_target_kfa', String(calcTargetKfa));
+    localStorage.setItem('myroutine_calc_activity', String(activityLevel));
+    localStorage.setItem('myroutine_calc_deficit', String(targetDeficitMode));
+
+    // Broadcast event so NutritionDashboard updates live
+    window.dispatchEvent(new Event('myroutine_body_metrics_updated'));
+  }, [calcGender, calcAge, calcWeight, calcHeight, calcNeck, calcWaist, calcHip, calcTargetKfa, activityLevel, targetDeficitMode]);
 
   const calculateBodyFatMetrics = () => {
-    let navyKfa = 0;
-    if (calcGender === 'male') {
-      if (calcWaist > calcNeck && calcHeight > 0) {
-        const density = 1.0324 - 0.19077 * Math.log10(calcWaist - calcNeck) + 0.15456 * Math.log10(calcHeight);
-        navyKfa = (495 / density) - 450;
-      }
-    } else {
-      if (calcWaist + calcHip > calcNeck && calcHeight > 0) {
-        const density = 1.29579 - 0.35004 * Math.log10(calcWaist + calcHip - calcNeck) + 0.22100 * Math.log10(calcHeight);
-        navyKfa = (495 / density) - 450;
-      }
-    }
-    
-    if (navyKfa < 2) navyKfa = 2;
-    if (navyKfa > 50) navyKfa = 50;
-
-    const fatMass = calcWeight * (navyKfa / 100);
-    const leanMass = calcWeight - fatMass;
-
-    // BMI method
-    const bmi = calcWeight / Math.pow(calcHeight / 100, 2);
-    const bmiKfa = 1.20 * bmi + 0.23 * calcAge - (calcGender === 'male' ? 16.2 : 5.4);
-
-    // Target fat loss to reach target KFA
-    const targetFatMass = calcWeight * (calcTargetKfa / 100);
-    const fatToLose = Math.max(0, fatMass - targetFatMass);
-
-    // BMR (Katch-McArdle using Lean Mass)
-    const bmr = 370 + (21.6 * leanMass);
-    const tdee = bmr * activityLevel;
-    const targetCalories = Math.max(1200, Math.round(tdee - targetDeficitMode));
-
-    // Fat Loss Physics (7700 kcal = 1 kg fat)
-    const totalFatKcalToLose = fatToLose * 7700;
-    const daysToTarget = targetDeficitMode > 0 ? Math.ceil(totalFatKcalToLose / targetDeficitMode) : 0;
-    const weeksToTarget = (daysToTarget / 7).toFixed(1);
-    const fatLossPerWeek = ((targetDeficitMode * 7) / 7700).toFixed(2);
-
-    // Optimal V-Shape Macros
-    const proteinGrams = Math.round(2.2 * leanMass);
-    const fatGrams = Math.round(0.8 * calcWeight);
-    const carbsKcal = Math.max(0, targetCalories - (proteinGrams * 4) - (fatGrams * 9));
-    const carbsGrams = Math.round(carbsKcal / 4);
-
-    // Category determination
-    let category = 'Fitness';
-    let categoryColor = '#06b6d4';
-    if (navyKfa < 6) { category = 'Essentiell'; categoryColor = '#eab308'; }
-    else if (navyKfa < 14) { category = 'Athlet (V-Shape Zone)'; categoryColor = '#22c55e'; }
-    else if (navyKfa < 18) { category = 'Fitness'; categoryColor = '#06b6d4'; }
-    else if (navyKfa < 25) { category = 'Durchschnitt'; categoryColor = '#f97316'; }
-    else { category = 'Höherer KFA'; categoryColor = '#ef4444'; }
-
-    return {
-      kfa: Number(navyKfa.toFixed(1)),
-      fatMass: Number(fatMass.toFixed(1)),
-      leanMass: Number(leanMass.toFixed(1)),
-      bmiKfa: Number(bmiKfa.toFixed(1)),
-      fatToLose: Number(fatToLose.toFixed(1)),
-      bmr: Math.round(bmr),
-      tdee: Math.round(tdee),
-      targetCalories,
-      daysToTarget,
-      weeksToTarget,
-      fatLossPerWeek,
-      proteinGrams,
-      fatGrams,
-      carbsGrams,
-      category,
-      categoryColor
-    };
+    return calculateMetricsFromInputs({
+      gender: calcGender,
+      age: calcAge,
+      weight: calcWeight,
+      height: calcHeight,
+      neck: calcNeck,
+      waist: calcWaist,
+      hip: calcHip,
+      targetKfa: calcTargetKfa,
+      activityLevel,
+      targetDeficitMode
+    });
   };
 
   const handleApplyCalcToToday = async () => {
@@ -168,6 +128,34 @@ export function WorkoutDashboard() {
 
   // Active Rest Timer State (Pause per Exercise)
   const [activeRestTimer, setActiveRestTimer] = useState<{ exerciseId: string; exerciseName: string; secondsLeft: number; totalSeconds: number } | null>(null);
+
+  // Workout Completion Modal State
+  const [showCompletionModal, setShowCompletionModal] = useState<boolean>(false);
+  const [completionStats, setCompletionStats] = useState<{ durationStr: string; totalSetsDone: number; totalSetsTarget: number } | null>(null);
+
+  const playVictorySound = () => {
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+      const freqs = [523.25, 659.25, 783.99, 1046.50]; // C5 -> E5 -> G5 -> C6
+      freqs.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.6, now + idx * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.12 + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.12);
+        osc.stop(now + idx * 0.12 + 0.38);
+      });
+    } catch (e) {
+      console.warn("Victory sound failed:", e);
+    }
+  };
 
   const playBeepSound = () => {
     try {
@@ -332,8 +320,53 @@ export function WorkoutDashboard() {
 
     upsertWorkoutHistory(todayStr, nextDaySets);
 
-    // Trigger Rest Timer if a set was completed
-    if (newCount > currentCount) {
+    const activeWorkout = WORKOUT_PLAN.find(d => d.dayId === selectedDay);
+    const isWorkoutFullyCompleted = activeWorkout && activeWorkout.exercises.every(ex => {
+      const done = nextDaySets[ex.id] || 0;
+      return done >= ex.sets;
+    });
+
+    if (isWorkoutFullyCompleted && newCount > currentCount) {
+      // 1. Stop Rest Timer if active
+      setActiveRestTimer(null);
+
+      // 2. Stop Workout Timer if active
+      let totalDurationSecs = elapsedSeconds;
+      if (isTimerActive && timerStartTimestamp) {
+        totalDurationSecs = Math.floor((Date.now() - timerStartTimestamp) / 1000);
+        setIsTimerActive(false);
+        setTimerStartTimestamp(null);
+        localStorage.removeItem('myroutine_timer_active');
+        localStorage.removeItem('myroutine_timer_start');
+
+        const updatedSession: Partial<WorkoutSession> = {
+          durationSeconds: (sessions[todayStr]?.durationSeconds || 0) + totalDurationSecs,
+        };
+
+        setSessions(prev => ({
+          ...prev,
+          [todayStr]: { ...prev[todayStr], ...updatedSession, date: todayStr }
+        }));
+
+        upsertWorkoutSession(todayStr, updatedSession);
+      }
+
+      // 3. Play triumphant victory chime sound
+      playVictorySound();
+
+      // 4. Calculate stats & show completion modal
+      const totalSetsTarget = activeWorkout ? activeWorkout.exercises.reduce((acc, e) => acc + e.sets, 0) : 0;
+      const totalSetsDone = activeWorkout ? activeWorkout.exercises.reduce((acc, e) => acc + (nextDaySets[e.id] || 0), 0) : 0;
+
+      setCompletionStats({
+        durationStr: formatTime(totalDurationSecs),
+        totalSetsDone,
+        totalSetsTarget
+      });
+      setShowCompletionModal(true);
+
+    } else if (newCount > currentCount) {
+      // Trigger Rest Timer for normal set completion
       const exercise = allExercises.find(e => e.id === exerciseId);
       if (exercise) {
         const secs = parseInt(exercise.restTime.replace('s', '')) || 45;
@@ -1172,6 +1205,91 @@ export function WorkoutDashboard() {
                 {isUploading ? 'Speichere...' : 'Jetzt starten'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Motivations Workout Completed Popup Modal */}
+      {showCompletionModal && (
+        <div className="modal-overlay" onClick={() => setShowCompletionModal(false)} style={{ zIndex: 10000 }}>
+          <div className="glass-panel modal-content" onClick={e => e.stopPropagation()} style={{
+            maxWidth: '500px',
+            width: '90%',
+            padding: '32px 24px',
+            borderRadius: '24px',
+            background: 'linear-gradient(135deg, rgba(24, 24, 32, 0.98) 0%, rgba(18, 18, 22, 0.95) 100%)',
+            backdropFilter: 'blur(20px)',
+            border: '2px solid #22c55e',
+            boxShadow: '0 0 50px rgba(34, 197, 94, 0.4)',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              width: '70px',
+              height: '70px',
+              borderRadius: '50%',
+              background: 'rgba(34, 197, 94, 0.2)',
+              border: '2px solid #22c55e',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px auto',
+              color: '#22c55e',
+              boxShadow: '0 0 20px rgba(34, 197, 94, 0.5)'
+            }}>
+              <Trophy size={36} />
+            </div>
+
+            <h2 style={{ color: '#fff', fontSize: '1.6rem', fontWeight: '900', margin: '0 0 8px 0', textShadow: '0 0 10px rgba(34, 197, 94, 0.5)' }}>
+              WORKOUT VOLLENDET! 🎉
+            </h2>
+            <p style={{ color: '#22c55e', fontSize: '0.95rem', fontWeight: 'bold', margin: '0 0 20px 0' }}>
+              V-Shape Disziplin bewiesen! 🦾🔥
+            </p>
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: '20px',
+              background: 'rgba(0,0,0,0.4)',
+              padding: '16px',
+              borderRadius: '16px',
+              border: '1px solid rgba(255,255,255,0.08)',
+              marginBottom: '20px'
+            }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Trainingszeit</span>
+                <strong style={{ fontSize: '1.2rem', color: '#fff' }}>{completionStats?.durationStr || '0:00'}</strong>
+              </div>
+              <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '20px' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Absolvierte Sätze</span>
+                <strong style={{ fontSize: '1.2rem', color: '#22c55e' }}>{completionStats?.totalSetsDone} / {completionStats?.totalSetsTarget}</strong>
+              </div>
+            </div>
+
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic', marginBottom: '24px', lineHeight: '1.5' }}>
+              "Der Schmerz von heute ist die Stärke von morgen. Dein V-Shape Ziel ist wieder ein Stück näher gerückt!"
+            </p>
+
+            <button
+              className="btn-primary"
+              onClick={() => setShowCompletionModal(false)}
+              style={{
+                width: '100%',
+                padding: '14px',
+                fontSize: '1rem',
+                fontWeight: 'bold',
+                background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+                border: 'none',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <Sparkles size={18} /> STARK AMIGO! 🚀
+            </button>
           </div>
         </div>
       )}
