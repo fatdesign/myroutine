@@ -6,6 +6,7 @@ import { getTodayStr, getDateStr, calculateLevel, getHistoryGraphData, checkIsGr
 import { getDailyQuote } from './data/quotes';
 import { useAudioDrone } from './hooks/useAudioDrone';
 import { EmotionalScale } from './components/EmotionalScale';
+import { WorkoutDashboard } from './components/WorkoutDashboard';
 import './index.css';
 
 const WEEKDAYS = [
@@ -49,6 +50,8 @@ function App() {
   const [oneTimeTasks, setOneTimeTasks] = useState<OneTimeTask[]>([]);
   const [history, setHistory] = useState<HistoryRecord>({});
   const { isPlaying: isDronePlaying, toggleDrone } = useAudioDrone();
+  
+  const [activeTab, setActiveTab] = useState<'habits' | 'workouts'>('habits');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalKind, setModalKind] = useState<'routine' | 'task'>('routine');
@@ -396,10 +399,27 @@ function App() {
       <header className="top-bar">
         <div className="top-bar-inner">
           <div>
-            <h1 className="gradient-text" style={{ fontSize: '2.2rem', lineHeight: 1.1 }}>myroutine</h1>
-            <p className="hero-subtitle" style={{ marginTop: '2px' }}>
-              Disziplin & Rituale • HeroUI Dashboard
-            </p>
+            <h1 className="gradient-text" style={{ fontSize: '2.2rem', lineHeight: 1.1, marginBottom: '8px' }}>myroutine</h1>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={() => setActiveTab('habits')}
+                style={{ 
+                  padding: '4px 12px', borderRadius: '20px', fontSize: '0.9rem', border: '1px solid', cursor: 'pointer',
+                  borderColor: activeTab === 'habits' ? 'var(--heroui-violet)' : 'transparent', 
+                  background: activeTab === 'habits' ? 'rgba(124,58,237,0.1)' : 'transparent', 
+                  color: activeTab === 'habits' ? '#fff' : 'var(--text-muted)' 
+                }}
+              >Rituale</button>
+              <button 
+                onClick={() => setActiveTab('workouts')}
+                style={{ 
+                  padding: '4px 12px', borderRadius: '20px', fontSize: '0.9rem', border: '1px solid', cursor: 'pointer',
+                  borderColor: activeTab === 'workouts' ? 'var(--heroui-violet)' : 'transparent', 
+                  background: activeTab === 'workouts' ? 'rgba(124,58,237,0.1)' : 'transparent', 
+                  color: activeTab === 'workouts' ? '#fff' : 'var(--text-muted)' 
+                }}
+              >Workouts</button>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <button
@@ -424,10 +444,12 @@ function App() {
       </header>
 
       <div className="app-container">
-        {/* The Oracle Quote */}
-        <div className="oracle-container">
-          <p className="oracle-quote">"{dailyQuote}"</p>
-        </div>
+        {activeTab === 'habits' ? (
+          <>
+            {/* The Oracle Quote */}
+            <div className="oracle-container">
+              <p className="oracle-quote">"{dailyQuote}"</p>
+            </div>
 
         <div className="dashboard-grid">
           <div className="dashboard-column">
@@ -580,6 +602,10 @@ function App() {
             <EmotionalScale />
           </div>
         </div>
+        </>
+        ) : (
+          <WorkoutDashboard />
+        )}
       </div>
 
       {/* Edit/Create Modal */}
