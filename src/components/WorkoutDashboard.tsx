@@ -3,7 +3,7 @@ import { WORKOUT_PLAN } from '../data/workouts';
 import { getTodayStr, getDateStr } from '../utils/habitUtils';
 import { fetchWorkoutHistory, upsertWorkoutHistory, fetchWorkoutSessions, upsertWorkoutSession, uploadImage } from '../services/plannerApi';
 import type { WorkoutHistoryRecord, WorkoutSessionRecord, WorkoutSession } from '../types';
-import { Check, Dumbbell, Timer, Flame, CalendarDays, Activity, Play, StopCircle, Upload, Weight, Camera, X } from 'lucide-react';
+import { Check, Dumbbell, Timer, Flame, CalendarDays, Activity, Play, StopCircle, Upload, Weight, Camera, X, Save } from 'lucide-react';
 
 export function WorkoutDashboard() {
   const [viewMode, setViewMode] = useState<'today' | 'calendar'>('today');
@@ -41,16 +41,16 @@ export function WorkoutDashboard() {
   const [bodyWeightInput, setBodyWeightInput] = useState<string>('');
   const [bodyFatInput, setBodyFatInput] = useState<string>('');
   const [showKfaCalc, setShowKfaCalc] = useState(false);
-  const [calcHeight, setCalcHeight] = useState<string>('');
-  const [calcNeck, setCalcNeck] = useState<string>('');
-  const [calcWaist, setCalcWaist] = useState<string>('');
+  const [modalCalcHeight, setModalCalcHeight] = useState<string>('');
+  const [modalCalcNeck, setModalCalcNeck] = useState<string>('');
+  const [modalCalcWaist, setModalCalcWaist] = useState<string>('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const calculateNavyKfa = () => {
-    const h = parseFloat(calcHeight);
-    const n = parseFloat(calcNeck);
-    const w = parseFloat(calcWaist);
+    const h = parseFloat(modalCalcHeight);
+    const n = parseFloat(modalCalcNeck);
+    const w = parseFloat(modalCalcWaist);
     if (h > 0 && n > 0 && w > n) {
       const kfa = 86.010 * Math.log10(w - n) - 70.041 * Math.log10(h) + 36.76;
       if (kfa > 2 && kfa < 50) {
@@ -59,6 +59,80 @@ export function WorkoutDashboard() {
       }
     }
   };
+
+  // Body Fat Calculator Card State
+  const [isCalcCardOpen, setIsCalcCardOpen] = useState<boolean>(true);
+  const [calcGender, setCalcGender] = useState<'male' | 'female'>('male');
+  const [calcAge, setCalcAge] = useState<number>(27);
+  const [calcWeight, setCalcWeight] = useState<number>(90);
+  const [calcHeight, setCalcHeight] = useState<number>(186);
+  const [calcNeck, setCalcNeck] = useState<number>(44);
+  const [calcWaist, setCalcWaist] = useState<number>(100);
+  const [calcTargetKfa, setCalcTargetKfa] = useState<number>(7.0);
+
+  const calculateBodyFatMetrics = () => {
+    let navyKfa = 0;
+    if (calcGender === 'male') {
+      if (calcWaist > calcNeck && calcHeight > 0) {
+        navyKfa = 86.010 * Math.log10(calcWaist - calcNeck) - 70.041 * Math.log10(calcHeight) + 36.76;
+      }
+    } else {
+      if (calcWaist > calcNeck && calcHeight > 0) {
+        navyKfa = 163.205 * Math.log10(calcWaist - calcNeck) - 97.684 * Math.log10(calcHeight) - 78.387;
+      }
+    }
+    
+    if (navyKfa < 2) navyKfa = 2;
+    if (navyKfa > 50) navyKfa = 50;
+
+    const fatMass = calcWeight * (navyKfa / 100);
+    const leanMass = calcWeight - fatMass;
+
+    // BMI method
+    const bmi = calcWeight / Math.pow(calcHeight / 100, 2);
+    const bmiKfa = 1.20 * bmi + 0.23 * calcAge - (calcGender === 'male' ? 16.2 : 5.4);
+
+    // Target fat loss to reach target KFA
+    const targetFatMass = calcWeight * (calcTargetKfa / 100);
+    const fatToLose = Math.max(0, fatMass - targetFatMass);
+
+    // Category determination
+    let category = 'Fitness';
+    let categoryColor = '#06b6d4';
+    if (navyKfa < 6) { category = 'Essentiell'; categoryColor = '#eab308'; }
+    else if (navyKfa < 14) { category = 'Athlet (V-Shape Zone)'; categoryColor = '#22c55e'; }
+    else if (navyKfa < 18) { category = 'Fitness'; categoryColor = '#06b6d4'; }
+    else if (navyKfa < 25) { category = 'Durchschnitt'; categoryColor = '#f97316'; }
+    else { category = 'Höherer KFA'; categoryColor = '#ef4444'; }
+
+    return {
+      kfa: Number(navyKfa.toFixed(1)),
+      fatMass: Number(fatMass.toFixed(1)),
+      leanMass: Number(leanMass.toFixed(1)),
+      bmiKfa: Number(bmiKfa.toFixed(1)),
+      fatToLose: Number(fatToLose.toFixed(1)),
+      category,
+      categoryColor
+    };
+  };
+
+  const handleApplyCalcToToday = async () => {
+    const metrics = calculateBodyFatMetrics();
+    const sessionData: Partial<WorkoutSession> = {
+      bodyWeight: calcWeight,
+      bodyFat: metrics.kfa
+    };
+
+    setSessions(prev => ({
+      ...prev,
+      [todayStr]: { ...prev[todayStr], ...sessionData, date: todayStr, durationSeconds: prev[todayStr]?.durationSeconds || 0 }
+    }));
+
+    await upsertWorkoutSession(todayStr, sessionData);
+    alert(`Übernommen! Gewicht: ${calcWeight} kg, KFA: ${metrics.kfa}% in heutigem Check-in gesichert.`);
+  };
+
+  const todayStr = getTodayStr();
 
   // Active Rest Timer State (Pause per Exercise)
   const [activeRestTimer, setActiveRestTimer] = useState<{ exerciseId: string; exerciseName: string; secondsLeft: number; totalSeconds: number } | null>(null);
@@ -104,6 +178,62 @@ export function WorkoutDashboard() {
     return () => clearInterval(interval);
   }, [activeRestTimer?.exerciseId, activeRestTimer?.secondsLeft]);
 
+  // Active Plank Hold Timer State
+  const [activePlankTimer, setActivePlankTimer] = useState<{ exerciseId: string; secondsLeft: number; targetReps: number } | null>(null);
+
+  // Plank Timer Interval
+  useEffect(() => {
+    if (!activePlankTimer) return;
+
+    const interval = setInterval(() => {
+      setActivePlankTimer(prev => {
+        if (!prev) return null;
+        if (prev.secondsLeft <= 1) {
+          playBeepSound();
+          // Automatically check set off when plank completes & trigger rest timer!
+          setHistory(currentHistory => {
+            const dayHist = currentHistory[todayStr] || {};
+            const currentCount = dayHist[prev.exerciseId] || 0;
+            const allEx = WORKOUT_PLAN.flatMap(d => d.exercises);
+            const exercise = allEx.find(e => e.id === prev.exerciseId);
+            if (exercise && currentCount < exercise.sets) {
+              const newCount = currentCount + 1;
+              const nextDaySets = { ...dayHist, [prev.exerciseId]: newCount };
+              upsertWorkoutHistory(todayStr, nextDaySets);
+              
+              // Trigger Rest Timer
+              const secs = parseInt(exercise.restTime.replace('s', '')) || 45;
+              setActiveRestTimer({
+                exerciseId: exercise.id,
+                exerciseName: exercise.name,
+                secondsLeft: secs,
+                totalSeconds: secs
+              });
+
+              return {
+                ...currentHistory,
+                [todayStr]: nextDaySets
+              };
+            }
+            return currentHistory;
+          });
+          return null;
+        }
+        return { ...prev, secondsLeft: prev.secondsLeft - 1 };
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activePlankTimer?.exerciseId, activePlankTimer?.secondsLeft, todayStr]);
+
+  const startPlankTimer = (exerciseId: string, holdSeconds: number) => {
+    setActivePlankTimer({
+      exerciseId,
+      secondsLeft: holdSeconds,
+      targetReps: holdSeconds
+    });
+  };
+
   // Timer State
   const [isTimerActive, setIsTimerActive] = useState<boolean>(() => {
     return localStorage.getItem('myroutine_timer_active') === 'true';
@@ -113,8 +243,6 @@ export function WorkoutDashboard() {
     return saved ? Number(saved) : null;
   });
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
-
-  const todayStr = getTodayStr();
 
   // Load History & Sessions
   useEffect(() => {
@@ -516,6 +644,166 @@ export function WorkoutDashboard() {
             </div>
           </div>
 
+          {/* Body Fat & Lean Mass Calculator Card */}
+          {(() => {
+            const metrics = calculateBodyFatMetrics();
+            const barPercent = Math.min(100, Math.max(0, ((metrics.kfa - 2) / (35 - 2)) * 100));
+
+            return (
+              <div className="glass-panel" style={{
+                marginBottom: '24px',
+                padding: '20px 24px',
+                background: 'linear-gradient(135deg, rgba(24, 24, 32, 0.95) 0%, rgba(18, 18, 22, 0.85) 100%)',
+                border: '1px solid rgba(124, 58, 237, 0.3)',
+                borderRadius: '16px',
+                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setIsCalcCardOpen(!isCalcCardOpen)}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Activity size={20} style={{ color: 'var(--heroui-violet-light)' }} />
+                    <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#fff', fontWeight: 'bold' }}>
+                      Körperfett & Mager-Masse Rechner (US Navy Method)
+                    </h3>
+                    <span className="badge-pill time" style={{ background: metrics.categoryColor, color: '#fff', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                      {metrics.category}
+                    </span>
+                  </div>
+                  <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    {isCalcCardOpen ? '▲ Einklappen' : '▼ Ausklappen'}
+                  </button>
+                </div>
+
+                {isCalcCardOpen && (
+                  <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', alignItems: 'start' }}>
+                    
+                    {/* Left Inputs Column */}
+                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                        <button 
+                          type="button" 
+                          className="btn-secondary" 
+                          onClick={() => setCalcGender('male')}
+                          style={{ flex: 1, padding: '6px', fontSize: '0.85rem', borderColor: calcGender === 'male' ? 'var(--heroui-violet)' : 'transparent', background: calcGender === 'male' ? 'rgba(124,58,237,0.2)' : 'transparent', color: calcGender === 'male' ? '#fff' : 'var(--text-muted)' }}
+                        >
+                          ♂️ Mann
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn-secondary" 
+                          onClick={() => setCalcGender('female')}
+                          style={{ flex: 1, padding: '6px', fontSize: '0.85rem', borderColor: calcGender === 'female' ? 'var(--heroui-violet)' : 'transparent', background: calcGender === 'female' ? 'rgba(124,58,237,0.2)' : 'transparent', color: calcGender === 'female' ? '#fff' : 'var(--text-muted)' }}
+                        >
+                          ♀️ Frau
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Alter (Jahre)</label>
+                          <input type="number" className="form-input" style={{ width: '100%', padding: '6px 10px', fontSize: '0.9rem' }} value={calcAge} onChange={e => setCalcAge(Number(e.target.value))} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Gewicht (kg)</label>
+                          <input type="number" className="form-input" style={{ width: '100%', padding: '6px 10px', fontSize: '0.9rem' }} value={calcWeight} onChange={e => setCalcWeight(Number(e.target.value))} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Größe (cm)</label>
+                          <input type="number" className="form-input" style={{ width: '100%', padding: '6px 10px', fontSize: '0.9rem' }} value={calcHeight} onChange={e => setCalcHeight(Number(e.target.value))} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Nacken (cm)</label>
+                          <input type="number" className="form-input" style={{ width: '100%', padding: '6px 10px', fontSize: '0.9rem' }} value={calcNeck} onChange={e => setCalcNeck(Number(e.target.value))} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Bauch / Taillenumfang (cm)</label>
+                          <input type="number" className="form-input" style={{ width: '100%', padding: '6px 10px', fontSize: '0.9rem' }} value={calcWaist} onChange={e => setCalcWaist(Number(e.target.value))} />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.75rem', color: 'var(--heroui-violet-light)', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Ziel KFA (%)</label>
+                          <input type="number" step="0.5" className="form-input" style={{ width: '100%', padding: '6px 10px', fontSize: '0.9rem', borderColor: 'var(--heroui-violet)' }} value={calcTargetKfa} onChange={e => setCalcTargetKfa(Number(e.target.value))} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Results & Visual Bar Column */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      
+                      {/* Top Result Banner */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(124, 58, 237, 0.15)', border: '1px solid var(--heroui-violet)', padding: '12px 16px', borderRadius: '12px' }}>
+                        <div>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Berechneter Körperfettanteil</span>
+                          <span style={{ fontSize: '1.8rem', fontWeight: '900', color: '#fff' }}>{metrics.kfa}% KFA</span>
+                        </div>
+                        <button 
+                          type="button" 
+                          className="btn-primary" 
+                          onClick={handleApplyCalcToToday}
+                          style={{ padding: '8px 14px', fontSize: '0.8rem', background: 'var(--heroui-violet)', display: 'flex', alignItems: 'center', gap: '6px' }}
+                        >
+                          <Save size={14} /> In Check-in übernehmen
+                        </button>
+                      </div>
+
+                      {/* Visual KFA Color Bar */}
+                      <div style={{ background: 'rgba(0,0,0,0.3)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 'bold' }}>
+                          <span>2% Essentiell</span>
+                          <span style={{ color: '#22c55e' }}>6% Athlet (V-Shape Target)</span>
+                          <span style={{ color: '#06b6d4' }}>14% Fitness</span>
+                          <span style={{ color: '#f97316' }}>18% Ø</span>
+                          <span style={{ color: '#ef4444' }}>25%+</span>
+                        </div>
+
+                        {/* Multi-segment Color Bar */}
+                        <div style={{ position: 'relative', height: '14px', borderRadius: '7px', overflow: 'hidden', display: 'flex', background: '#222' }}>
+                          <div style={{ flex: '4', background: '#eab308' }} title="Essentiell (2-5%)" />
+                          <div style={{ flex: '8', background: '#22c55e' }} title="Athlet (6-13%)" />
+                          <div style={{ flex: '4', background: '#06b6d4' }} title="Fitness (14-17%)" />
+                          <div style={{ flex: '7', background: '#f97316' }} title="Average (18-24%)" />
+                          <div style={{ flex: '10', background: '#ef4444' }} title="Higher (25%+)" />
+
+                          {/* Pointer Indicator Triangle */}
+                          <div style={{
+                            position: 'absolute',
+                            left: `${barPercent}%`,
+                            top: '0',
+                            bottom: '0',
+                            width: '4px',
+                            background: '#fff',
+                            boxShadow: '0 0 8px #fff, 0 0 12px var(--heroui-violet)',
+                            transform: 'translateX(-50%)'
+                          }} />
+                        </div>
+                      </div>
+
+                      {/* Details Breakdown Table */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.85rem' }}>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px 12px', borderRadius: '8px' }}>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem' }}>🏋️ Mager- / Muskelmasse</span>
+                          <strong style={{ fontSize: '1.1rem', color: '#22c55e' }}>{metrics.leanMass} kg</strong>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px 12px', borderRadius: '8px' }}>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem' }}>🧈 Fettmasse</span>
+                          <strong style={{ fontSize: '1.1rem', color: '#f97316' }}>{metrics.fatMass} kg</strong>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px 12px', borderRadius: '8px' }}>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem' }}>🎯 Fettverlust bis {calcTargetKfa}% KFA</span>
+                          <strong style={{ fontSize: '1.1rem', color: 'var(--heroui-violet-light)' }}>{metrics.fatToLose} kg</strong>
+                        </div>
+                        <div style={{ background: 'rgba(255,255,255,0.03)', padding: '10px 12px', borderRadius: '8px' }}>
+                          <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.75rem' }}>📊 Alternativ (BMI KFA)</span>
+                          <strong style={{ fontSize: '1.1rem', color: '#94a3b8' }}>{metrics.bmiKfa}%</strong>
+                        </div>
+                      </div>
+
+                    </div>
+
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Day Selector */}
           <div className="day-picker" style={{ marginBottom: '24px', flexWrap: 'wrap' }}>
             {WORKOUT_PLAN.map(day => (
@@ -572,6 +860,55 @@ export function WorkoutDashboard() {
                           </span>
                         </div>
                       </div>
+
+                      {/* Dedicated Plank Hold Timer Widget */}
+                      {(ex.name.toLowerCase().includes('plank') || ex.equipment.includes('Sekunden')) && (
+                        <div style={{ marginRight: '12px' }}>
+                          {activePlankTimer?.exerciseId === ex.id ? (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.35), rgba(245, 158, 11, 0.15))',
+                              border: '1px solid #f59e0b',
+                              padding: '6px 14px',
+                              borderRadius: '20px',
+                              boxShadow: '0 0 15px rgba(245, 158, 11, 0.4)'
+                            }}>
+                              <Timer size={16} className="animate-spin" style={{ color: '#f59e0b' }} />
+                              <span style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#fff', fontFamily: 'monospace' }}>
+                                Plank: {activePlankTimer.secondsLeft}s
+                              </span>
+                              <button 
+                                onClick={() => setActivePlankTimer(null)}
+                                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginLeft: '4px' }}
+                                title="Stoppen"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn-secondary"
+                              onClick={() => startPlankTimer(ex.id, ex.reps)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                padding: '6px 12px',
+                                fontSize: '0.8rem',
+                                borderColor: '#f59e0b',
+                                color: '#fbbf24',
+                                borderRadius: '20px',
+                                background: 'rgba(245, 158, 11, 0.1)'
+                              }}
+                            >
+                              <Play size={14} /> Plank ({ex.reps}s) halten
+                            </button>
+                          )}
+                        </div>
+                      )}
 
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         {Array.from({ length: ex.sets }).map((_, setIdx) => {
@@ -658,9 +995,9 @@ export function WorkoutDashboard() {
                   US Navy KFA-Schätzer
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginBottom: '8px' }}>
-                  <input type="number" placeholder="Größe cm" className="form-input" style={{ fontSize: '0.75rem', padding: '6px' }} value={calcHeight} onChange={e => setCalcHeight(e.target.value)} />
-                  <input type="number" placeholder="Nacken cm" className="form-input" style={{ fontSize: '0.75rem', padding: '6px' }} value={calcNeck} onChange={e => setCalcNeck(e.target.value)} />
-                  <input type="number" placeholder="Bauch cm" className="form-input" style={{ fontSize: '0.75rem', padding: '6px' }} value={calcWaist} onChange={e => setCalcWaist(e.target.value)} />
+                  <input type="number" placeholder="Größe cm" className="form-input" style={{ fontSize: '0.75rem', padding: '6px' }} value={modalCalcHeight} onChange={e => setModalCalcHeight(e.target.value)} />
+                  <input type="number" placeholder="Nacken cm" className="form-input" style={{ fontSize: '0.75rem', padding: '6px' }} value={modalCalcNeck} onChange={e => setModalCalcNeck(e.target.value)} />
+                  <input type="number" placeholder="Bauch cm" className="form-input" style={{ fontSize: '0.75rem', padding: '6px' }} value={modalCalcWaist} onChange={e => setModalCalcWaist(e.target.value)} />
                 </div>
                 <button 
                   type="button"
