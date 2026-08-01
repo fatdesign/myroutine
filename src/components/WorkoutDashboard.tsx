@@ -935,12 +935,12 @@ export function WorkoutDashboard() {
 
                       {/* Visual KFA Color Bar */}
                       <div style={{ background: 'rgba(0,0,0,0.3)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 'bold' }}>
-                          <span>2% Essentiell</span>
-                          <span style={{ color: '#22c55e' }}>6% Athlet (V-Shape Target)</span>
-                          <span style={{ color: '#06b6d4' }}>14% Fitness</span>
-                          <span style={{ color: '#f97316' }}>18% Ø</span>
-                          <span style={{ color: '#ef4444' }}>25%+</span>
+                        <div style={{ position: 'relative', height: '20px', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 'bold' }}>
+                          <span style={{ position: 'absolute', left: '0%' }}>2%</span>
+                          <span style={{ position: 'absolute', left: '12.1%', color: '#22c55e', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>6% Athlet (V-Shape)</span>
+                          <span style={{ position: 'absolute', left: '36.4%', color: '#06b6d4', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>14% Fitness</span>
+                          <span style={{ position: 'absolute', left: '48.5%', color: '#f97316', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>18% Ø</span>
+                          <span style={{ position: 'absolute', left: '69.7%', color: '#ef4444', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>25%+</span>
                         </div>
 
                         {/* Multi-segment Color Bar */}
@@ -951,7 +951,7 @@ export function WorkoutDashboard() {
                           <div style={{ flex: '7', background: '#f97316' }} title="Average (18-24%)" />
                           <div style={{ flex: '10', background: '#ef4444' }} title="Higher (25%+)" />
 
-                          {/* Pointer Indicator Triangle */}
+                          {/* Pointer Indicator Bar */}
                           <div style={{
                             position: 'absolute',
                             left: `${barPercent}%`,
@@ -960,7 +960,8 @@ export function WorkoutDashboard() {
                             width: '4px',
                             background: '#fff',
                             boxShadow: '0 0 8px #fff, 0 0 12px var(--heroui-violet)',
-                            transform: 'translateX(-50%)'
+                            transform: 'translateX(-50%)',
+                            zIndex: 2
                           }} />
                         </div>
                       </div>
