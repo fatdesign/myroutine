@@ -51,7 +51,8 @@ export function WorkoutDashboard() {
 
   // Live Timer Interval
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setInterval>;
+
     if (isTimerActive && timerStartTimestamp) {
       interval = setInterval(() => {
         const secs = Math.floor((Date.now() - timerStartTimestamp) / 1000);
@@ -212,70 +213,80 @@ export function WorkoutDashboard() {
     const selectedSession = selectedHistoryDate ? sessions[selectedHistoryDate] : null;
 
     return (
-      <div className="glass-panel" style={{ padding: '24px' }}>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--heroui-violet-light)', marginBottom: '16px' }}>
-          <CalendarDays size={24} />
-          {monthNames[month]} {year}
-        </h2>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', marginBottom: '8px', textAlign: 'center', color: 'var(--text-subtle)', fontSize: '0.85rem' }}>
-          <div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
-          {days}
-        </div>
+      <div className="glass-panel" style={{ padding: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+          <div>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--heroui-violet-light)', marginBottom: '12px', fontSize: '1.1rem' }}>
+              <CalendarDays size={20} />
+              {monthNames[month]} {year}
+            </h2>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '6px', textAlign: 'center', color: 'var(--text-subtle)', fontSize: '0.75rem', fontWeight: 'bold' }}>
+              <div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+              {days}
+            </div>
+          </div>
 
-        {selectedHistoryDate && (
-          <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border-light)' }}>
-            <h3 style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
-              Training am {selectedHistoryDate.split('-').reverse().join('.')}
-            </h3>
+          <div>
+            {selectedHistoryDate ? (
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '12px', height: '100%' }}>
+                <h3 style={{ marginBottom: '12px', color: 'var(--text-secondary)', fontSize: '1rem' }}>
+                  Training am {selectedHistoryDate.split('-').reverse().join('.')}
+                </h3>
 
-            {/* Session stats (Duration & Weight & Photo) */}
-            {selectedSession && (selectedSession.durationSeconds > 0 || selectedSession.bodyWeight || selectedSession.photoUrl) && (
-              <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(124,58,237,0.1)', padding: '16px', borderRadius: '12px' }}>
-                {selectedSession.photoUrl && (
-                  <div style={{ width: '80px', height: '80px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0 }}>
-                    <img src={selectedSession.photoUrl} alt="Checkin" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {/* Session stats (Duration & Weight & Photo) */}
+                {selectedSession && (selectedSession.durationSeconds > 0 || selectedSession.bodyWeight || selectedSession.photoUrl) && (
+                  <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(124,58,237,0.1)', padding: '10px', borderRadius: '8px' }}>
+                    {selectedSession.photoUrl && (
+                      <div style={{ width: '60px', height: '60px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
+                        <img src={selectedSession.photoUrl} alt="Checkin" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      {selectedSession.durationSeconds > 0 && (
+                        <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
+                          <Timer size={12} /> {formatTime(selectedSession.durationSeconds)}
+                        </span>
+                      )}
+                      {selectedSession.bodyWeight && (
+                        <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
+                          <Weight size={12} /> {selectedSession.bodyWeight} kg
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {selectedSession.durationSeconds > 0 && (
-                    <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
-                      <Timer size={14} /> Dauer: {formatTime(selectedSession.durationSeconds)}
-                    </span>
-                  )}
-                  {selectedSession.bodyWeight && (
-                    <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
-                      <Weight size={14} /> Körpergewicht: {selectedSession.bodyWeight} kg
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
 
-            {(!history[selectedHistoryDate] || Object.values(history[selectedHistoryDate]).every(s => s === 0)) ? (
-              <p style={{ color: 'var(--text-muted)' }}>Keine Übungen an diesem Tag aufgezeichnet.</p>
+                {(!history[selectedHistoryDate] || Object.values(history[selectedHistoryDate]).every(s => s === 0)) ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Keine Übungen an diesem Tag.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto' }}>
+                    {Object.entries(history[selectedHistoryDate]).map(([exId, sets]) => {
+                      if (sets === 0) return null;
+                      const exercise = allExercises.find(e => e.id === exId);
+                      if (!exercise) return null;
+                      return (
+                        <div key={exId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', fontSize: '0.85rem' }}>
+                          <div>
+                            <span style={{ display: 'block', fontWeight: '500' }}>{exercise.name}</span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{exercise.equipment}</span>
+                          </div>
+                          <span className="badge-pill time" style={{ background: 'var(--heroui-violet)', fontSize: '0.75rem' }}>{sets} / {exercise.sets} Sets</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {Object.entries(history[selectedHistoryDate]).map(([exId, sets]) => {
-                  if (sets === 0) return null;
-                  const exercise = allExercises.find(e => e.id === exId);
-                  if (!exercise) return null;
-                  return (
-                    <div key={exId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px' }}>
-                      <div>
-                        <span style={{ fontSize: '0.95rem', display: 'block' }}>{exercise.name}</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{exercise.equipment}</span>
-                      </div>
-                      <span className="badge-pill time" style={{ background: 'var(--heroui-violet)' }}>{sets} / {exercise.sets} Sets</span>
-                    </div>
-                  );
-                })}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)', fontSize: '0.85rem', padding: '20px', border: '1px dashed var(--border-light)', borderRadius: '12px' }}>
+                Klicke auf einen Tag im Kalender, um Details zu sehen.
               </div>
             )}
           </div>
-        )}
+        </div>
       </div>
     );
   };
@@ -437,20 +448,19 @@ export function WorkoutDashboard() {
             </div>
 
             <div className="form-group">
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Upload size={16} /> Tagesfoto (R2 Storage)</label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Upload size={16} /> Check-in Foto</label>
               <input 
                 type="file" 
                 accept="image/*" 
                 className="form-input" 
                 onChange={e => setPhotoFile(e.target.files ? e.target.files[0] : null)} 
               />
-              <p className="form-hint">Das Foto wird direkt in deinem Cloudflare R2 Bucket "myroutine-assets" gesichert.</p>
             </div>
 
             <div className="modal-actions" style={{ marginTop: '24px' }}>
               <button className="btn-secondary" onClick={() => setIsPreModalOpen(false)}>Abbrechen</button>
               <button className="btn-primary" onClick={handleConfirmStartWorkout} disabled={isUploading}>
-                {isUploading ? 'Speichere in R2...' : 'Jetzt starten'}
+                {isUploading ? 'Speichere...' : 'Jetzt starten'}
               </button>
             </div>
           </div>
@@ -458,4 +468,5 @@ export function WorkoutDashboard() {
       )}
     </div>
   );
+
 }
