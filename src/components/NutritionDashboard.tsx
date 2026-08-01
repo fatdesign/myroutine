@@ -306,6 +306,11 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                 <span style={{ background: 'rgba(34, 197, 94, 0.1)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(34, 197, 94, 0.3)' }}>
                   🔥 <strong>{currentPlan.totalCalories}</strong> kcal <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>(Ziel: {liveMetrics.targetCalories} kcal)</span>
                 </span>
+                {currentPlan.estimatedTotalPriceEur !== undefined && (
+                  <span style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(234, 179, 8, 0.3)' }}>
+                    🏷️ <strong>ca. {currentPlan.estimatedTotalPriceEur.toFixed(2)} €</strong> <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>(🇦🇹 Supermarkt)</span>
+                  </span>
+                )}
                 <span style={{ color: '#ef4444' }}>🥩 <strong>{currentPlan.totalProtein}g</strong> Prot</span>
                 <span style={{ color: '#eab308' }}>🥑 <strong>{currentPlan.totalFat}g</strong> Fett</span>
                 <span style={{ color: '#38bdf8' }}>🍚 <strong>{currentPlan.totalCarbs}g</strong> Carbs</span>
@@ -326,9 +331,16 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                       {meal.name}
                     </h4>
                   </div>
-                  <span className="badge-pill time" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', border: '1px solid rgba(34, 197, 94, 0.3)', fontSize: '0.75rem' }}>
-                    {meal.calories} kcal
-                  </span>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                    {meal.estimatedPriceEur !== undefined && (
+                      <span className="badge-pill" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', border: '1px solid rgba(234, 179, 8, 0.3)', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                        🏷️ ca. {meal.estimatedPriceEur.toFixed(2)} €
+                      </span>
+                    )}
+                    <span className="badge-pill time" style={{ background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', border: '1px solid rgba(34, 197, 94, 0.3)', fontSize: '0.75rem' }}>
+                      {meal.calories} kcal
+                    </span>
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px', fontSize: '0.75rem', marginBottom: '14px', color: 'var(--text-muted)' }}>

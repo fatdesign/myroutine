@@ -54,6 +54,7 @@ export interface Meal {
   protein: number;
   fat: number;
   carbs: number;
+  estimatedPriceEur?: number;
   ingredients: string[];
   instructions: string;
 }
@@ -69,6 +70,7 @@ export interface NutritionPlan {
   totalProtein: number;
   totalFat: number;
   totalCarbs: number;
+  estimatedTotalPriceEur?: number;
   meals: Meal[];
   shoppingList: ShoppingItem[];
 }

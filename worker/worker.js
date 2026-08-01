@@ -454,6 +454,7 @@ export default {
 
           const prompt = `Du bist ein professioneller V-Shape Fitness Ernährungsberater & Chefkoch.
 Erstelle einen maßgeschneiderten Tages-Ernährungsplan sowie eine gesammelte Einkaufsliste für diesen Tag auf Deutsch.
+BERECHNE ZUDEM DIE UNGEFÄHREN KOSTEN (IN EUR €) BASSIONSREICH AUF ÖSTERREICHISCHE SUPERMARKT-PREISE (BILLA, SPAR, HOFER, LIDL IN ÖSTERREICH).
 
 METRIKEN & ZIELE:
 - Ziel-Kalorien: ${metrics?.targetCalories || 2200} kcal/Tag
@@ -474,6 +475,7 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
   "totalProtein": ${metrics?.proteinGrams || 160},
   "totalFat": ${metrics?.fatGrams || 70},
   "totalCarbs": ${metrics?.carbsGrams || 200},
+  "estimatedTotalPriceEur": 8.50,
   "meals": [
     {
       "time": "08:30",
@@ -482,6 +484,7 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
       "protein": 40,
       "fat": 15,
       "carbs": 50,
+      "estimatedPriceEur": 3.20,
       "ingredients": ["100g Haferflocken", "30g Whey Protein", "200ml Mandelmilch"],
       "instructions": "Kurze einfache Zubereitungsinstruktionen..."
     }
