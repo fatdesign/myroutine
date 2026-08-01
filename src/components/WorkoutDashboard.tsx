@@ -61,7 +61,7 @@ export function WorkoutDashboard() {
   };
 
   // Active Rest Timer State (Pause per Exercise)
-  const [activeRestTimer, setActiveRestTimer] = useState<{ exerciseId: string; secondsLeft: number; totalSeconds: number } | null>(null);
+  const [activeRestTimer, setActiveRestTimer] = useState<{ exerciseId: string; exerciseName: string; secondsLeft: number; totalSeconds: number } | null>(null);
 
   const playBeepSound = () => {
     try {
@@ -179,6 +179,7 @@ export function WorkoutDashboard() {
         const secs = parseInt(exercise.restTime.replace('s', '')) || 45;
         setActiveRestTimer({
           exerciseId,
+          exerciseName: exercise.name,
           secondsLeft: secs,
           totalSeconds: secs
         });
@@ -572,34 +573,6 @@ export function WorkoutDashboard() {
                         </div>
                       </div>
 
-                      {/* Active Rest Timer Widget for this Exercise */}
-                      {activeRestTimer?.exerciseId === ex.id && (
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.4), rgba(168, 85, 247, 0.2))',
-                          border: '1px solid var(--heroui-violet-light)',
-                          padding: '6px 14px',
-                          borderRadius: '20px',
-                          boxShadow: '0 0 15px rgba(124, 58, 237, 0.5)',
-                          marginRight: '8px',
-                          animation: 'pulse 1.5s infinite'
-                        }}>
-                          <Timer size={16} className="animate-spin" style={{ color: 'var(--heroui-violet-light)' }} />
-                          <span style={{ fontWeight: 'bold', fontSize: '1rem', color: '#fff', fontFamily: 'monospace' }}>
-                            {activeRestTimer.secondsLeft}s Pause
-                          </span>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setActiveRestTimer(null); }}
-                            style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginLeft: '4px' }}
-                            title="Pause abbrechen"
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      )}
-
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         {Array.from({ length: ex.sets }).map((_, setIdx) => {
                           const isChecked = setIdx < completed;
@@ -733,6 +706,70 @@ export function WorkoutDashboard() {
             <div style={{ borderRadius: '12px', overflow: 'hidden', maxHeight: '75vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
               <img src={previewPhotoUrl} alt="Vorschau" style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain', display: 'block' }} />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Rest Timer Overlay Window */}
+      {activeRestTimer && (
+        <div style={{
+          position: 'fixed',
+          bottom: '32px',
+          right: '32px',
+          zIndex: 9999,
+          background: 'rgba(18, 18, 26, 0.95)',
+          backdropFilter: 'blur(16px)',
+          border: '2px solid var(--heroui-violet)',
+          boxShadow: '0 12px 40px rgba(124, 58, 237, 0.5), 0 0 20px rgba(168, 85, 247, 0.3)',
+          borderRadius: '24px',
+          padding: '20px 24px',
+          minWidth: '280px',
+          textAlign: 'center'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <span className="badge-pill time" style={{ background: 'var(--heroui-violet)', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Timer size={12} className="animate-spin" /> Satzpause
+            </span>
+            <button 
+              onClick={() => setActiveRestTimer(null)}
+              style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: '50%', padding: '4px', cursor: 'pointer', display: 'flex' }}
+              title="Schließen"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '12px', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '240px' }}>
+            {activeRestTimer.exerciseName}
+          </div>
+
+          <div style={{
+            fontSize: '3rem',
+            fontWeight: '900',
+            color: '#fff',
+            fontFamily: 'monospace',
+            lineHeight: 1,
+            marginBottom: '16px',
+            textShadow: '0 0 15px rgba(168, 85, 247, 0.6)'
+          }}>
+            {activeRestTimer.secondsLeft}<span style={{ fontSize: '1.5rem', color: 'var(--heroui-violet-light)' }}>s</span>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+            <button 
+              className="btn-secondary" 
+              onClick={() => setActiveRestTimer(prev => prev ? { ...prev, secondsLeft: prev.secondsLeft + 10 } : null)}
+              style={{ padding: '6px 14px', fontSize: '0.8rem', borderRadius: '12px', borderColor: 'var(--heroui-violet)' }}
+            >
+              +10s
+            </button>
+            <button 
+              className="btn-primary" 
+              onClick={() => setActiveRestTimer(null)}
+              style={{ padding: '6px 18px', fontSize: '0.8rem', borderRadius: '12px', background: 'var(--heroui-violet)' }}
+            >
+              Weiter
+            </button>
           </div>
         </div>
       )}
