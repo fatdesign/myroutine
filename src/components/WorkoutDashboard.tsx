@@ -11,6 +11,7 @@ export function WorkoutDashboard() {
   const [history, setHistory] = useState<WorkoutHistoryRecord>({});
   const [sessions, setSessions] = useState<WorkoutSessionRecord>({});
   const [selectedHistoryDate, setSelectedHistoryDate] = useState<string | null>(null);
+  const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
 
   // Session & Timer State
   const [isPreModalOpen, setIsPreModalOpen] = useState(false);
@@ -240,7 +241,11 @@ export function WorkoutDashboard() {
                 {selectedSession && (selectedSession.durationSeconds > 0 || selectedSession.bodyWeight || selectedSession.photoUrl) && (
                   <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(124,58,237,0.1)', padding: '10px', borderRadius: '8px' }}>
                     {selectedSession.photoUrl && (
-                      <div style={{ width: '60px', height: '60px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0 }}>
+                      <div 
+                        onClick={() => setPreviewPhotoUrl(selectedSession.photoUrl!)}
+                        title="Klicken für Vergrößerung"
+                        style={{ width: '60px', height: '60px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0, cursor: 'pointer', border: '2px solid var(--heroui-violet)' }}
+                      >
                         <img src={selectedSession.photoUrl} alt="Checkin" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
                     )}
@@ -462,6 +467,23 @@ export function WorkoutDashboard() {
               <button className="btn-primary" onClick={handleConfirmStartWorkout} disabled={isUploading}>
                 {isUploading ? 'Speichere...' : 'Jetzt starten'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Preview Modal */}
+      {previewPhotoUrl && (
+        <div className="modal-overlay" onClick={() => setPreviewPhotoUrl(null)} style={{ zIndex: 1000 }}>
+          <div className="glass-panel modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '650px', width: '90%', padding: '16px', borderRadius: '16px', background: 'rgba(18, 18, 22, 0.95)', backdropFilter: 'blur(20px)', border: '1px solid var(--heroui-violet)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ color: 'var(--heroui-violet-light)', fontSize: '1.1rem', margin: 0, fontWeight: 'bold' }}>Check-in Foto Vorschau</h3>
+              <button className="action-btn" onClick={() => setPreviewPhotoUrl(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: '50%', padding: '6px', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ borderRadius: '12px', overflow: 'hidden', maxHeight: '75vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#000' }}>
+              <img src={previewPhotoUrl} alt="Vorschau" style={{ maxWidth: '100%', maxHeight: '75vh', objectFit: 'contain', display: 'block' }} />
             </div>
           </div>
         </div>
