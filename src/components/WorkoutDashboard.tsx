@@ -52,7 +52,8 @@ export function WorkoutDashboard() {
     const n = parseFloat(modalCalcNeck);
     const w = parseFloat(modalCalcWaist);
     if (h > 0 && n > 0 && w > n) {
-      const kfa = 86.010 * Math.log10(w - n) - 70.041 * Math.log10(h) + 36.76;
+      const density = 1.0324 - 0.19077 * Math.log10(w - n) + 0.15456 * Math.log10(h);
+      const kfa = (495 / density) - 450;
       if (kfa > 2 && kfa < 50) {
         setBodyFatInput(kfa.toFixed(1));
         setShowKfaCalc(false);
@@ -68,17 +69,22 @@ export function WorkoutDashboard() {
   const [calcHeight, setCalcHeight] = useState<number>(186);
   const [calcNeck, setCalcNeck] = useState<number>(44);
   const [calcWaist, setCalcWaist] = useState<number>(100);
+  const [calcHip, setCalcHip] = useState<number>(100);
   const [calcTargetKfa, setCalcTargetKfa] = useState<number>(7.0);
+  const [activityLevel, setActivityLevel] = useState<number>(1.55); // 1.55 = 3-5 Workouts/Woche
+  const [targetDeficitMode, setTargetDeficitMode] = useState<number>(500); // 500 kcal Defizit/Tag
 
   const calculateBodyFatMetrics = () => {
     let navyKfa = 0;
     if (calcGender === 'male') {
       if (calcWaist > calcNeck && calcHeight > 0) {
-        navyKfa = 86.010 * Math.log10(calcWaist - calcNeck) - 70.041 * Math.log10(calcHeight) + 36.76;
+        const density = 1.0324 - 0.19077 * Math.log10(calcWaist - calcNeck) + 0.15456 * Math.log10(calcHeight);
+        navyKfa = (495 / density) - 450;
       }
     } else {
-      if (calcWaist > calcNeck && calcHeight > 0) {
-        navyKfa = 163.205 * Math.log10(calcWaist - calcNeck) - 97.684 * Math.log10(calcHeight) - 78.387;
+      if (calcWaist + calcHip > calcNeck && calcHeight > 0) {
+        const density = 1.29579 - 0.35004 * Math.log10(calcWaist + calcHip - calcNeck) + 0.22100 * Math.log10(calcHeight);
+        navyKfa = (495 / density) - 450;
       }
     }
     
@@ -96,6 +102,23 @@ export function WorkoutDashboard() {
     const targetFatMass = calcWeight * (calcTargetKfa / 100);
     const fatToLose = Math.max(0, fatMass - targetFatMass);
 
+    // BMR (Katch-McArdle using Lean Mass)
+    const bmr = 370 + (21.6 * leanMass);
+    const tdee = bmr * activityLevel;
+    const targetCalories = Math.max(1200, Math.round(tdee - targetDeficitMode));
+
+    // Fat Loss Physics (7700 kcal = 1 kg fat)
+    const totalFatKcalToLose = fatToLose * 7700;
+    const daysToTarget = targetDeficitMode > 0 ? Math.ceil(totalFatKcalToLose / targetDeficitMode) : 0;
+    const weeksToTarget = (daysToTarget / 7).toFixed(1);
+    const fatLossPerWeek = ((targetDeficitMode * 7) / 7700).toFixed(2);
+
+    // Optimal V-Shape Macros
+    const proteinGrams = Math.round(2.2 * leanMass);
+    const fatGrams = Math.round(0.8 * calcWeight);
+    const carbsKcal = Math.max(0, targetCalories - (proteinGrams * 4) - (fatGrams * 9));
+    const carbsGrams = Math.round(carbsKcal / 4);
+
     // Category determination
     let category = 'Fitness';
     let categoryColor = '#06b6d4';
@@ -111,6 +134,15 @@ export function WorkoutDashboard() {
       leanMass: Number(leanMass.toFixed(1)),
       bmiKfa: Number(bmiKfa.toFixed(1)),
       fatToLose: Number(fatToLose.toFixed(1)),
+      bmr: Math.round(bmr),
+      tdee: Math.round(tdee),
+      targetCalories,
+      daysToTarget,
+      weeksToTarget,
+      fatLossPerWeek,
+      proteinGrams,
+      fatGrams,
+      carbsGrams,
       category,
       categoryColor
     };
@@ -674,7 +706,8 @@ export function WorkoutDashboard() {
                 </div>
 
                 {isCalcCardOpen && (
-                  <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', alignItems: 'start' }}>
+                  <>
+                    <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', alignItems: 'start' }}>
                     
                     {/* Left Inputs Column */}
                     <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -718,6 +751,12 @@ export function WorkoutDashboard() {
                           <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Bauch / Taillenumfang (cm)</label>
                           <input type="number" className="form-input" style={{ width: '100%', padding: '6px 10px', fontSize: '0.9rem' }} value={calcWaist} onChange={e => setCalcWaist(Number(e.target.value))} />
                         </div>
+                        {calcGender === 'female' && (
+                          <div>
+                            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Hüftumfang (cm)</label>
+                            <input type="number" className="form-input" style={{ width: '100%', padding: '6px 10px', fontSize: '0.9rem' }} value={calcHip} onChange={e => setCalcHip(Number(e.target.value))} />
+                          </div>
+                        )}
                         <div>
                           <label style={{ fontSize: '0.75rem', color: 'var(--heroui-violet-light)', fontWeight: 'bold', display: 'block', marginBottom: '4px' }}>Ziel KFA (%)</label>
                           <input type="number" step="0.5" className="form-input" style={{ width: '100%', padding: '6px 10px', fontSize: '0.9rem', borderColor: 'var(--heroui-violet)' }} value={calcTargetKfa} onChange={e => setCalcTargetKfa(Number(e.target.value))} />
@@ -795,12 +834,119 @@ export function WorkoutDashboard() {
                           <strong style={{ fontSize: '1.1rem', color: '#94a3b8' }}>{metrics.bmiKfa}%</strong>
                         </div>
                       </div>
+                    </div>
+                  </div>
 
+                  {/* Calorie Deficit & V-Shape Nutrition Matrix Section */}
+                  <div style={{
+                    marginTop: '20px',
+                    paddingTop: '20px',
+                    borderTop: '1px solid rgba(255,255,255,0.08)',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                    gap: '20px'
+                  }}>
+                    {/* Activity & Deficit Selectors */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: 'var(--heroui-violet-light)', fontWeight: 'bold' }}>
+                        ⚡ Aktivität & Ziel-Defizit
+                      </h4>
+                      
+                      <div style={{ marginBottom: '12px' }}>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Aktivitätslevel (PAL)</label>
+                        <select 
+                          className="form-input" 
+                          value={activityLevel} 
+                          onChange={e => setActivityLevel(Number(e.target.value))}
+                          style={{ width: '100%', padding: '6px 10px', fontSize: '0.85rem' }}
+                        >
+                          <option value={1.2}>Sedentär (Büro / Wenig Bewegung)</option>
+                          <option value={1.375}>Leicht aktiv (1-3 Workouts/Woche)</option>
+                          <option value={1.55}>Moderat aktiv (3-5 Workouts/Woche - V-Shape)</option>
+                          <option value={1.725}>Sehr aktiv (6-7 intensive Workouts)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Ziel-Defizit wählen</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                          <button 
+                            type="button" 
+                            className="btn-secondary" 
+                            onClick={() => setTargetDeficitMode(300)}
+                            style={{ padding: '6px 4px', fontSize: '0.75rem', borderColor: targetDeficitMode === 300 ? '#22c55e' : 'transparent', background: targetDeficitMode === 300 ? 'rgba(34,197,94,0.2)' : 'transparent', color: targetDeficitMode === 300 ? '#fff' : 'var(--text-muted)' }}
+                          >
+                            -300 kcal (Slow)
+                          </button>
+                          <button 
+                            type="button" 
+                            className="btn-secondary" 
+                            onClick={() => setTargetDeficitMode(500)}
+                            style={{ padding: '6px 4px', fontSize: '0.75rem', borderColor: targetDeficitMode === 500 ? 'var(--heroui-violet)' : 'transparent', background: targetDeficitMode === 500 ? 'rgba(124,58,237,0.2)' : 'transparent', color: targetDeficitMode === 500 ? '#fff' : 'var(--text-muted)' }}
+                          >
+                            -500 kcal (Shred)
+                          </button>
+                          <button 
+                            type="button" 
+                            className="btn-secondary" 
+                            onClick={() => setTargetDeficitMode(750)}
+                            style={{ padding: '6px 4px', fontSize: '0.75rem', borderColor: targetDeficitMode === 750 ? '#f97316' : 'transparent', background: targetDeficitMode === 750 ? 'rgba(249,115,22,0.2)' : 'transparent', color: targetDeficitMode === 750 ? '#fff' : 'var(--text-muted)' }}
+                          >
+                            -750 kcal (Fast)
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Calorie Results */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#22c55e', fontWeight: 'bold' }}>
+                        🔥 Kalorien-Tagesziel & Fatloss Prognose
+                      </h4>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '12px' }}>
+                        <div style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 10px', borderRadius: '8px' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Gesamtumsatz (TDEE)</span>
+                          <strong style={{ fontSize: '1.1rem', color: '#fff' }}>{metrics.tdee} kcal</strong>
+                        </div>
+                        <div style={{ background: 'rgba(124,58,237,0.2)', padding: '8px 10px', borderRadius: '8px', border: '1px solid var(--heroui-violet)' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--heroui-violet-light)', display: 'block', fontWeight: 'bold' }}>Ziel-Kalorien/Tag</span>
+                          <strong style={{ fontSize: '1.2rem', color: '#fff' }}>{metrics.targetCalories} kcal</strong>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)', padding: '8px 12px', borderRadius: '8px', fontSize: '0.8rem' }}>
+                        <span>Fettverlust/Woche: <strong style={{ color: '#22c55e' }}>~{metrics.fatLossPerWeek} kg</strong></span>
+                        <span>Dauer bis {calcTargetKfa}% KFA: <strong style={{ color: 'var(--heroui-violet-light)' }}>~{metrics.weeksToTarget} W.</strong></span>
+                      </div>
+                    </div>
+
+                    {/* V-Shape Optimal Macro Distribution */}
+                    <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: '#38bdf8', fontWeight: 'bold' }}>
+                        🥩 V-Shape Makro-Protokoll
+                      </h4>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', fontSize: '0.8rem', textAlign: 'center' }}>
+                        <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid #ef4444', padding: '8px 4px', borderRadius: '8px' }}>
+                          <span style={{ fontSize: '0.7rem', color: '#fca5a5', display: 'block' }}>🥩 Protein</span>
+                          <strong style={{ fontSize: '1.1rem', color: '#fff' }}>{metrics.proteinGrams}g</strong>
+                        </div>
+                        <div style={{ background: 'rgba(234, 179, 8, 0.15)', border: '1px solid #eab308', padding: '8px 4px', borderRadius: '8px' }}>
+                          <span style={{ fontSize: '0.7rem', color: '#fde047', display: 'block' }}>🥑 Fett</span>
+                          <strong style={{ fontSize: '1.1rem', color: '#fff' }}>{metrics.fatGrams}g</strong>
+                        </div>
+                        <div style={{ background: 'rgba(14, 165, 233, 0.15)', border: '1px solid #0ea5e9', padding: '8px 4px', borderRadius: '8px' }}>
+                          <span style={{ fontSize: '0.7rem', color: '#7dd3fc', display: 'block' }}>🍚 Carbs</span>
+                          <strong style={{ fontSize: '1.1rem', color: '#fff' }}>{metrics.carbsGrams}g</strong>
+                        </div>
+                      </div>
                     </div>
 
                   </div>
-                )}
-              </div>
+                </>
+              )}
+            </div>
             );
           })()}
 
