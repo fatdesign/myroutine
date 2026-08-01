@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Utensils, ShoppingBag, Sparkles, Check, Clock, Save, RefreshCw, ChefHat, Send, Share2 } from 'lucide-react';
+import { Utensils, ShoppingBag, Sparkles, Check, Clock, Save, RefreshCw, ChefHat, Send } from 'lucide-react';
 import type { NutritionProfile, NutritionPlan } from '../types';
 import { fetchNutritionProfile, upsertNutritionProfile, fetchNutritionPlan, generateAiNutritionPlan, fetchBodyMetricsInputs, sendTelegramNutritionPlan } from '../services/plannerApi';
 import { WORKOUT_PLAN } from '../data/workouts';
@@ -109,29 +109,6 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
       setIsTelegramSending(false);
       setTimeout(() => setTelegramFeedback(null), 6000);
     }
-  };
-
-  const handleOpenTelegramShare = () => {
-    if (!currentPlan) return;
-    let text = `🥗 *V-Shape KI Tages-Ernährungsplan*\n📅 *${currentPlan.dayName}*\n🔥 *${currentPlan.totalCalories} kcal* (P: ${currentPlan.totalProtein}g | F: ${currentPlan.totalFat}g | C: ${currentPlan.totalCarbs}g)\n\n`;
-    if (currentPlan.meals) {
-      text += `🍽️ *MAHLZEITEN:*\n`;
-      currentPlan.meals.forEach(m => {
-        text += `• *${m.time || ''}* ${m.name} (${m.calories} kcal)\n`;
-      });
-    }
-    if (currentPlan.shoppingList && currentPlan.shoppingList.length > 0) {
-      text += `\n🛒 *EINKAUFSLISTE*`;
-      if (currentPlan.estimatedSupermarketReceiptEur) {
-        text += ` (🇦🇹 ca. ${currentPlan.estimatedSupermarketReceiptEur.toFixed(2)} €)`;
-      }
-      text += `:\n`;
-      currentPlan.shoppingList.forEach(item => {
-        text += `☐ ${item.item}\n`;
-      });
-    }
-    const shareUrl = `https://t.me/share/url?url=&text=${encodeURIComponent(text)}`;
-    window.open(shareUrl, '_blank');
   };
 
   return (
@@ -394,26 +371,6 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                   >
                     <Send size={14} />
                     {isTelegramSending ? 'Sende an Telegram...' : '📱 Per Telegram Bot senden'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleOpenTelegramShare}
-                    style={{
-                      padding: '6px 12px',
-                      fontSize: '0.8rem',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      color: '#fff',
-                      border: '1px solid rgba(255, 255, 255, 0.1)',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Share2 size={14} />
-                    🔗 In Telegram teilen
                   </button>
                 </div>
               </div>
