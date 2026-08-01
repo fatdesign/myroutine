@@ -14,6 +14,7 @@ export interface OneTimeTask {
   title: string;
   time: string;
   completed: boolean;
+  lastCompletedDate?: string;
 }
 
 export interface DayHistory {

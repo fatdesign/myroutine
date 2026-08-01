@@ -28,6 +28,24 @@ export default {
     console.log(`[REQUEST] ${request.method} ${path}`);
 
     try {
+      // --- Auth Endpoint ---
+      if (path === '/auth' || path === '/auth/') {
+        if (request.method === 'POST') {
+          const { password } = await request.json();
+          const adminPass = env.ADMIN_PASSWORD || 'sanktum2026';
+          if (password && String(password).trim() === String(adminPass).trim()) {
+            return new Response(JSON.stringify({ success: true, authenticated: true }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          } else {
+            return new Response(JSON.stringify({ success: false, authenticated: false, error: 'Ungültiges Passwort' }), {
+              status: 401,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+        }
+      }
+
       // --- API Endpoints ---
       if (path === '/tasks') {
         if (request.method === 'GET') {

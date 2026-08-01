@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, Check, Edit2, Trash2, X, Hexagon, CircleDot, Shield, Waves, BookOpen, ListChecks } from 'lucide-react';
+import { Eye, EyeOff, Check, Edit2, Trash2, X, Hexagon, CircleDot, Shield, Waves, BookOpen, ListChecks, Lock, LogOut } from 'lucide-react';
 import type { Routine, OneTimeTask, HistoryRecord } from './types';
 import * as plannerApi from './services/plannerApi';
 import { getTodayStr, getDateStr, calculateLevel, getHistoryGraphData, checkIsGridBroken, formatWeekdays } from './utils/habitUtils';
@@ -74,6 +74,39 @@ function App() {
   const [isGridBroken, setIsGridBroken] = useState(false);
   const [oathInput, setOathInput] = useState('');
 
+  // Auth State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('myroutine_authenticated') === 'true';
+  });
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginPassword) return;
+    setIsAuthenticating(true);
+    setLoginError('');
+
+    const success = await plannerApi.verifyPassword(loginPassword);
+    setIsAuthenticating(false);
+
+    if (success) {
+      localStorage.setItem('myroutine_authenticated', 'true');
+      localStorage.setItem('myroutine_pass', loginPassword);
+      setIsAuthenticated(true);
+      setLoginPassword('');
+    } else {
+      setLoginError('Falsches Passwort. Bitte erneut versuchen.');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('myroutine_authenticated');
+    setIsAuthenticated(false);
+  };
+
   useEffect(() => {
     (async () => {
       // Server already resets stale-completed routines before returning /tasks
@@ -125,7 +158,10 @@ function App() {
 
   const toggleOneTimeTask = async (id: string) => {
     if (isGridBroken) return;
-    const newTasks = oneTimeTasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+    const today = getTodayStr();
+    const newTasks = oneTimeTasks.map(t =>
+      t.id === id ? { ...t, completed: !t.completed, lastCompletedDate: !t.completed ? today : t.lastCompletedDate } : t
+    );
     setOneTimeTasks(newTasks);
     const toggled = newTasks.find(t => t.id === id)!;
     await plannerApi.setTaskCompleted(id, toggled.completed);
@@ -173,6 +209,16 @@ function App() {
     setIsModalOpen(true);
   };
 
+  const openNewTaskModal = () => {
+    if (isGridBroken) return;
+    setModalKind('task');
+    setEditingRoutine(null);
+    setEditingTask(null);
+    setTitle('');
+    setTime('12:00');
+    setIsModalOpen(true);
+  };
+
   const handleEditRoutine = (e: React.MouseEvent, routine: Routine) => {
     e.stopPropagation();
     if (isGridBroken) return;
@@ -206,6 +252,10 @@ function App() {
         const updated: OneTimeTask = { ...editingTask, title, time };
         await plannerApi.updateOneTimeTask(editingTask.id, updated);
         setOneTimeTasks(oneTimeTasks.map(t => t.id === editingTask.id ? updated : t));
+      } else {
+        await plannerApi.createOneTimeTask({ title, time });
+        const { oneTimeTasks: newTasks } = await plannerApi.fetchAllTasks();
+        setOneTimeTasks(newTasks);
       }
       setIsModalOpen(false);
       return;
@@ -266,6 +316,62 @@ function App() {
   const graphData = getHistoryGraphData(history, 90);
   const dailyQuote = getDailyQuote(todayStr);
 
+  if (!isAuthenticated) {
+    return (
+      <div className="login-screen">
+        <div className="login-card">
+          <div className="login-icon-badge">
+            <Lock size={28} />
+          </div>
+          <h1 className="gradient-text" style={{ fontSize: '2rem', marginBottom: '6px' }}>myroutine</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '28px' }}>
+            Bitte gib dein Passwort ein, um Zugang zu erhalten.
+          </p>
+
+          {loginError && (
+            <div className="login-error-alert">
+              <Shield size={16} /> {loginError}
+            </div>
+          )}
+
+          <form onSubmit={handleLogin}>
+            <div className="form-group" style={{ textAlign: 'left', marginBottom: '20px' }}>
+              <label htmlFor="login-pass">Master Passwort</label>
+              <div className="login-password-wrapper">
+                <input
+                  id="login-pass"
+                  type={showPassword ? 'text' : 'password'}
+                  className="login-password-input"
+                  placeholder="Passwort eingeben..."
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  className="toggle-pass-btn"
+                  onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? 'Passwort verbergen' : 'Passwort anzeigen'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="btn-primary"
+              style={{ width: '100%', padding: '12px', fontSize: '0.95rem', marginTop: '6px' }}
+              disabled={isAuthenticating}
+            >
+              {isAuthenticating ? 'Überprüfe...' : 'Einloggen'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       {/* Broken Grid Overlay */}
@@ -305,6 +411,14 @@ function App() {
               <Waves size={16} /> {isDronePlaying ? 'Aura aktiv' : 'Aura entfachen'}
             </button>
             <button className="btn-primary" onClick={openNewRoutineModal}>+ Neues Ritual</button>
+            <button
+              className="btn-secondary"
+              onClick={handleLogout}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px' }}
+              title="Abmelden / Sperren"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
       </header>
@@ -357,7 +471,7 @@ function App() {
 
           {/* Routines — each phase gets its own column, side by side */}
           {['morning', 'evening'].map(typeCategory => {
-            const currentRoutines = routines.filter(r => r.type === typeCategory);
+            const currentRoutines = routines.filter(r => r.type === typeCategory).sort((a, b) => a.time.localeCompare(b.time));
             return (
               <div className="dashboard-column" key={typeCategory}>
                 <div className="glass-panel">
@@ -421,32 +535,42 @@ function App() {
           {/* One-time tasks */}
           <div className="dashboard-column">
             <div className="glass-panel">
-              <h3 className="section-title"><ListChecks className="lucide-icon" size={18} /> Heutige Aufgaben</h3>
+              <h3 className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ListChecks className="lucide-icon" size={18} /> Heutige Aufgaben
+                </span>
+                <button className="action-btn" onClick={openNewTaskModal} title="Neue Aufgabe" style={{ color: 'var(--heroui-violet-light)' }}>+</button>
+              </h3>
               <div style={{ marginTop: '16px' }}>
-                {oneTimeTasks.length === 0 ? <p style={{color: 'var(--text-subtle)', fontStyle: 'italic', fontSize: '0.9rem'}}>Keine offenen Aufgaben.</p> : null}
-                {oneTimeTasks.map(task => (
-                  <div
-                    key={task.id}
-                    className={`routine-item ${task.completed ? 'completed' : ''}`}
-                    onClick={() => toggleOneTimeTask(task.id)}
-                  >
-                    <div className="checkbox">
-                      {task.completed && <Check size={13} className="check-icon" color="#ffffff" strokeWidth={3} />}
-                    </div>
+                {(() => {
+                  const activeTasks = oneTimeTasks.filter(t => !(t.completed && t.lastCompletedDate && t.lastCompletedDate < todayStr));
+                  const sortedTasks = [...activeTasks].sort((a, b) => a.time.localeCompare(b.time));
+                  if (sortedTasks.length === 0) return <p style={{color: 'var(--text-subtle)', fontStyle: 'italic', fontSize: '0.9rem'}}>Keine offenen Aufgaben.</p>;
+                  
+                  return sortedTasks.map(task => (
+                    <div
+                      key={task.id}
+                      className={`routine-item ${task.completed ? 'completed' : ''}`}
+                      onClick={() => toggleOneTimeTask(task.id)}
+                    >
+                      <div className="checkbox">
+                        {task.completed && <Check size={13} className="check-icon" color="#ffffff" strokeWidth={3} />}
+                      </div>
 
-                    <div className="routine-info">
-                      <div className="routine-title">{task.title}</div>
-                      <div className="routine-badges">
-                        <span className="badge-pill time">{task.time}</span>
+                      <div className="routine-info">
+                        <div className="routine-title">{task.title}</div>
+                        <div className="routine-badges">
+                          <span className="badge-pill time">{task.time}</span>
+                        </div>
+                      </div>
+
+                      <div className="routine-actions">
+                        <button className="action-btn" onClick={(e) => handleEditOneTimeTask(e, task)} title="Bearbeiten"><Edit2 size={13} /></button>
+                        <button className="action-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteOneTimeTask(task.id); }} title="Löschen"><Trash2 size={13} /></button>
                       </div>
                     </div>
-
-                    <div className="routine-actions">
-                      <button className="action-btn" onClick={(e) => handleEditOneTimeTask(e, task)} title="Bearbeiten"><Edit2 size={13} /></button>
-                      <button className="action-btn delete" onClick={(e) => { e.stopPropagation(); handleDeleteOneTimeTask(task.id); }} title="Löschen"><Trash2 size={13} /></button>
-                    </div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
             </div>
           </div>

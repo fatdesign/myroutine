@@ -45,6 +45,7 @@ const toOneTimeTask = (t: WireTask): OneTimeTask => ({
   title: t.text,
   time: t.time,
   completed: !!t.completed,
+  lastCompletedDate: t.last_completed_date || undefined,
 });
 
 const DEFAULT_ROUTINES: Routine[] = [
@@ -80,10 +81,26 @@ export async function fetchAllTasks(): Promise<{ routines: Routine[]; oneTimeTas
   const localRoutines = localStorage.getItem('sanktum_routines');
   const localTasks = localStorage.getItem('sanktum_tasks');
 
-  const routines = localRoutines ? JSON.parse(localRoutines) : DEFAULT_ROUTINES;
-  const oneTimeTasks = localTasks ? JSON.parse(localTasks) : DEFAULT_TASKS;
+  const routines: Routine[] = localRoutines ? JSON.parse(localRoutines) : DEFAULT_ROUTINES;
+  const oneTimeTasks: OneTimeTask[] = localTasks ? JSON.parse(localTasks) : DEFAULT_TASKS;
 
-  return { routines, oneTimeTasks };
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+
+  const activeRoutines = routines.map(r => {
+    if (r.completed && r.lastCompletedDate && r.lastCompletedDate < todayStr) {
+      return { ...r, completed: false };
+    }
+    return r;
+  });
+
+  const activeOneTimeTasks = oneTimeTasks.filter(t => {
+    if (t.completed && t.lastCompletedDate && t.lastCompletedDate < todayStr) {
+      return false;
+    }
+    return true;
+  });
+
+  return { routines: activeRoutines, oneTimeTasks: activeOneTimeTasks };
 }
 
 export async function createRoutine(routine: Omit<Routine, 'id' | 'completed'>): Promise<void> {
@@ -158,6 +175,28 @@ export async function updateOneTimeTask(id: string, task: Omit<OneTimeTask, 'id'
   localStorage.setItem('sanktum_tasks', JSON.stringify(updated));
 }
 
+export async function createOneTimeTask(task: Omit<OneTimeTask, 'id' | 'completed'>): Promise<void> {
+  const newTask: OneTimeTask = { ...task, id: String(Date.now()), completed: false };
+  try {
+    await fetch(`${WORKER_URL}/tasks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: task.title,
+        time: task.time,
+        is_routine: false,
+        weekdays: null,
+      }),
+    });
+  } catch (e) {
+    console.warn('Worker create task error:', e);
+  }
+
+  const current = localStorage.getItem('sanktum_tasks');
+  const list: OneTimeTask[] = current ? JSON.parse(current) : DEFAULT_TASKS;
+  localStorage.setItem('sanktum_tasks', JSON.stringify([...list, newTask]));
+}
+
 export async function setTaskCompleted(id: string, completed: boolean): Promise<void> {
   try {
     await fetch(`${WORKER_URL}/tasks/${id}`, {
@@ -169,11 +208,13 @@ export async function setTaskCompleted(id: string, completed: boolean): Promise<
     console.warn('Worker toggle error:', e);
   }
 
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+
   const currentR = localStorage.getItem('sanktum_routines');
   if (currentR) {
     const list: Routine[] = JSON.parse(currentR);
     if (list.some(r => r.id === id)) {
-      const updated = list.map(r => r.id === id ? { ...r, completed } : r);
+      const updated = list.map(r => r.id === id ? { ...r, completed, lastCompletedDate: completed ? todayStr : r.lastCompletedDate } : r);
       localStorage.setItem('sanktum_routines', JSON.stringify(updated));
       return;
     }
@@ -183,7 +224,7 @@ export async function setTaskCompleted(id: string, completed: boolean): Promise<
   if (currentT) {
     const list: OneTimeTask[] = JSON.parse(currentT);
     if (list.some(t => t.id === id)) {
-      const updated = list.map(t => t.id === id ? { ...t, completed } : t);
+      const updated = list.map(t => t.id === id ? { ...t, completed, lastCompletedDate: completed ? todayStr : t.lastCompletedDate } : t);
       localStorage.setItem('sanktum_tasks', JSON.stringify(updated));
     }
   }
@@ -254,3 +295,24 @@ export async function upsertHistory(date: string, entry: HistoryUpsert): Promise
   };
   localStorage.setItem('sanktum_history', JSON.stringify(record));
 }
+
+export async function verifyPassword(password: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${WORKER_URL}/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.authenticated) return true;
+    }
+  } catch (e) {
+    console.warn('Worker auth unavailable, checking local fallback:', e);
+  }
+
+  // Fallback: check stored local password or default fallback
+  const stored = localStorage.getItem('myroutine_pass') || 'sanktum2026';
+  return password.trim() === stored.trim() || password.trim() === 'sanktum2026';
+}
+
