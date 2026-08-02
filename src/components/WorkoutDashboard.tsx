@@ -840,17 +840,22 @@ export function WorkoutDashboard() {
                 borderRadius: '16px',
                 boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }} onClick={() => setIsCalcCardOpen(!isCalcCardOpen)}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Activity size={20} style={{ color: 'var(--heroui-violet-light)' }} />
-                    <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#fff', fontWeight: 'bold' }}>
-                      Körperfett & Mager-Masse Rechner (US Navy Method)
-                    </h3>
-                    <span className="badge-pill time" style={{ background: metrics.categoryColor, color: '#fff', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                      {metrics.category}
-                    </span>
+                <div className="calc-card-header" onClick={() => setIsCalcCardOpen(!isCalcCardOpen)}>
+                  <div className="calc-header-text-container">
+                    <div className="calc-header-title-row">
+                      <Activity size={20} style={{ color: 'var(--heroui-violet-light)', flexShrink: 0 }} />
+                      <h3 className="calc-header-title">
+                        Körperfett & Mager-Masse Rechner (US Navy Method)
+                      </h3>
+                    </div>
+                    <div className="calc-header-subtitle-row">
+                      <span className="badge-pill time" style={{ background: metrics.categoryColor, color: '#fff', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                        {metrics.category}
+                      </span>
+                    </div>
                   </div>
-                  <button style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  
+                  <button type="button" className="calc-toggle-btn" onClick={(e) => { e.stopPropagation(); setIsCalcCardOpen(!isCalcCardOpen); }}>
                     {isCalcCardOpen ? '▲ Einklappen' : '▼ Ausklappen'}
                   </button>
                 </div>
@@ -1136,98 +1141,83 @@ export function WorkoutDashboard() {
                   return (
                     <div 
                       key={ex.id} 
-                      className={`routine-item ${isAllDone ? 'completed' : ''}`}
-                      style={{ 
-                        padding: '16px', display: 'flex', gap: '16px', alignItems: 'center', cursor: 'default', height: 'auto'
-                      }}
+                      className={`exercise-card-item ${isAllDone ? 'completed' : ''}`}
                     >
-                      <div style={{ width: '80px', height: '80px', flexShrink: 0, borderRadius: '8px', overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.05)' }}>
-                        <img src={ex.imageUrl} alt={ex.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
-                      </div>
+                      <div className="exercise-card-top">
+                        <div className="exercise-thumb">
+                          <img src={ex.imageUrl} alt={ex.name} loading="lazy" />
+                        </div>
 
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ fontSize: '1.1rem', marginBottom: '6px', color: isAllDone ? 'rgba(255,255,255,0.5)' : '#fff' }}>
-                          {idx + 1}. {ex.name}
-                        </h3>
-                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                          <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Flame size={12} /> {ex.sets} Sets × {ex.reps} Reps
-                          </span>
-                          <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Timer size={12} /> {ex.restTime} Pause
-                          </span>
-                          <span className="badge-pill days" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-muted)' }}>
-                            {ex.equipment}
-                          </span>
+                        <div className="exercise-content">
+                          <h3 className="exercise-title">
+                            {idx + 1}. {ex.name}
+                          </h3>
+
+                          <div className="exercise-badges-row">
+                            <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Flame size={12} /> {ex.sets} Sets × {ex.reps} Reps
+                            </span>
+                            <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Timer size={12} /> {ex.restTime} Pause
+                            </span>
+                            <span className="badge-pill equipment">
+                              {ex.equipment}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Dedicated Plank Hold Timer Widget */}
-                      {(ex.name.toLowerCase().includes('plank') || ex.equipment.includes('Sekunden')) && (
-                        <div style={{ marginRight: '12px' }}>
-                          {activePlankTimer?.exerciseId === ex.id ? (
-                            <div style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.35), rgba(245, 158, 11, 0.15))',
-                              border: '1px solid #f59e0b',
-                              padding: '6px 14px',
-                              borderRadius: '20px',
-                              boxShadow: '0 0 15px rgba(245, 158, 11, 0.4)'
-                            }}>
-                              <Timer size={16} className="animate-spin" style={{ color: '#f59e0b' }} />
-                              <span style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#fff', fontFamily: 'monospace' }}>
-                                Plank: {activePlankTimer.secondsLeft}s
-                              </span>
-                              <button 
-                                onClick={() => setActivePlankTimer(null)}
-                                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginLeft: '4px' }}
-                                title="Stoppen"
+                      <div className="exercise-card-bottom">
+                        {/* Dedicated Plank Hold Timer Widget */}
+                        {(ex.name.toLowerCase().includes('plank') || ex.equipment.includes('Sekunden')) && (
+                          <div className="plank-timer-box">
+                            {activePlankTimer?.exerciseId === ex.id ? (
+                              <div className="plank-timer-active">
+                                <Timer size={16} className="animate-spin" style={{ color: '#f59e0b' }} />
+                                <span className="plank-time-text">
+                                  Plank: {activePlankTimer.secondsLeft}s
+                                </span>
+                                <button 
+                                  onClick={() => setActivePlankTimer(null)}
+                                  className="plank-close-btn"
+                                  title="Stoppen"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="plank-start-btn"
+                                onClick={() => startPlankTimer(ex.id, ex.reps)}
                               >
-                                <X size={12} />
+                                <Play size={14} /> Plank ({ex.reps}s) halten
                               </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              className="btn-secondary"
-                              onClick={() => startPlankTimer(ex.id, ex.reps)}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '6px 12px',
-                                fontSize: '0.8rem',
-                                borderColor: '#f59e0b',
-                                color: '#fbbf24',
-                                borderRadius: '20px',
-                                background: 'rgba(245, 158, 11, 0.1)'
-                              }}
-                            >
-                              <Play size={14} /> Plank ({ex.reps}s) halten
-                            </button>
-                          )}
-                        </div>
-                      )}
+                            )}
+                          </div>
+                        )}
 
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        {Array.from({ length: ex.sets }).map((_, setIdx) => {
-                          const isChecked = setIdx < completed;
-                          return (
-                            <div 
-                              key={setIdx}
-                              onClick={() => toggleSet(ex.id, setIdx)}
-                              className="checkbox"
-                              style={{ 
-                                width: '24px', height: '24px', cursor: 'pointer',
-                                borderColor: isChecked ? 'var(--heroui-violet)' : 'var(--border-light)'
-                              }}
-                            >
-                              {isChecked && <Check size={14} className="check-icon" color="#ffffff" strokeWidth={3} />}
-                            </div>
-                          );
-                        })}
+                        {/* Set Checkboxes Row */}
+                        <div className="sets-row">
+                          <span className="sets-label">Sätze:</span>
+                          <div className="sets-checkbox-group">
+                            {Array.from({ length: ex.sets }).map((_, setIdx) => {
+                              const isChecked = setIdx < completed;
+                              return (
+                                <button
+                                  key={setIdx}
+                                  type="button"
+                                  onClick={() => toggleSet(ex.id, setIdx)}
+                                  className={`set-box ${isChecked ? 'checked' : ''}`}
+                                  title={`Satz ${setIdx + 1} markieren`}
+                                >
+                                  <span className="set-box-num">{setIdx + 1}</span>
+                                  {isChecked && <Check size={12} className="check-icon" strokeWidth={3} color="#ffffff" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );

@@ -399,56 +399,45 @@ function App() {
 
       <header className="top-bar">
         <div className="top-bar-inner">
-          <div>
-            <h1 className="gradient-text" style={{ fontSize: '2.2rem', lineHeight: 1.1, marginBottom: '8px' }}>myroutine</h1>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                onClick={() => setActiveTab('habits')}
-                style={{ 
-                  padding: '4px 12px', borderRadius: '20px', fontSize: '0.9rem', border: '1px solid', cursor: 'pointer',
-                  borderColor: activeTab === 'habits' ? 'var(--heroui-violet)' : 'transparent', 
-                  background: activeTab === 'habits' ? 'rgba(124,58,237,0.1)' : 'transparent', 
-                  color: activeTab === 'habits' ? '#fff' : 'var(--text-muted)' 
-                }}
-              >Rituale</button>
-              <button 
-                onClick={() => setActiveTab('workouts')}
-                style={{ 
-                  padding: '4px 12px', borderRadius: '20px', fontSize: '0.9rem', border: '1px solid', cursor: 'pointer',
-                  borderColor: activeTab === 'workouts' ? 'var(--heroui-violet)' : 'transparent', 
-                  background: activeTab === 'workouts' ? 'rgba(124,58,237,0.1)' : 'transparent', 
-                  color: activeTab === 'workouts' ? '#fff' : 'var(--text-muted)' 
-                }}
-              >Workouts</button>
-              <button 
-                onClick={() => setActiveTab('nutrition')}
-                style={{ 
-                  padding: '4px 12px', borderRadius: '20px', fontSize: '0.9rem', border: '1px solid', cursor: 'pointer',
-                  borderColor: activeTab === 'nutrition' ? 'var(--heroui-violet)' : 'transparent', 
-                  background: activeTab === 'nutrition' ? 'rgba(124,58,237,0.1)' : 'transparent', 
-                  color: activeTab === 'nutrition' ? '#fff' : 'var(--text-muted)' 
-                }}
-              >Ernährung</button>
+          <div className="top-bar-top-row">
+            <h1 className="gradient-text top-bar-title">myroutine</h1>
+
+            <div className="top-bar-actions">
+              <button
+                className={`btn-secondary header-action-btn ${isDronePlaying ? 'active' : ''}`}
+                onClick={toggleDrone}
+                title="432Hz Aura umschalten"
+              >
+                <Waves size={16} />
+                <span className="btn-label">{isDronePlaying ? 'Aura aktiv' : 'Aura entfachen'}</span>
+              </button>
+              <button className="btn-primary header-action-btn" onClick={openNewRoutineModal}>
+                <span className="btn-plus">+</span>
+                <span className="btn-label">Neues Ritual</span>
+              </button>
+              <button
+                className="btn-secondary header-action-btn logout-btn"
+                onClick={handleLogout}
+                title="Abmelden / Sperren"
+              >
+                <LogOut size={16} />
+              </button>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-            <button
-              className="btn-secondary"
-              onClick={toggleDrone}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', borderColor: isDronePlaying ? 'var(--heroui-violet-light)' : undefined, color: isDronePlaying ? 'var(--heroui-violet-light)' : undefined }}
-              title="432Hz Aura umschalten"
-            >
-              <Waves size={16} /> {isDronePlaying ? 'Aura aktiv' : 'Aura entfachen'}
-            </button>
-            <button className="btn-primary" onClick={openNewRoutineModal}>+ Neues Ritual</button>
-            <button
-              className="btn-secondary"
-              onClick={handleLogout}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 14px' }}
-              title="Abmelden / Sperren"
-            >
-              <LogOut size={16} />
-            </button>
+
+          <div className="top-bar-tabs">
+            <button 
+              onClick={() => setActiveTab('habits')}
+              className={`top-bar-tab-btn ${activeTab === 'habits' ? 'active' : ''}`}
+            >Rituale</button>
+            <button 
+              onClick={() => setActiveTab('workouts')}
+              className={`top-bar-tab-btn ${activeTab === 'workouts' ? 'active' : ''}`}
+            >Workouts</button>
+            <button 
+              onClick={() => setActiveTab('nutrition')}
+              className={`top-bar-tab-btn ${activeTab === 'nutrition' ? 'active' : ''}`}
+            >Ernährung</button>
           </div>
         </div>
       </header>

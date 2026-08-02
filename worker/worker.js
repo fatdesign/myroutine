@@ -176,7 +176,7 @@ export default {
         const date = path.split('/').pop();
         if (request.method === 'PUT') {
           const { exercises } = await request.json();
-          
+
           await env.DB.prepare(
             "CREATE TABLE IF NOT EXISTS workout_history (date TEXT, exercise_id TEXT, completed_sets INTEGER, PRIMARY KEY (date, exercise_id))"
           ).run();
@@ -257,7 +257,7 @@ export default {
         const date = path.split('/').pop();
         if (request.method === 'PUT') {
           const { durationSeconds, bodyWeight, photoUrl, bodyFat } = await request.json();
-          
+
           await env.DB.prepare(
             "CREATE TABLE IF NOT EXISTS workout_sessions (date TEXT PRIMARY KEY, duration_seconds INTEGER DEFAULT 0, body_weight REAL, photo_url TEXT, body_fat REAL)"
           ).run();
@@ -407,8 +407,8 @@ export default {
                allergies = excluded.allergies,
                updated_at = excluded.updated_at`
           )
-          .bind(meals_per_day ?? 3, breakfast_type ?? 'normal', diet_focus ?? 'high_protein', preferences ?? '', allergies ?? '', now)
-          .run();
+            .bind(meals_per_day ?? 3, breakfast_type ?? 'normal', diet_focus ?? 'high_protein', preferences ?? '', allergies ?? '', now)
+            .run();
 
           return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
         }
@@ -427,7 +427,7 @@ export default {
           const row = await env.DB.prepare("SELECT * FROM nutrition_plans WHERE id = 'current_plan'").first();
           let planData = null;
           if (row && row.plan_json) {
-            try { planData = JSON.parse(row.plan_json); } catch(e){}
+            try { planData = JSON.parse(row.plan_json); } catch (e) { }
           }
           return new Response(JSON.stringify({ plan: planData }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
@@ -452,9 +452,9 @@ export default {
         if (request.method === 'POST') {
           const chatIdResult = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram_chat_id'").first();
           if (!chatIdResult || !chatIdResult.value) {
-            return new Response(JSON.stringify({ 
-              success: false, 
-              error: "Keine Telegram Chat-ID gefunden! Bitte schreibe zuerst einmal '/start' an deinen Telegram Bot." 
+            return new Response(JSON.stringify({
+              success: false,
+              error: "Keine Telegram Chat-ID gefunden! Bitte schreibe zuerst einmal '/start' an deinen Telegram Bot."
             }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
           }
 
@@ -510,7 +510,7 @@ export default {
             }
           }
 
-          msg += `💪 _Generiert mit myroutine V-Shape AI_`;
+          msg += `💪 Generiert für Fatih Limitless! YOU ARE THE MASTER!`;
 
           await sendTelegramMessage(chatIdResult.value, msg, env);
 
@@ -645,7 +645,7 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
       }
 
       // --- Telegram Webhook ---
-      if ((path === '/webhook' || path === '/webhook/') ) {
+      if ((path === '/webhook' || path === '/webhook/')) {
         if (request.method === 'POST') {
           return await handleTelegramUpdate(request, env);
         }
@@ -726,7 +726,7 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
               budgetWarning = "🚫 **WEEKLY LIMIT EXCEEDED!**\nFokus heute: Backtesting / Analyse. KEIN LIVE TRADING.";
             }
           }
-        } catch(e) { console.log("Budget check failed", e.message); }
+        } catch (e) { console.log("Budget check failed", e.message); }
 
         for (const task of results) {
           // Weekday Check
@@ -737,7 +737,7 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
 
           let reminderText = task.text;
           if (budgetWarning && (reminderText.toLowerCase().includes("trading") || reminderText.toLowerCase().includes("markt"))) {
-             reminderText = `⚠️ **STOPP!** ${reminderText}\n\n${budgetWarning}`;
+            reminderText = `⚠️ **STOPP!** ${reminderText}\n\n${budgetWarning}`;
           }
 
           if (task.time === currentTimeStr) {
@@ -812,7 +812,7 @@ async function handleTelegramUpdate(request, env) {
       if (fallbackChatId) {
         await sendTelegramMessage(fallbackChatId, `❌ Fehler: ${e.message}`, env);
       }
-    } catch (innerError) {}
+    } catch (innerError) { }
   }
 
   return new Response('OK');

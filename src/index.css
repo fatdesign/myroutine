@@ -103,10 +103,18 @@ h1, h2, h3, h4 {
 .top-bar-inner {
   max-width: 1750px;
   margin: 0 auto;
-  padding: 20px clamp(20px, 4vw, 60px);
+  padding: 16px clamp(16px, 4vw, 60px);
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (min-width: 769px) {
+  .top-bar-inner {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 }
 
 .app-container {
@@ -736,5 +744,384 @@ h1, h2, h3, h4 {
   align-items: center;
   justify-content: center;
   gap: 8px;
+}
+
+/* ==========================================================================
+   Mobile Responsive Enhancements (Top Bar, Body Fat Calc, Exercise Cards)
+   ========================================================================== */
+
+/* Top Bar Mobile Optimization */
+.top-bar-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 12px;
+}
+
+.top-bar-title {
+  font-size: 2rem;
+  line-height: 1.1;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.top-bar-tabs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.top-bar-tab-btn {
+  padding: 5px 14px;
+  border-radius: 20px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.top-bar-tab-btn:hover {
+  color: #ffffff;
+}
+
+.top-bar-tab-btn.active {
+  border-color: var(--heroui-violet);
+  background: rgba(124, 58, 237, 0.15);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.top-bar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.header-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+}
+
+.header-action-btn.active {
+  border-color: var(--heroui-violet-light);
+  color: var(--heroui-violet-light);
+}
+
+.logout-btn {
+  padding: 8px 12px;
+}
+
+@media (max-width: 640px) {
+  .top-bar-title {
+    font-size: 1.6rem;
+  }
+  .header-action-btn {
+    padding: 7px 10px;
+    font-size: 0.78rem;
+    gap: 4px;
+  }
+  .logout-btn {
+    padding: 7px 10px;
+  }
+}
+
+@media (max-width: 440px) {
+  .header-action-btn .btn-label {
+    font-size: 0.75rem;
+  }
+}
+
+/* Body Fat & Lean Mass Calculator Card Header */
+.calc-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.calc-header-text-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.calc-header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.calc-header-title {
+  margin: 0;
+  font-size: 1.15rem;
+  color: #ffffff;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.calc-header-subtitle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.calc-toggle-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.calc-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Individual Workout Exercise Cards */
+.exercise-card-item {
+  position: relative;
+  background: rgba(39, 39, 42, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.exercise-card-item:hover {
+  background: rgba(39, 39, 42, 0.7);
+  border-color: rgba(168, 85, 247, 0.25);
+}
+
+.exercise-card-item.completed {
+  background: rgba(24, 24, 27, 0.5);
+  opacity: 0.65;
+}
+
+.exercise-card-top {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.exercise-thumb {
+  width: 72px;
+  height: 72px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.exercise-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.exercise-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.exercise-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 8px;
+  line-height: 1.35;
+}
+
+.completed .exercise-title {
+  color: var(--text-muted);
+}
+
+.exercise-badges-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.badge-pill.equipment {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.exercise-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  flex-wrap: wrap;
+}
+
+.sets-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.sets-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sets-checkbox-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.set-box {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1.5px solid #52525b;
+  background: rgba(24, 24, 27, 0.8);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.set-box:hover {
+  border-color: var(--heroui-violet-light);
+  color: #ffffff;
+}
+
+.set-box-num {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.set-box.checked {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border-color: #a855f7;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+}
+
+.set-box.checked .set-box-num {
+  display: none;
+}
+
+/* Plank Timer Widget */
+.plank-timer-box {
+  display: flex;
+  align-items: center;
+}
+
+.plank-start-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid #f59e0b;
+  color: #fbbf24;
+  border-radius: 20px;
+  background: rgba(245, 158, 11, 0.1);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.plank-start-btn:hover {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.plank-timer-active {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.35), rgba(245, 158, 11, 0.15));
+  border: 1px solid #f59e0b;
+  padding: 6px 14px;
+  border-radius: 20px;
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+}
+
+.plank-time-text {
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: #ffffff;
+  font-family: var(--font-mono);
+}
+
+.plank-close-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: none;
+  color: #ffffff;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+@media (max-width: 520px) {
+  .exercise-thumb {
+    width: 60px;
+    height: 60px;
+  }
+  .exercise-title {
+    font-size: 0.98rem;
+  }
+  .exercise-card-bottom {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .sets-row {
+    margin-left: 0;
+    justify-content: space-between;
+    width: 100%;
+  }
+  .set-box {
+    width: 34px;
+    height: 34px;
+  }
 }
 
