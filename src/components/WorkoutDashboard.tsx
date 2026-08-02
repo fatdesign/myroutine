@@ -1048,7 +1048,8 @@ export function WorkoutDashboard() {
                                 cursor: 'pointer',
                                 display: 'inline-flex',
                                 alignItems: 'center',
-                                gap: '4px'
+                                gap: '4px',
+                                whiteSpace: 'nowrap'
                               }}
                             >
                               <Info size={13} /> Level Details
@@ -1063,7 +1064,8 @@ export function WorkoutDashboard() {
                               border: `1px solid ${metrics.categoryColor}50`,
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '6px'
+                              gap: '6px',
+                              whiteSpace: 'nowrap'
                             }}>
                               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: metrics.categoryColor, boxShadow: `0 0 6px ${metrics.categoryColor}` }} />
                               Stand: {metrics.category}
