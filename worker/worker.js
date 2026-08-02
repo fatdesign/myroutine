@@ -1505,6 +1505,35 @@ async function handleBodyMetricsTelegram(chatId, metricsInput, env, photoUrl = n
 
 // --- AI Engine (Multi-modal) ---
 async function parseWithAI(text, audioBase64, photoBase64, env) {
+
+  // --- FAST PATH: Simple Regex Pre-Parser (no AI needed for obvious inputs) ---
+  if (text && !audioBase64 && !photoBase64) {
+    const t = text.toLowerCase().trim();
+    // Water: "500ml", "1.5l", "2 liter", "habe 750 ml getrunken" etc.
+    const waterMatch = t.match(/(\d+(?:[.,]\d+)?)\s*(?:ml|l(?:iter)?|liter)/i);
+    if (waterMatch) {
+      let amount = parseFloat(waterMatch[1].replace(',', '.'));
+      if (t.includes('liter') || (waterMatch[0].endsWith('l') && !waterMatch[0].endsWith('ml'))) amount *= 1000;
+      if (amount >= 50 && amount <= 5000) {
+        console.log(`Fast-path water: ${amount}ml`);
+        return { type: 'water_log', amount_ml: Math.round(amount) };
+      }
+    }
+    // Body metrics: "gewicht 90 nacken 44 bauch 97" etc.
+    const weightMatch = t.match(/gewicht\s+(\d+(?:[.,]\d+)?)/i);
+    const neckMatch = t.match(/nacken?\s+(\d+(?:[.,]\d+)?)/i);
+    const waistMatch = t.match(/(?:bauch|taille)\s+(\d+(?:[.,]\d+)?)/i);
+    if (weightMatch || (neckMatch && waistMatch)) {
+      return {
+        type: 'body_metrics',
+        weight: weightMatch ? parseFloat(weightMatch[1].replace(',', '.')) : null,
+        neck: neckMatch ? parseFloat(neckMatch[1].replace(',', '.')) : null,
+        waist: waistMatch ? parseFloat(waistMatch[1].replace(',', '.')) : null,
+        hip: null
+      };
+    }
+  }
+
   const prompt = `Analysiere die Nachricht (Text, Sprachnachricht oder Foto auf Deutsch).
 Klassifiziere die Eingabe in genau EINES der folgenden vier Formate und antworte AUSSCHLIESSLICH im gültigen JSON-Format:
 
@@ -1580,12 +1609,39 @@ Uhrzeit-Fallback für Aufgaben: "09:00".`;
 
   if (!response.ok) {
     let errorMessage = 'Unbekannter API Fehler';
+    let isQuota = false;
     try {
       const errorData = await response.json();
       errorMessage = errorData.error?.message || JSON.stringify(errorData);
+      isQuota = response.status === 429 || errorMessage.includes('quota') || errorMessage.includes('RESOURCE_EXHAUSTED');
     } catch (e) {
       errorMessage = await response.text();
     }
+
+    // --- Cloudflare Workers AI Fallback (text-only, FREE) ---
+    if (isQuota && env.AI && !photoBase64 && !audioBase64 && text) {
+      console.log('Gemini quota hit — falling back to Cloudflare AI (Llama-3)...');
+      try {
+        const fallbackPrompt = `${prompt}\n\nNachricht: "${text}"\n\nAntworte NUR mit dem JSON-Objekt, kein anderer Text.`;
+        const cfResult = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+          messages: [
+            { role: 'system', content: 'Du bist ein Assistent. Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown oder Erklärungen.' },
+            { role: 'user', content: fallbackPrompt }
+          ],
+          max_tokens: 300
+        });
+        let cfContent = cfResult?.response || '{}';
+        if (cfContent.includes('```')) cfContent = cfContent.replace(/```json|```/g, '').trim();
+        const firstBrace = cfContent.indexOf('{');
+        const lastBrace = cfContent.lastIndexOf('}');
+        if (firstBrace !== -1) cfContent = cfContent.slice(firstBrace, lastBrace + 1);
+        return JSON.parse(cfContent);
+      } catch (cfErr) {
+        console.error('Cloudflare AI fallback also failed:', cfErr.message);
+      }
+    }
+
+    // For photos/audio when quota is exceeded: throw with a clear quota error
     throw new Error(`AI API Error: ${errorMessage}`);
   }
 
