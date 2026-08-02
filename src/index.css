@@ -404,6 +404,8 @@ h1, h2, h3, h4 {
   border-radius: 9999px;
   display: inline-flex;
   align-items: center;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .badge-pill.time {

@@ -322,8 +322,8 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                     <Droplet size={18} style={{ color: '#38bdf8' }} />
                     Hydration Guard (Wasser-Tracker)
                   </h3>
-                  <span className="badge-pill time" style={{ background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', fontSize: '0.75rem', fontWeight: 'bold' }}>
-                    Ziel: 3.5 Liter
+                  <span className="badge-pill time" style={{ background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', fontSize: '0.75rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    Ziel: 3.5 L
                   </span>
                 </div>
 
