@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Check, Edit2, Trash2, X, Hexagon, CircleDot, Shield, Waves, BookOpen, ListChecks, Lock, LogOut } from 'lucide-react';
+import { Eye, EyeOff, Check, Edit2, Trash2, X, Hexagon, CircleDot, Shield, Waves, BookOpen, ListChecks, Lock, LogOut, Settings, Sun, Moon, Send } from 'lucide-react';
 import type { Routine, OneTimeTask, HistoryRecord } from './types';
 import * as plannerApi from './services/plannerApi';
 import { getTodayStr, getDateStr, calculateLevel, getHistoryGraphData, checkIsGridBroken, formatWeekdays, getDayOfWeek, isRoutineActiveOnDay } from './utils/habitUtils';
@@ -58,6 +58,13 @@ function App() {
   const [modalKind, setModalKind] = useState<'routine' | 'task'>('routine');
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
   const [editingTask, setEditingTask] = useState<OneTimeTask | null>(null);
+
+  // Settings Modal State
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [morningBriefingTime, setMorningBriefingTime] = useState('07:00');
+  const [eveningRecapTime, setEveningRecapTime] = useState('21:00');
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [testStatusMsg, setTestStatusMsg] = useState<string | null>(null);
 
   // Video Modal State
   const [playingVideoUrl, setPlayingVideoUrl] = useState<string | null>(null);
@@ -129,8 +136,49 @@ function App() {
       if (checkIsGridBroken(fetchedHistory)) {
         setIsGridBroken(true);
       }
+
+      plannerApi.fetchAppSettings().then(settings => {
+        if (settings.morning_briefing_time) setMorningBriefingTime(settings.morning_briefing_time);
+        if (settings.evening_recap_time) setEveningRecapTime(settings.evening_recap_time);
+      });
     })();
   }, []);
+
+  const handleSaveSettings = async () => {
+    setIsSavingSettings(true);
+    setTestStatusMsg(null);
+    const success = await plannerApi.updateAppSettings({
+      morning_briefing_time: morningBriefingTime,
+      evening_recap_time: eveningRecapTime
+    });
+    setIsSavingSettings(false);
+    if (success) {
+      setTestStatusMsg('✅ Einstellungen erfolgreich gespeichert!');
+      setTimeout(() => setTestStatusMsg(null), 3000);
+    } else {
+      setTestStatusMsg('❌ Fehler beim Speichern der Einstellungen.');
+    }
+  };
+
+  const handleTestMorningBriefing = async () => {
+    setTestStatusMsg('⌛ Sende Morgen-Briefing an Telegram...');
+    const res = await plannerApi.triggerMorningBriefing();
+    if (res.success) {
+      setTestStatusMsg('✅ Morgen-Briefing wurde an deinen Telegram Bot gesendet!');
+    } else {
+      setTestStatusMsg(`❌ Fehler: ${res.error || 'Fehlgeschlagen'}`);
+    }
+  };
+
+  const handleTestEveningRecap = async () => {
+    setTestStatusMsg('⌛ Sende Abend-Recap an Telegram...');
+    const res = await plannerApi.triggerEveningRecap();
+    if (res.success) {
+      setTestStatusMsg('✅ Abend-Recap wurde an deinen Telegram Bot gesendet!');
+    } else {
+      setTestStatusMsg(`❌ Fehler: ${res.error || 'Fehlgeschlagen'}`);
+    }
+  };
 
   // Save history helper (persists to the shared planner backend)
   const saveHistory = async (currentRoutines: Routine[], journal?: string) => {
@@ -440,6 +488,14 @@ function App() {
               <span className="btn-label">Neues Ritual</span>
             </button>
             <button
+              className="btn-secondary header-action-btn"
+              onClick={() => setIsSettingsModalOpen(true)}
+              title="Einstellungen & Bot-Zeiten"
+            >
+              <Settings size={16} />
+              <span className="btn-label">Einstellungen</span>
+            </button>
+            <button
               className="btn-secondary header-action-btn logout-btn"
               onClick={handleLogout}
               title="Abmelden / Sperren"
@@ -698,6 +754,114 @@ function App() {
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               ></iframe>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings & Bot Briefing Times Modal */}
+      {isSettingsModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsSettingsModalOpen(false)}>
+          <div className="glass-panel modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px', width: '92%' }}>
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Settings size={22} style={{ color: 'var(--heroui-violet-light)' }} />
+                <h2 className="gradient-text" style={{ margin: 0, fontSize: '1.4rem' }}>Einstellungen & Bot-Zeiten</h2>
+              </div>
+              <button className="action-btn" onClick={() => setIsSettingsModalOpen(false)}><X size={20} /></button>
+            </div>
+
+            {testStatusMsg && (
+              <div style={{
+                padding: '12px 16px',
+                borderRadius: '10px',
+                marginBottom: '20px',
+                background: testStatusMsg.includes('✅') ? 'rgba(34, 197, 94, 0.15)' : testStatusMsg.includes('⌛') ? 'rgba(234, 179, 8, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                border: testStatusMsg.includes('✅') ? '1px solid rgba(34, 197, 94, 0.3)' : testStatusMsg.includes('⌛') ? '1px solid rgba(234, 179, 8, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+                color: '#fff',
+                fontSize: '0.85rem'
+              }}>
+                {testStatusMsg}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Morning Briefing Time */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Sun size={18} style={{ color: '#f59e0b' }} />
+                    <span style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>Morgen-Briefing Uhrzeit</span>
+                  </div>
+                  <input
+                    type="time"
+                    value={morningBriefingTime}
+                    onChange={(e) => setMorningBriefingTime(e.target.value)}
+                    style={{
+                      background: 'rgba(0,0,0,0.5)',
+                      border: '1px solid var(--heroui-violet)',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      padding: '6px 12px',
+                      fontSize: '1rem',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 12px 0' }}>
+                  Uhrzeit für deinen täglichen Bot-Morgenbericht (Rituale & Aufgaben des Tages).
+                </p>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleTestMorningBriefing}
+                  style={{ width: '100%', fontSize: '0.8rem', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <Send size={14} /> 🌅 Morgen-Briefing JETZT an Telegram testen
+                </button>
+              </div>
+
+              {/* Evening Recap Time */}
+              <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Moon size={18} style={{ color: '#8b5cf6' }} />
+                    <span style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>Abend-Recap Uhrzeit</span>
+                  </div>
+                  <input
+                    type="time"
+                    value={eveningRecapTime}
+                    onChange={(e) => setEveningRecapTime(e.target.value)}
+                    style={{
+                      background: 'rgba(0,0,0,0.5)',
+                      border: '1px solid var(--heroui-violet)',
+                      borderRadius: '8px',
+                      color: '#fff',
+                      padding: '6px 12px',
+                      fontSize: '1rem',
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 12px 0' }}>
+                  Uhrzeit für deine Abend-Zusammenfassung (Erfüllte Rituale, Kalorien, Makros & Wasser).
+                </p>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={handleTestEveningRecap}
+                  style={{ width: '100%', fontSize: '0.8rem', padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <Send size={14} /> 🌙 Abend-Recap JETZT an Telegram testen
+                </button>
+              </div>
+            </div>
+
+            <div className="modal-actions" style={{ marginTop: '24px' }}>
+              <button className="btn-secondary" onClick={() => setIsSettingsModalOpen(false)}>Abbrechen</button>
+              <button className="btn-primary" onClick={handleSaveSettings} disabled={isSavingSettings}>
+                {isSavingSettings ? 'Speichere...' : 'Uhrzeiten Speichern'}
+              </button>
             </div>
           </div>
         </div>

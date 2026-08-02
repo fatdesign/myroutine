@@ -123,7 +123,16 @@ export default {
       if (path === '/settings') {
         if (request.method === 'GET') {
           const { results } = await env.DB.prepare("SELECT * FROM settings").all();
-          return new Response(JSON.stringify(results), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          const settingsMap = {};
+          (results || []).forEach(r => { settingsMap[r.key] = r.value; });
+          return new Response(JSON.stringify(settingsMap), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        if (request.method === 'POST' || request.method === 'PUT') {
+          const body = await request.json();
+          for (const [key, value] of Object.entries(body)) {
+            await env.DB.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").bind(key, String(value)).run();
+          }
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
         }
       }
 
@@ -943,10 +952,15 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
     const chatIdResult = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram_chat_id'").first();
     const chatIdForBriefing = chatIdResult && chatIdResult.value;
     if (chatIdForBriefing) {
-      if (currentTimeStr === "07:00") {
+      const mTimeRes = await env.DB.prepare("SELECT value FROM settings WHERE key = 'morning_briefing_time'").first();
+      const eTimeRes = await env.DB.prepare("SELECT value FROM settings WHERE key = 'evening_recap_time'").first();
+      const mTime = (mTimeRes && mTimeRes.value) ? mTimeRes.value : "07:00";
+      const eTime = (eTimeRes && eTimeRes.value) ? eTimeRes.value : "21:00";
+
+      if (currentTimeStr === mTime) {
         await sendMorningBriefing(chatIdForBriefing, env);
       }
-      if (currentTimeStr === "21:00") {
+      if (currentTimeStr === eTime) {
         await sendEveningRecap(chatIdForBriefing, env);
       }
 

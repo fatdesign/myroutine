@@ -725,4 +725,39 @@ export async function triggerEveningRecap(): Promise<{ success: boolean; error?:
   }
 }
 
+export interface AppSettings {
+  morning_briefing_time?: string;
+  evening_recap_time?: string;
+  [key: string]: string | undefined;
+}
+
+export async function fetchAppSettings(): Promise<AppSettings> {
+  try {
+    const res = await fetch(`${WORKER_URL}/settings`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.warn('Fetch settings error:', e);
+  }
+  return {
+    morning_briefing_time: '07:00',
+    evening_recap_time: '21:00'
+  };
+}
+
+export async function updateAppSettings(settings: Record<string, string>): Promise<boolean> {
+  try {
+    const res = await fetch(`${WORKER_URL}/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    });
+    return res.ok;
+  } catch (e) {
+    console.warn('Update settings error:', e);
+    return false;
+  }
+}
+
 
