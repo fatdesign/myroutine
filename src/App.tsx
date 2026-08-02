@@ -399,45 +399,45 @@ function App() {
 
       <header className="top-bar">
         <div className="top-bar-inner">
-          <div className="top-bar-top-row">
+          <div className="top-bar-left">
             <h1 className="gradient-text top-bar-title">myroutine</h1>
 
-            <div className="top-bar-actions">
-              <button
-                className={`btn-secondary header-action-btn ${isDronePlaying ? 'active' : ''}`}
-                onClick={toggleDrone}
-                title="432Hz Aura umschalten"
-              >
-                <Waves size={16} />
-                <span className="btn-label">{isDronePlaying ? 'Aura aktiv' : 'Aura entfachen'}</span>
-              </button>
-              <button className="btn-primary header-action-btn" onClick={openNewRoutineModal}>
-                <span className="btn-plus">+</span>
-                <span className="btn-label">Neues Ritual</span>
-              </button>
-              <button
-                className="btn-secondary header-action-btn logout-btn"
-                onClick={handleLogout}
-                title="Abmelden / Sperren"
-              >
-                <LogOut size={16} />
-              </button>
+            <div className="top-bar-tabs">
+              <button 
+                onClick={() => setActiveTab('habits')}
+                className={`top-bar-tab-btn ${activeTab === 'habits' ? 'active' : ''}`}
+              >Rituale</button>
+              <button 
+                onClick={() => setActiveTab('workouts')}
+                className={`top-bar-tab-btn ${activeTab === 'workouts' ? 'active' : ''}`}
+              >Workouts</button>
+              <button 
+                onClick={() => setActiveTab('nutrition')}
+                className={`top-bar-tab-btn ${activeTab === 'nutrition' ? 'active' : ''}`}
+              >Ernährung</button>
             </div>
           </div>
 
-          <div className="top-bar-tabs">
-            <button 
-              onClick={() => setActiveTab('habits')}
-              className={`top-bar-tab-btn ${activeTab === 'habits' ? 'active' : ''}`}
-            >Rituale</button>
-            <button 
-              onClick={() => setActiveTab('workouts')}
-              className={`top-bar-tab-btn ${activeTab === 'workouts' ? 'active' : ''}`}
-            >Workouts</button>
-            <button 
-              onClick={() => setActiveTab('nutrition')}
-              className={`top-bar-tab-btn ${activeTab === 'nutrition' ? 'active' : ''}`}
-            >Ernährung</button>
+          <div className="top-bar-actions">
+            <button
+              className={`btn-secondary header-action-btn ${isDronePlaying ? 'active' : ''}`}
+              onClick={toggleDrone}
+              title="432Hz Aura umschalten"
+            >
+              <Waves size={16} />
+              <span className="btn-label">{isDronePlaying ? 'Aura aktiv' : 'Aura entfachen'}</span>
+            </button>
+            <button className="btn-primary header-action-btn" onClick={openNewRoutineModal}>
+              <span className="btn-plus">+</span>
+              <span className="btn-label">Neues Ritual</span>
+            </button>
+            <button
+              className="btn-secondary header-action-btn logout-btn"
+              onClick={handleLogout}
+              title="Abmelden / Sperren"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
       </header>

@@ -768,7 +768,7 @@ async function handleTelegramUpdate(request, env) {
       .run();
 
     if (update.message.text === '/start') {
-      await sendTelegramMessage(chatId, "Hallo! 🤖 Ich bin dein Planner AI Assistent.\n\nDu kannst mir schreiben oder einfach eine **Sprachnachricht** schicken, z.B.:\n- 'Morgen um 08:30 Uhr Joggen'\n- 'Erinnere mich an Pizza bestellen um 19:00 Uhr'", env);
+      await sendTelegramMessage(chatId, "Hallo! 🤖 Ich bin dein Planner AI Assistent.\n\nDu kannst mir schreiben oder einfach eine **Sprachnachricht** schicken, z.B.:\n- 'Morgen um 08:30 Uhr Joggen'\n- 'Gewicht 91.5 kg, Nacken 44, Bauch 97'", env);
       return new Response('OK');
     }
 
@@ -791,17 +791,24 @@ async function handleTelegramUpdate(request, env) {
     const aiResponse = await parseWithAI(userText, audioData, env);
     console.log('AI Response:', JSON.stringify(aiResponse));
 
-    if (aiResponse && aiResponse.task) {
-      const time = aiResponse.time || '09:00';
-      const type = aiResponse.type || inferType(time);
-      await env.DB.prepare("INSERT INTO tasks (text, time, is_routine, weekdays, type) VALUES (?, ?, ?, ?, ?)")
-        .bind(aiResponse.task, time, aiResponse.is_routine ? 1 : 0, aiResponse.weekdays || null, type)
-        .run();
+    if (aiResponse) {
+      // Check if AI detected body measurement metrics
+      if (aiResponse.type === 'body_metrics' || aiResponse.weight || aiResponse.neck || aiResponse.waist) {
+        await handleBodyMetricsTelegram(chatId, aiResponse, env);
+      } else if (aiResponse.task) {
+        const time = aiResponse.time || '09:00';
+        const type = aiResponse.type || inferType(time);
+        await env.DB.prepare("INSERT INTO tasks (text, time, is_routine, weekdays, type) VALUES (?, ?, ?, ?, ?)")
+          .bind(aiResponse.task, time, aiResponse.is_routine ? 1 : 0, aiResponse.weekdays || null, type)
+          .run();
 
-      const dayText = aiResponse.weekdays ? ` am Wochentag (${aiResponse.weekdays})` : "";
-      await sendTelegramMessage(chatId, `✅ Eingetragen: "${aiResponse.task}" um ${aiResponse.time}${dayText}.`, env);
+        const dayText = aiResponse.weekdays ? ` am Wochentag (${aiResponse.weekdays})` : "";
+        await sendTelegramMessage(chatId, `✅ Eingetragen: "${aiResponse.task}" um ${aiResponse.time}${dayText}.`, env);
+      } else {
+        await sendTelegramMessage(chatId, "Entschuldige, ich konnte keine Aufgabe oder Körpermessung erkennen. Bitte probier es nochmal!", env);
+      }
     } else {
-      await sendTelegramMessage(chatId, "Entschuldige, ich konnte keine Aufgabe erkennen. Bitte probier es nochmal!", env);
+      await sendTelegramMessage(chatId, "Entschuldige, ich konnte keine Eingabe verarbeiten. Bitte probier es nochmal!", env);
     }
 
   } catch (e) {
@@ -818,15 +825,140 @@ async function handleTelegramUpdate(request, env) {
   return new Response('OK');
 }
 
+// --- Body Metrics Handler for Telegram Voice & Text ---
+async function handleBodyMetricsTelegram(chatId, metricsInput, env) {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS body_metrics_inputs (
+      id TEXT PRIMARY KEY DEFAULT 'user_default',
+      gender TEXT DEFAULT 'male',
+      age INTEGER DEFAULT 27,
+      weight REAL DEFAULT 90,
+      height REAL DEFAULT 186,
+      neck REAL DEFAULT 44,
+      waist REAL DEFAULT 100,
+      hip REAL DEFAULT 100,
+      target_kfa REAL DEFAULT 7.0,
+      activity_level REAL DEFAULT 1.55,
+      target_deficit_mode REAL DEFAULT 500,
+      updated_at TEXT
+    )`
+  ).run();
+
+  let existing = await env.DB.prepare("SELECT * FROM body_metrics_inputs WHERE id = 'user_default'").first();
+  if (!existing) {
+    existing = {
+      gender: 'male', age: 27, weight: 90, height: 186, neck: 44, waist: 100, hip: 100,
+      target_kfa: 7.0, activity_level: 1.55, target_deficit_mode: 500
+    };
+  }
+
+  const gender = existing.gender || 'male';
+  const age = Number(existing.age) || 27;
+  const height = Number(existing.height) || 186;
+  const weight = metricsInput.weight ? Number(metricsInput.weight) : (Number(existing.weight) || 90);
+  const neck = metricsInput.neck ? Number(metricsInput.neck) : (Number(existing.neck) || 44);
+  const waist = metricsInput.waist ? Number(metricsInput.waist) : (Number(existing.waist) || 100);
+  const hip = metricsInput.hip ? Number(metricsInput.hip) : (Number(existing.hip) || 100);
+  const targetKfa = Number(existing.target_kfa) || 7.0;
+  const activityLevel = Number(existing.activity_level) || 1.55;
+  const targetDeficitMode = Number(existing.target_deficit_mode) || 500;
+
+  // Compute US Navy Body Fat KFA & Lean Mass
+  let navyKfa = 0;
+  if (gender === 'male') {
+    if (waist > neck && height > 0) {
+      const density = 1.0324 - 0.19077 * Math.log10(waist - neck) + 0.15456 * Math.log10(height);
+      navyKfa = (495 / density) - 450;
+    }
+  } else {
+    if (waist + hip > neck && height > 0) {
+      const density = 1.29579 - 0.35004 * Math.log10(waist + hip - neck) + 0.22100 * Math.log10(height);
+      navyKfa = (495 / density) - 450;
+    }
+  }
+  if (navyKfa < 2) navyKfa = 2;
+  if (navyKfa > 50) navyKfa = 50;
+
+  const kfaFormatted = Number(navyKfa.toFixed(1));
+  const fatMass = Number((weight * (kfaFormatted / 100)).toFixed(1));
+  const leanMass = Number((weight - fatMass).toFixed(1));
+
+  let category = 'Fitness';
+  if (kfaFormatted < 6) category = 'Essentiell ⚡';
+  else if (kfaFormatted < 14) category = 'Athlet (V-Shape Zone) 🔥';
+  else if (kfaFormatted < 18) category = 'Fitness 🦾';
+  else if (kfaFormatted < 25) category = 'Durchschnitt 📊';
+  else category = 'Höherer KFA 🎯';
+
+  const nowISO = new Date().toISOString();
+
+  // Save updated inputs to D1
+  await env.DB.prepare(
+    `INSERT INTO body_metrics_inputs (id, gender, age, weight, height, neck, waist, hip, target_kfa, activity_level, target_deficit_mode, updated_at)
+     VALUES ('user_default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       weight = excluded.weight,
+       neck = excluded.neck,
+       waist = excluded.waist,
+       hip = excluded.hip,
+       updated_at = excluded.updated_at`
+  )
+    .bind(gender, age, weight, height, neck, waist, hip, targetKfa, activityLevel, targetDeficitMode, nowISO)
+    .run();
+
+  // Auto Check-in: Save to workout_sessions for today (Europe/Berlin)
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS workout_sessions (date TEXT PRIMARY KEY, duration_seconds INTEGER DEFAULT 0, body_weight REAL, photo_url TEXT, body_fat REAL)`
+  ).run();
+
+  try {
+    await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN body_fat REAL").run();
+  } catch (e) {}
+
+  await env.DB.prepare(
+    `INSERT INTO workout_sessions (date, duration_seconds, body_weight, photo_url, body_fat) VALUES (?, 0, ?, NULL, ?)
+     ON CONFLICT(date) DO UPDATE SET
+       body_weight = excluded.body_weight,
+       body_fat = excluded.body_fat`
+  )
+    .bind(todayStr, weight, kfaFormatted)
+    .run();
+
+  let msg = `📊 *V-Shape Körpermessung erfasst!*\n\n`;
+  msg += `⚖️ *Gewicht:* ${weight} kg\n`;
+  msg += `📐 *Nacken:* ${neck} cm | *Bauch:* ${waist} cm\n`;
+  msg += `🔥 *KFA (US Navy):* ${kfaFormatted}% (${category})\n`;
+  msg += `💪 *Mager-Masse:* ${leanMass} kg | *Fettmasse:* ${fatMass} kg\n\n`;
+  msg += `✅ *Automatisch in deinen heutigen Check-in (${todayStr}) übernommen!* 🚀`;
+
+  await sendTelegramMessage(chatId, msg, env);
+}
+
 // --- AI Engine (Multi-modal) ---
 async function parseWithAI(text, audioBase64, env) {
-  const prompt = `Extrahiere Aufgabe, Uhrzeit (HH:mm), relevante Wochentage und die Tagesphase aus der Nachricht.
-  Antworte NUR in diesem JSON Format: {"task": "...", "time": "HH:mm", "weekdays": "1,2..", "is_routine": boolean, "type": "morning" | "evening"}.
-  Uhrzeit: Fallback "09:00".
-  Wochentage: 1=Mo, 2=Di, 3=Mi, 4=Do, 5=Fr, 6=Sa, 7=So. Wenn täglich/immer, lass das Feld leer oder null.
-  Routine: Markiere als true, wenn es eine wiederkehrende Regel ist (z.B. "Jeden Montag", "Täglich").
-  Phase (type): "morning" für Aufgaben vor 12:00 Uhr oder die zu einer Morgenroutine gehören, sonst "evening".
-  Sprache: Deutsch.`;
+  const prompt = `Analysiere die Nachricht (Text oder Sprachnachricht auf Deutsch).
+Klassifiziere die Eingabe in genau EINES der folgenden zwei Formate und antworte AUSSCHLIESSLICH im gültigen JSON-Format:
+
+1. KÖRPERMESSUNGEN (wenn die Nachricht Körpergewicht, Bauchumfang, Nackenumfang, KFA oder Hüftumfang enthält, z.B. "Gewicht 91.5 kg, Nacken 44, Bauch 97" oder "Habe mich gewogen 90 Kilo Bauch 96cm"):
+{
+  "type": "body_metrics",
+  "weight": 91.5 (Zahl in kg oder null),
+  "neck": 44.0 (Zahl in cm oder null),
+  "waist": 97.0 (Zahl in cm oder null),
+  "hip": 100.0 (Zahl in cm oder null)
+}
+
+2. AUFGABEN / REMINDER (für alle anderen Nachrichten):
+{
+  "type": "task",
+  "task": "Beschreibung der Aufgabe",
+  "time": "HH:mm",
+  "weekdays": "1,2..",
+  "is_routine": boolean
+}
+Uhrzeit-Fallback für Aufgaben: "09:00".`;
 
   const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${env.PLANNER_KI_API}`;
 
@@ -908,3 +1040,4 @@ async function sendTelegramAction(chatId, action, env) {
     body: JSON.stringify({ chat_id: chatId, action: action })
   });
 }
+
