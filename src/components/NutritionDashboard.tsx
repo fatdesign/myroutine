@@ -123,6 +123,8 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
     const res = await triggerEveningRecap();
     setBriefingMsg(res.success ? '✓ Abend-Recap erfolgreich an Telegram gesendet!' : (res.error || 'Fehler beim Senden'));
     setTimeout(() => setBriefingMsg(null), 4000);
+  };
+
   const handleGenerateCoachReport = async () => {
     setIsReportGenerating(true);
     try {
@@ -924,4 +926,3 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
     </div>
   );
 };
-}
