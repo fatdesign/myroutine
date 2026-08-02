@@ -1744,28 +1744,33 @@ export function WorkoutDashboard() {
                       boxShadow: isCurrent ? `0 0 15px ${level.color}30` : 'none'
                     }}
                   >
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '0.85rem', color: level.color, fontWeight: 'bold' }}>
-                          {level.range}
-                        </span>
-                        <span style={{ fontSize: '0.9rem', color: '#fff', fontWeight: '700' }}>
-                          {level.label}
-                        </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'nowrap', marginBottom: '3px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap', minWidth: 0 }}>
+                          <span style={{ fontSize: '0.85rem', color: level.color, fontWeight: '800', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            {level.range}
+                          </span>
+                          <span style={{ fontSize: '0.88rem', color: '#fff', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                            {level.label}
+                          </span>
+                        </div>
                         {isCurrent && (
                           <span style={{
-                            fontSize: '0.65rem',
+                            fontSize: '0.62rem',
                             background: level.color,
                             color: '#000',
                             fontWeight: '900',
-                            padding: '2px 6px',
-                            borderRadius: '4px'
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                            boxShadow: `0 2px 8px ${level.color}50`
                           }}>
                             DEIN STAND ({metrics.kfa}%)
                           </span>
                         )}
                       </div>
-                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '3px', display: 'block' }}>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block' }}>
                         {level.desc}
                       </span>
                     </div>
