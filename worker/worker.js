@@ -1006,6 +1006,12 @@ async function handleTelegramUpdate(request, env) {
     if (!update.message) return new Response('OK');
 
     const chatId = update.message.chat.id;
+    const ALLOWED_CHAT_ID = "1917004037"; // Lock to Fatih's Telegram Chat ID
+
+    if (String(chatId) !== ALLOWED_CHAT_ID) {
+      await sendTelegramMessage(chatId, "🚫 Zugriff verweigert. Dieser Bot ist privat und für ein anderes Konto konfiguriert.", env);
+      return new Response('OK');
+    }
 
     // Save Chat ID for future reminders
     await env.DB.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('telegram_chat_id', ?)")
@@ -1020,6 +1026,7 @@ async function handleTelegramUpdate(request, env) {
     let userText = update.message.text || update.message.caption || "";
     let audioData = null;
     let photoData = null;
+    let telegramPhotoUrl = null;
 
     // Handle Photo Messages
     if (update.message.photo && update.message.photo.length > 0) {
@@ -1027,7 +1034,34 @@ async function handleTelegramUpdate(request, env) {
       await sendTelegramAction(chatId, 'typing', env);
       const photos = update.message.photo;
       const largestPhoto = photos[photos.length - 1];
-      photoData = await downloadTelegramFile(largestPhoto.file_id, env);
+
+      try {
+        const getFileUrl = `https://api.telegram.org/bot${env.PLANNER_TELEGRAM}/getFile?file_id=${largestPhoto.file_id}`;
+        const res = await fetch(getFileUrl);
+        const fileData = await res.json();
+        if (fileData.ok) {
+          const filePath = fileData.result.file_path;
+          const downloadUrl = `https://api.telegram.org/file/bot${env.PLANNER_TELEGRAM}/${filePath}`;
+          const fileRes = await fetch(downloadUrl);
+          const arrayBuffer = await fileRes.arrayBuffer();
+
+          // Upload to R2 bucket ASSETS
+          const filename = `photo_${Date.now()}_tg.jpg`;
+          if (env.ASSETS) {
+            await env.ASSETS.put(filename, arrayBuffer, {
+              httpMetadata: { contentType: 'image/jpeg' },
+            });
+            telegramPhotoUrl = `https://planner-ai.f-klavun.workers.dev/media/${filename}`;
+            console.log('Telegram photo successfully uploaded to R2:', telegramPhotoUrl);
+          }
+
+          // Also set photoData for Gemini parsing (Base64)
+          photoData = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        }
+      } catch (e) {
+        console.error('Failed to upload telegram photo to R2:', e.message);
+      }
+
       if (!userText) userText = "[Photo - See Image]";
     } else if (update.message.voice) {
       console.log('Voice message detected!');
@@ -1048,9 +1082,9 @@ async function handleTelegramUpdate(request, env) {
       if (aiResponse.type === 'water_log' || aiResponse.amount_ml) {
         await handleWaterLogTelegram(chatId, aiResponse, env);
       } else if (aiResponse.type === 'food_log' || aiResponse.calories || aiResponse.meal_name) {
-        await handleFoodLogTelegram(chatId, aiResponse, env);
+        await handleFoodLogTelegram(chatId, aiResponse, env, telegramPhotoUrl);
       } else if (aiResponse.type === 'body_metrics' || aiResponse.weight || aiResponse.neck || aiResponse.waist) {
-        await handleBodyMetricsTelegram(chatId, aiResponse, env);
+        await handleBodyMetricsTelegram(chatId, aiResponse, env, telegramPhotoUrl);
       } else if (aiResponse.task) {
         const time = aiResponse.time || '09:00';
         const type = aiResponse.type || inferType(time);
@@ -1142,9 +1176,17 @@ async function sendMorningBriefing(chatId, env) {
 
   let routinesMsg = "";
   try {
-    const { results } = await env.DB.prepare("SELECT text, time FROM tasks WHERE is_routine = 1 ORDER BY time ASC").all();
+    const { results } = await env.DB.prepare("SELECT text, time, weekdays FROM tasks WHERE is_routine = 1 ORDER BY time ASC").all();
     if (results && results.length > 0) {
-      routinesMsg = results.map(r => `• ${r.time || '08:00'} - ${r.text}`).join('\n');
+      const now = new Date();
+      const dow = now.getDay();
+      const currentDow = dow === 0 ? 7 : dow; // Map Sunday from 0 to 7
+      const filtered = results.filter(r => {
+        if (!r.weekdays) return true;
+        const days = String(r.weekdays).split(',').map(d => d.trim());
+        return days.includes(String(currentDow));
+      });
+      routinesMsg = filtered.map(r => `• ${r.time || '08:00'} - ${r.text}`).join('\n');
     }
   } catch (e) {}
 
@@ -1170,10 +1212,18 @@ async function sendEveningRecap(chatId, env) {
   let completedCount = 0;
   let totalCount = 0;
   try {
-    const { results } = await env.DB.prepare("SELECT completed FROM tasks WHERE is_routine = 1").all();
+    const { results } = await env.DB.prepare("SELECT completed, weekdays FROM tasks WHERE is_routine = 1").all();
     if (results) {
-      totalCount = results.length;
-      completedCount = results.filter(r => r.completed === 1).length;
+      const now = new Date();
+      const dow = now.getDay();
+      const currentDow = dow === 0 ? 7 : dow; // Map Sunday from 0 to 7
+      const filtered = results.filter(r => {
+        if (!r.weekdays) return true;
+        const days = String(r.weekdays).split(',').map(d => d.trim());
+        return days.includes(String(currentDow));
+      });
+      totalCount = filtered.length;
+      completedCount = filtered.filter(r => r.completed === 1).length;
     }
   } catch (e) {}
 
@@ -1219,7 +1269,7 @@ async function sendEveningRecap(chatId, env) {
 }
 
 // --- Food Log Handler for Telegram ---
-async function handleFoodLogTelegram(chatId, foodLog, env) {
+async function handleFoodLogTelegram(chatId, foodLog, env, photoUrl = null) {
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS daily_macro_logs (
       id TEXT PRIMARY KEY,
@@ -1246,10 +1296,10 @@ async function handleFoodLogTelegram(chatId, foodLog, env) {
   const mealName = foodLog.meal_name || "Mahlzeit";
 
   await env.DB.prepare(
-    `INSERT INTO daily_macro_logs (id, date, time, meal_name, calories, protein, fat, carbs, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO daily_macro_logs (id, date, time, meal_name, calories, protein, fat, carbs, photo_url, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   )
-    .bind(mealId, todayStr, nowTime, mealName, calories, protein, fat, carbs, new Date().toISOString())
+    .bind(mealId, todayStr, nowTime, mealName, calories, protein, fat, carbs, photoUrl, new Date().toISOString())
     .run();
 
   const totals = await env.DB.prepare(
@@ -1287,7 +1337,7 @@ async function handleFoodLogTelegram(chatId, foodLog, env) {
 }
 
 // --- Body Metrics Handler for Telegram Voice & Text ---
-async function handleBodyMetricsTelegram(chatId, metricsInput, env) {
+async function handleBodyMetricsTelegram(chatId, metricsInput, env, photoUrl = null) {
   await env.DB.prepare(
     `CREATE TABLE IF NOT EXISTS body_metrics_inputs (
       id TEXT PRIMARY KEY DEFAULT 'user_default',
@@ -1380,15 +1430,16 @@ async function handleBodyMetricsTelegram(chatId, metricsInput, env) {
   try { await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN hip REAL").run(); } catch (e) {}
 
   await env.DB.prepare(
-    `INSERT INTO workout_sessions (date, duration_seconds, body_weight, photo_url, body_fat, neck, waist, hip) VALUES (?, 0, ?, NULL, ?, ?, ?, ?)
+    `INSERT INTO workout_sessions (date, duration_seconds, body_weight, photo_url, body_fat, neck, waist, hip) VALUES (?, 0, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(date) DO UPDATE SET
        body_weight = excluded.body_weight,
        body_fat = excluded.body_fat,
        neck = excluded.neck,
        waist = excluded.waist,
-       hip = excluded.hip`
+       hip = excluded.hip,
+       photo_url = COALESCE(excluded.photo_url, workout_sessions.photo_url)`
   )
-    .bind(todayStr, weight, kfaFormatted, neck, waist, hip)
+    .bind(todayStr, weight, photoUrl, kfaFormatted, neck, waist, hip)
     .run();
 
   let msg = `📊 V-Shape Körpermessung erfasst!\n\n`;

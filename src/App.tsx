@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Check, Edit2, Trash2, X, Hexagon, CircleDot, Shield, Waves, BookOpen, ListChecks, Lock, LogOut } from 'lucide-react';
 import type { Routine, OneTimeTask, HistoryRecord } from './types';
 import * as plannerApi from './services/plannerApi';
-import { getTodayStr, getDateStr, calculateLevel, getHistoryGraphData, checkIsGridBroken, formatWeekdays } from './utils/habitUtils';
+import { getTodayStr, getDateStr, calculateLevel, getHistoryGraphData, checkIsGridBroken, formatWeekdays, getDayOfWeek, isRoutineActiveOnDay } from './utils/habitUtils';
 import { getDailyQuote } from './data/quotes';
 import { useAudioDrone } from './hooks/useAudioDrone';
 import { EmotionalScale } from './components/EmotionalScale';
@@ -135,8 +135,10 @@ function App() {
   // Save history helper (persists to the shared planner backend)
   const saveHistory = async (currentRoutines: Routine[], journal?: string) => {
     const today = getTodayStr();
-    const completedCount = currentRoutines.filter(r => r.completed).length;
-    const totalCount = currentRoutines.length;
+    const todayDow = getDayOfWeek();
+    const activeRoutines = currentRoutines.filter(r => isRoutineActiveOnDay(r.weekdays, todayDow));
+    const completedCount = activeRoutines.filter(r => r.completed).length;
+    const totalCount = activeRoutines.length;
     const level = calculateLevel(completedCount, totalCount);
     const journalToSave = journal !== undefined ? journal : history[today]?.journal;
 
@@ -150,6 +152,10 @@ function App() {
 
   const toggleRoutine = async (id: string) => {
     if (isGridBroken) return; // Block actions if broken
+    const r = routines.find(x => x.id === id);
+    if (!r) return;
+    if (!isRoutineActiveOnDay(r.weekdays, getDayOfWeek())) return;
+
     const today = getTodayStr();
     const newRoutines = routines.map(r =>
       r.id === id ? { ...r, completed: !r.completed, lastCompletedDate: !r.completed ? today : r.lastCompletedDate } : r
@@ -310,8 +316,10 @@ function App() {
     }
   };
 
-  const completedCount = routines.filter(r => r.completed).length;
-  const totalCount = routines.length;
+  const todayDow = getDayOfWeek();
+  const activeRoutines = routines.filter(r => isRoutineActiveOnDay(r.weekdays, todayDow));
+  const completedCount = activeRoutines.filter(r => r.completed).length;
+  const totalCount = activeRoutines.length;
   const progressPercentage = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
 
   const circumference = 2 * Math.PI * 65;
@@ -502,35 +510,39 @@ function App() {
                   </h3>
                   <div style={{ marginTop: '16px' }}>
                     {currentRoutines.length === 0 ? <p style={{color: 'var(--text-subtle)', fontStyle: 'italic', fontSize: '0.9rem'}}>Noch keine Rituale.</p> : null}
-                    {currentRoutines.map(routine => (
-                      <div
-                        key={routine.id}
-                        className={`routine-item ${routine.completed ? 'completed' : ''}`}
-                        onClick={() => toggleRoutine(routine.id)}
-                      >
-                        <div className="checkbox">
-                          {routine.completed && <Check size={13} className="check-icon" color="#ffffff" strokeWidth={3} />}
-                        </div>
+                    {currentRoutines.map(routine => {
+                      const isActiveToday = isRoutineActiveOnDay(routine.weekdays, todayDow);
+                      return (
+                        <div
+                          key={routine.id}
+                          className={`routine-item ${routine.completed ? 'completed' : ''} ${!isActiveToday ? 'inactive-today' : ''}`}
+                          onClick={() => isActiveToday && toggleRoutine(routine.id)}
+                        >
+                          <div className="checkbox" style={!isActiveToday ? { cursor: 'not-allowed' } : {}}>
+                            {routine.completed && <Check size={13} className="check-icon" color="#ffffff" strokeWidth={3} />}
+                          </div>
 
-                        <div className="routine-info">
-                          <div className="routine-title">{routine.title}</div>
-                          <div className="routine-badges">
-                            <span className="badge-pill time">{routine.time}</span>
-                            {routine.weekdays && <span className="badge-pill days">{formatWeekdays(routine.weekdays)}</span>}
+                          <div className="routine-info">
+                            <div className="routine-title" style={!isActiveToday ? { color: 'var(--text-subtle)', textDecoration: 'none' } : {}}>{routine.title}</div>
+                            <div className="routine-badges">
+                              <span className="badge-pill time">{routine.time}</span>
+                              {routine.weekdays && <span className="badge-pill days">{formatWeekdays(routine.weekdays)}</span>}
+                              {!isActiveToday && <span className="badge-pill days" style={{ borderColor: 'rgba(244, 63, 94, 0.2)', color: 'var(--heroui-rose)', background: 'rgba(244, 63, 94, 0.05)' }}>Pause</span>}
+                            </div>
+                          </div>
+
+                          <div className="routine-actions">
+                            {routine.mediaUrl && (
+                              <button className="action-btn" onClick={(e) => playVideo(e, routine)} title="Video ansehen">
+                                <Eye size={14} />
+                              </button>
+                            )}
+                            <button className="action-btn" onClick={(e) => handleEditRoutine(e, routine)} title="Bearbeiten"><Edit2 size={13} /></button>
+                            <button className="action-btn delete" onClick={(e) => handleDeleteRoutine(e, routine.id)} title="Löschen"><Trash2 size={13} /></button>
                           </div>
                         </div>
-
-                        <div className="routine-actions">
-                          {routine.mediaUrl && (
-                            <button className="action-btn" onClick={(e) => playVideo(e, routine)} title="Video ansehen">
-                              <Eye size={14} />
-                            </button>
-                          )}
-                          <button className="action-btn" onClick={(e) => handleEditRoutine(e, routine)} title="Bearbeiten"><Edit2 size={13} /></button>
-                          <button className="action-btn delete" onClick={(e) => handleDeleteRoutine(e, routine.id)} title="Löschen"><Trash2 size={13} /></button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* The Grimoire specifically for Evening Rites */}

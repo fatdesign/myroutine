@@ -71,3 +71,22 @@ export const checkIsGridBroken = (history: HistoryRecord): boolean => {
 
   return false;
 };
+
+export const getDayOfWeek = (date: Date = new Date()): number => {
+  const berlinDateStr = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Berlin',
+    weekday: 'short'
+  }).format(date);
+
+  const mapping: Record<string, number> = {
+    'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6, 'Sun': 7
+  };
+  return mapping[berlinDateStr] || 1;
+};
+
+export const isRoutineActiveOnDay = (weekdays?: string, dayOfWeek?: number): boolean => {
+  if (!weekdays) return true;
+  const activeDays = weekdays.split(',').map(d => d.trim());
+  const currentDowStr = String(dayOfWeek ?? getDayOfWeek());
+  return activeDays.includes(currentDowStr);
+};

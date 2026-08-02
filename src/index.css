@@ -352,6 +352,23 @@ h1, h2, h3, h4 {
   color: var(--text-muted);
 }
 
+.routine-item.inactive-today {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.routine-item.inactive-today:hover {
+  background: rgba(39, 39, 42, 0.4);
+  border-color: rgba(255, 255, 255, 0.05);
+  transform: none;
+}
+
+.routine-item.inactive-today .checkbox {
+  border-color: #3f3f46;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* HeroUI Squircle Checkbox */
 .checkbox {
   width: 22px;
