@@ -625,7 +625,7 @@ function App() {
             <div className="glass-panel">
               <h3 className="section-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ListChecks className="lucide-icon" size={18} /> Heutige Aufgaben
+                  <ListChecks className="lucide-icon" size={18} /> Aufgaben
                 </span>
                 <button className="action-btn" onClick={openNewTaskModal} title="Neue Aufgabe" style={{ color: 'var(--heroui-violet-light)' }}>+</button>
               </h3>
