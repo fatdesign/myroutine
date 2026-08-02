@@ -10,45 +10,48 @@ export interface AudioTrack {
   category: string;
 }
 
+const baseUrl = import.meta.env.BASE_URL || '/';
+const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+
 const DEFAULT_TRACKS: AudioTrack[] = [
   {
     id: 'tape-8',
     title: 'Tape #8: Problem Solving',
     subtitle: 'Wave II: Threshold',
-    fileName: 'GATEWAY TAPE #8 PROBLEM SOLVING ｜ WAVE II： THRESHOLD ｜ #gatewayexperience #gatewaytapes #hemisync.mp3',
-    url: '/audio/GATEWAY TAPE #8 PROBLEM SOLVING ｜ WAVE II： THRESHOLD ｜ #gatewayexperience #gatewaytapes #hemisync.mp3',
+    fileName: 'tape_8_problem_solving.mp3',
+    url: `${cleanBaseUrl}audio/tape_8_problem_solving.mp3`,
     category: 'Wave II'
   },
   {
     id: 'tape-9',
     title: 'Tape #9: One-Month Patterning',
     subtitle: 'Wave II: Threshold',
-    fileName: 'GATEWAY TAPE #9 ONE-MONTH PATTERNING _ WAVE II_ THRESHOLD _ #gatewayexperience #hemisync.mp3',
-    url: '/audio/GATEWAY TAPE #9 ONE-MONTH PATTERNING _ WAVE II_ THRESHOLD _ #gatewayexperience #hemisync.mp3',
+    fileName: 'tape_9_one_month_patterning.mp3',
+    url: `${cleanBaseUrl}audio/tape_9_one_month_patterning.mp3`,
     category: 'Wave II'
   },
   {
     id: 'tape-11',
     title: 'Tape #11: Energy Bar Tool (EBT)',
     subtitle: 'Wave II: Threshold',
-    fileName: 'GATEWAY TAPE #11 ENERGY BAR TOOL (EBT) ｜ WAVE II： THRESHOLD ｜ #gatewayexperience #hemisync.mp3',
-    url: '/audio/GATEWAY TAPE #11 ENERGY BAR TOOL (EBT) ｜ WAVE II： THRESHOLD ｜ #gatewayexperience #hemisync.mp3',
+    fileName: 'tape_11_energy_bar_tool.mp3',
+    url: `${cleanBaseUrl}audio/tape_11_energy_bar_tool.mp3`,
     category: 'Wave II'
   },
   {
     id: 'tape-13',
     title: 'Tape #13: Liftoff',
     subtitle: 'Wave III: Freedom',
-    fileName: 'GATEWAY TAPE #13 LIFTOFF ｜ WAVE III： FREEDOM ｜ #gatewayexperience #gatewaytapes #hemisync.mp3',
-    url: '/audio/GATEWAY TAPE #13 LIFTOFF ｜ WAVE III： FREEDOM ｜ #gatewayexperience #gatewaytapes #hemisync.mp3',
+    fileName: 'tape_13_liftoff.mp3',
+    url: `${cleanBaseUrl}audio/tape_13_liftoff.mp3`,
     category: 'Wave III'
   },
   {
     id: 'tape-19',
     title: 'Tape #19: One-Year Patterning',
     subtitle: 'Wave IV: Adventure',
-    fileName: 'GATEWAY TAPE #19 ONE-YEAR PATTERNING ｜ WAVE IV： ADVENTURE ｜ #gatewayexperience #hemisync.mp3',
-    url: '/audio/GATEWAY TAPE #19 ONE-YEAR PATTERNING ｜ WAVE IV： ADVENTURE ｜ #gatewayexperience #hemisync.mp3',
+    fileName: 'tape_19_one_year_patterning.mp3',
+    url: `${cleanBaseUrl}audio/tape_19_one_year_patterning.mp3`,
     category: 'Wave IV'
   }
 ];
@@ -78,7 +81,12 @@ export function AudioDashboard() {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().then(() => setIsPlaying(true)).catch(err => console.warn('Audio play error:', err));
+      audioRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch(err => {
+          console.warn('Audio play error:', err);
+          setIsPlaying(false);
+        });
     }
   };
 
@@ -87,7 +95,12 @@ export function AudioDashboard() {
     setIsPlaying(true);
     setTimeout(() => {
       if (audioRef.current) {
-        audioRef.current.play().catch(err => console.warn('Play error:', err));
+        audioRef.current.play()
+          .then(() => setIsPlaying(true))
+          .catch(err => {
+            console.warn('Play error:', err);
+            setIsPlaying(false);
+          });
       }
     }, 100);
   };
@@ -173,7 +186,7 @@ export function AudioDashboard() {
       {/* Hidden HTML5 Audio Element */}
       <audio
         ref={audioRef}
-        src={currentTrack ? encodeURI(currentTrack.url) : ''}
+        src={currentTrack ? currentTrack.url : ''}
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleNext}
         onLoadedMetadata={handleTimeUpdate}
@@ -191,7 +204,7 @@ export function AudioDashboard() {
           position: 'relative',
           overflow: 'hidden'
         }}>
-          {/* Subtle Ambient Glow */}
+          {/* Ambient Glow */}
           <div style={{
             position: 'absolute',
             top: '-50px',
