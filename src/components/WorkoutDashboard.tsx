@@ -911,19 +911,6 @@ export function WorkoutDashboard() {
             const metrics = calculateBodyFatMetrics();
             const barPercent = Math.min(100, Math.max(0, ((metrics.kfa - 2) / (35 - 2)) * 100));
 
-            const kfaLevels = [
-              { min: 2, max: 5, label: 'Essentiell', range: '2–5%', color: '#eab308', desc: 'Überlebenswichtiges Grundfett' },
-              { min: 6, max: 13, label: 'Athlet (V-Shape)', range: '6–13%', color: '#22c55e', desc: 'Optimaler Bereich für V-Shape & Bauchmuskeln' },
-              { min: 14, max: 17, label: 'Fitness', range: '14–17%', color: '#06b6d4', desc: 'Gute sportliche Definition' },
-              { min: 18, max: 24, label: 'Durchschnitt', range: '18–24%', color: '#f97316', desc: 'Normaler, gesunder Bereich' },
-              { min: 25, max: 50, label: 'Höher', range: '25%+', color: '#ef4444', desc: 'Reduktion empfohlen' },
-            ];
-
-            const currentLevelIndex = kfaLevels.findIndex(l => {
-              if (l.max === 50) return metrics.kfa >= 25;
-              return metrics.kfa >= l.min && metrics.kfa <= l.max;
-            });
-
             return (
               <div className="glass-panel" style={{
                 marginBottom: '24px',
