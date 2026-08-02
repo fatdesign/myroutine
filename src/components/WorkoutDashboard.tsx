@@ -4,7 +4,7 @@ import { getTodayStr, getDateStr } from '../utils/habitUtils';
 import { getStoredCalculatorInputs, calculateMetricsFromInputs } from '../utils/bodyMetrics';
 import { fetchWorkoutHistory, upsertWorkoutHistory, fetchWorkoutSessions, upsertWorkoutSession, uploadImage, fetchBodyMetricsInputs, upsertBodyMetricsInputs } from '../services/plannerApi';
 import type { WorkoutHistoryRecord, WorkoutSessionRecord, WorkoutSession } from '../types';
-import { Check, Dumbbell, Timer, Flame, CalendarDays, Activity, Play, StopCircle, Upload, Weight, Camera, X, Save, Trophy, Sparkles, TrendingDown } from 'lucide-react';
+import { Check, Dumbbell, Timer, Flame, CalendarDays, Activity, Play, StopCircle, Upload, Weight, Camera, X, Save, Trophy, Sparkles, TrendingDown, Info } from 'lucide-react';
 
 export function WorkoutDashboard() {
   const [viewMode, setViewMode] = useState<'today' | 'calendar'>('today');
@@ -13,6 +13,7 @@ export function WorkoutDashboard() {
   const [sessions, setSessions] = useState<WorkoutSessionRecord>({});
   const [selectedHistoryDate, setSelectedHistoryDate] = useState<string | null>(null);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
+  const [showKfaLevelsModal, setShowKfaLevelsModal] = useState(false);
 
   // Vision / Motivations-Ziel Photo State
   const [visionImageUrl, setVisionImageUrl] = useState<string | null>(() => {
@@ -911,11 +912,11 @@ export function WorkoutDashboard() {
             const barPercent = Math.min(100, Math.max(0, ((metrics.kfa - 2) / (35 - 2)) * 100));
 
             const kfaLevels = [
-              { min: 2, max: 5, label: 'Essentiell', range: '2–5%', color: '#eab308' },
-              { min: 6, max: 13, label: 'Athlet (V-Shape)', range: '6–13%', color: '#22c55e' },
-              { min: 14, max: 17, label: 'Fitness', range: '14–17%', color: '#06b6d4' },
-              { min: 18, max: 24, label: 'Durchschnitt', range: '18–24%', color: '#f97316' },
-              { min: 25, max: 50, label: 'Höher', range: '25%+', color: '#ef4444' },
+              { min: 2, max: 5, label: 'Essentiell', range: '2–5%', color: '#eab308', desc: 'Überlebenswichtiges Grundfett' },
+              { min: 6, max: 13, label: 'Athlet (V-Shape)', range: '6–13%', color: '#22c55e', desc: 'Optimaler Bereich für V-Shape & Bauchmuskeln' },
+              { min: 14, max: 17, label: 'Fitness', range: '14–17%', color: '#06b6d4', desc: 'Gute sportliche Definition' },
+              { min: 18, max: 24, label: 'Durchschnitt', range: '18–24%', color: '#f97316', desc: 'Normaler, gesunder Bereich' },
+              { min: 25, max: 50, label: 'Höher', range: '25%+', color: '#ef4444', desc: 'Reduktion empfohlen' },
             ];
 
             const currentLevelIndex = kfaLevels.findIndex(l => {
@@ -1030,7 +1031,7 @@ export function WorkoutDashboard() {
                         </button>
                       </div>
 
-                      {/* Visual KFA Color Bar & Responsive Levels */}
+                      {/* Minimalist Interactive Visual KFA Color Bar */}
                       <div style={{
                         background: 'rgba(0,0,0,0.35)',
                         padding: '16px',
@@ -1040,30 +1041,55 @@ export function WorkoutDashboard() {
                         flexDirection: 'column',
                         gap: '12px'
                       }}>
-                        {/* Header & Status Pill */}
+                        {/* Header & Status Pill + Info Modal Trigger */}
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '600' }}>
                             KFA Levels & Einordnung
                           </span>
-                          <span style={{
-                            fontSize: '0.72rem',
-                            fontWeight: 'bold',
-                            padding: '3px 10px',
-                            borderRadius: '20px',
-                            background: `${metrics.categoryColor}20`,
-                            color: metrics.categoryColor,
-                            border: `1px solid ${metrics.categoryColor}50`,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: metrics.categoryColor, boxShadow: `0 0 6px ${metrics.categoryColor}` }} />
-                            Stand: {metrics.category}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <button
+                              type="button"
+                              onClick={() => setShowKfaLevelsModal(true)}
+                              style={{
+                                background: 'rgba(124, 58, 237, 0.15)',
+                                border: '1px solid var(--heroui-violet)',
+                                color: '#c084fc',
+                                fontSize: '0.72rem',
+                                fontWeight: 'bold',
+                                padding: '3px 8px',
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Info size={13} /> Level Details
+                            </button>
+                            <span style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 'bold',
+                              padding: '3px 10px',
+                              borderRadius: '20px',
+                              background: `${metrics.categoryColor}20`,
+                              color: metrics.categoryColor,
+                              border: `1px solid ${metrics.categoryColor}50`,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: metrics.categoryColor, boxShadow: `0 0 6px ${metrics.categoryColor}` }} />
+                              Stand: {metrics.category}
+                            </span>
+                          </div>
                         </div>
 
-                        {/* Progress Bar Container with Floating Marker & Ticks */}
-                        <div style={{ position: 'relative', marginTop: '18px', marginBottom: '4px' }}>
+                        {/* Interactive Progress Bar Container with Floating Marker & Ticks */}
+                        <div 
+                          onClick={() => setShowKfaLevelsModal(true)}
+                          title="Klicken für KFA Level Übersicht"
+                          style={{ position: 'relative', marginTop: '18px', marginBottom: '4px', cursor: 'pointer' }}
+                        >
                           {/* Floating Pointer Pill */}
                           <div style={{
                             position: 'absolute',
@@ -1110,11 +1136,11 @@ export function WorkoutDashboard() {
                             background: '#222',
                             boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)'
                           }}>
-                            <div style={{ flex: '4', background: '#eab308' }} title="Essentiell (2-5%)" />
-                            <div style={{ flex: '8', background: '#22c55e' }} title="Athlet (6-13%)" />
-                            <div style={{ flex: '4', background: '#06b6d4' }} title="Fitness (14-17%)" />
-                            <div style={{ flex: '7', background: '#f97316' }} title="Durchschnitt (18-24%)" />
-                            <div style={{ flex: '10', background: '#ef4444' }} title="Höherer KFA (25%+)" />
+                            <div style={{ flex: '4', background: '#eab308' }} title="Essentiell (2-5%) - Tippen für Info" />
+                            <div style={{ flex: '8', background: '#22c55e' }} title="Athlet (6-13%) - Tippen für Info" />
+                            <div style={{ flex: '4', background: '#06b6d4' }} title="Fitness (14-17%) - Tippen für Info" />
+                            <div style={{ flex: '7', background: '#f97316' }} title="Durchschnitt (18-24%) - Tippen für Info" />
+                            <div style={{ flex: '10', background: '#ef4444' }} title="Höherer KFA (25%+) - Tippen für Info" />
 
                             {/* Pointer Line */}
                             <div style={{
@@ -1147,62 +1173,6 @@ export function WorkoutDashboard() {
                             <span style={{ position: 'absolute', left: '69.7%', transform: 'translateX(-50%)' }}>25%</span>
                             <span style={{ position: 'absolute', right: '0%' }}>35%+</span>
                           </div>
-                        </div>
-
-                        {/* Responsive Legend Cards Grid */}
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fit, minmax(95px, 1fr))',
-                          gap: '6px',
-                          marginTop: '2px'
-                        }}>
-                          {kfaLevels.map((level, idx) => {
-                            const isActive = idx === currentLevelIndex;
-                            return (
-                              <div
-                                key={level.label}
-                                style={{
-                                  background: isActive ? `${level.color}25` : 'rgba(255, 255, 255, 0.03)',
-                                  border: isActive ? `1.5px solid ${level.color}` : '1px solid rgba(255, 255, 255, 0.06)',
-                                  borderRadius: '8px',
-                                  padding: '6px 8px',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  gap: '2px',
-                                  transition: 'all 0.2s ease',
-                                  boxShadow: isActive ? `0 0 10px ${level.color}30` : 'none'
-                                }}
-                              >
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                                  <span style={{ fontSize: '0.68rem', color: level.color, fontWeight: 'bold' }}>
-                                    {level.range}
-                                  </span>
-                                  {isActive && (
-                                    <span style={{
-                                      fontSize: '0.58rem',
-                                      background: level.color,
-                                      color: '#000',
-                                      fontWeight: '900',
-                                      padding: '1px 4px',
-                                      borderRadius: '4px'
-                                    }}>
-                                      DU
-                                    </span>
-                                  )}
-                                </div>
-                                <span style={{
-                                  fontSize: '0.72rem',
-                                  color: isActive ? '#fff' : 'var(--text-muted)',
-                                  fontWeight: isActive ? '700' : '500',
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis'
-                                }}>
-                                  {level.label}
-                                </span>
-                              </div>
-                            );
-                          })}
                         </div>
                       </div>
 
@@ -1717,6 +1687,112 @@ export function WorkoutDashboard() {
               style={{ padding: '6px 18px', fontSize: '0.8rem', borderRadius: '12px', background: 'var(--heroui-violet)' }}
             >
               Weiter
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* KFA Levels Pop-Up Modal */}
+      {showKfaLevelsModal && (
+        <div className="modal-overlay" onClick={() => setShowKfaLevelsModal(false)} style={{ zIndex: 10000 }}>
+          <div className="glass-panel modal-content" onClick={e => e.stopPropagation()} style={{
+            maxWidth: '480px',
+            width: '90%',
+            padding: '24px',
+            borderRadius: '20px',
+            background: 'rgba(18, 18, 26, 0.96)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid var(--heroui-violet)',
+            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.6)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Flame size={22} style={{ color: 'var(--heroui-violet-light)' }} />
+                <h3 style={{ color: '#fff', fontSize: '1.2rem', margin: 0, fontWeight: 'bold' }}>
+                  KFA Zonen & Einordnung 🎯
+                </h3>
+              </div>
+              <button 
+                className="action-btn" 
+                onClick={() => setShowKfaLevelsModal(false)}
+                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', borderRadius: '50%', padding: '6px', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '16px' }}>
+              Tippe auf eine beliebige Farbe der Skala, um deine Einordnung einzusehen:
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+              {[
+                { label: 'Essentiell', range: '2–5%', color: '#eab308', desc: 'Überlebenswichtiges Grundfett' },
+                { label: 'Athlet (V-Shape)', range: '6–13%', color: '#22c55e', desc: 'Optimaler Bereich für V-Shape & Bauchmuskeln' },
+                { label: 'Fitness', range: '14–17%', color: '#06b6d4', desc: 'Gute sportliche Definition' },
+                { label: 'Durchschnitt', range: '18–24%', color: '#f97316', desc: 'Normaler, gesunder Bereich' },
+                { label: 'Höher', range: '25%+', color: '#ef4444', desc: 'Reduktion empfohlen' },
+              ].map((level) => {
+                const metrics = calculateBodyFatMetrics();
+                const isCurrent = (
+                  (level.range === '2–5%' && metrics.kfa >= 2 && metrics.kfa < 6) ||
+                  (level.range === '6–13%' && metrics.kfa >= 6 && metrics.kfa < 14) ||
+                  (level.range === '14–17%' && metrics.kfa >= 14 && metrics.kfa < 18) ||
+                  (level.range === '18–24%' && metrics.kfa >= 18 && metrics.kfa < 25) ||
+                  (level.range === '25%+' && metrics.kfa >= 25)
+                );
+
+                return (
+                  <div
+                    key={level.label}
+                    style={{
+                      background: isCurrent ? `${level.color}20` : 'rgba(255, 255, 255, 0.03)',
+                      border: isCurrent ? `1.5px solid ${level.color}` : '1px solid rgba(255, 255, 255, 0.06)',
+                      borderRadius: '12px',
+                      padding: '12px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      boxShadow: isCurrent ? `0 0 15px ${level.color}30` : 'none'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.85rem', color: level.color, fontWeight: 'bold' }}>
+                          {level.range}
+                        </span>
+                        <span style={{ fontSize: '0.9rem', color: '#fff', fontWeight: '700' }}>
+                          {level.label}
+                        </span>
+                        {isCurrent && (
+                          <span style={{
+                            fontSize: '0.65rem',
+                            background: level.color,
+                            color: '#000',
+                            fontWeight: '900',
+                            padding: '2px 6px',
+                            borderRadius: '4px'
+                          }}>
+                            DEIN STAND ({metrics.kfa}%)
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '3px', display: 'block' }}>
+                        {level.desc}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              className="btn-primary"
+              onClick={() => setShowKfaLevelsModal(false)}
+              style={{ width: '100%', padding: '12px', fontSize: '0.9rem', background: 'var(--heroui-violet)', borderRadius: '12px', fontWeight: 'bold' }}
+            >
+              Verstanden & Schließen
             </button>
           </div>
         </div>
