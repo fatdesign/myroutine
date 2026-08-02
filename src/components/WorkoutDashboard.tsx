@@ -857,6 +857,19 @@ export function WorkoutDashboard() {
             const metrics = calculateBodyFatMetrics();
             const barPercent = Math.min(100, Math.max(0, ((metrics.kfa - 2) / (35 - 2)) * 100));
 
+            const kfaLevels = [
+              { min: 2, max: 5, label: 'Essentiell', range: '2–5%', color: '#eab308' },
+              { min: 6, max: 13, label: 'Athlet (V-Shape)', range: '6–13%', color: '#22c55e' },
+              { min: 14, max: 17, label: 'Fitness', range: '14–17%', color: '#06b6d4' },
+              { min: 18, max: 24, label: 'Durchschnitt', range: '18–24%', color: '#f97316' },
+              { min: 25, max: 50, label: 'Höher', range: '25%+', color: '#ef4444' },
+            ];
+
+            const currentLevelIndex = kfaLevels.findIndex(l => {
+              if (l.max === 50) return metrics.kfa >= 25;
+              return metrics.kfa >= l.min && metrics.kfa <= l.max;
+            });
+
             return (
               <div className="glass-panel" style={{
                 marginBottom: '24px',
@@ -964,36 +977,179 @@ export function WorkoutDashboard() {
                         </button>
                       </div>
 
-                      {/* Visual KFA Color Bar */}
-                      <div style={{ background: 'rgba(0,0,0,0.3)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ position: 'relative', height: '20px', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 'bold' }}>
-                          <span style={{ position: 'absolute', left: '0%' }}>2%</span>
-                          <span style={{ position: 'absolute', left: '12.1%', color: '#22c55e', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>6% Athlet (V-Shape)</span>
-                          <span style={{ position: 'absolute', left: '36.4%', color: '#06b6d4', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>14% Fitness</span>
-                          <span style={{ position: 'absolute', left: '48.5%', color: '#f97316', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>18% Ø</span>
-                          <span style={{ position: 'absolute', left: '69.7%', color: '#ef4444', transform: 'translateX(-50%)', whiteSpace: 'nowrap' }}>25%+</span>
+                      {/* Visual KFA Color Bar & Responsive Levels */}
+                      <div style={{
+                        background: 'rgba(0,0,0,0.35)',
+                        padding: '16px',
+                        borderRadius: '14px',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px'
+                      }}>
+                        {/* Header & Status Pill */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+                            KFA Levels & Einordnung
+                          </span>
+                          <span style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 'bold',
+                            padding: '3px 10px',
+                            borderRadius: '20px',
+                            background: `${metrics.categoryColor}20`,
+                            color: metrics.categoryColor,
+                            border: `1px solid ${metrics.categoryColor}50`,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: metrics.categoryColor, boxShadow: `0 0 6px ${metrics.categoryColor}` }} />
+                            Stand: {metrics.category}
+                          </span>
                         </div>
 
-                        {/* Multi-segment Color Bar */}
-                        <div style={{ position: 'relative', height: '14px', borderRadius: '7px', overflow: 'hidden', display: 'flex', background: '#222' }}>
-                          <div style={{ flex: '4', background: '#eab308' }} title="Essentiell (2-5%)" />
-                          <div style={{ flex: '8', background: '#22c55e' }} title="Athlet (6-13%)" />
-                          <div style={{ flex: '4', background: '#06b6d4' }} title="Fitness (14-17%)" />
-                          <div style={{ flex: '7', background: '#f97316' }} title="Average (18-24%)" />
-                          <div style={{ flex: '10', background: '#ef4444' }} title="Higher (25%+)" />
-
-                          {/* Pointer Indicator Bar */}
+                        {/* Progress Bar Container with Floating Marker & Ticks */}
+                        <div style={{ position: 'relative', marginTop: '18px', marginBottom: '4px' }}>
+                          {/* Floating Pointer Pill */}
                           <div style={{
                             position: 'absolute',
                             left: `${barPercent}%`,
-                            top: '0',
-                            bottom: '0',
-                            width: '4px',
-                            background: '#fff',
-                            boxShadow: '0 0 8px #fff, 0 0 12px var(--heroui-violet)',
+                            bottom: '100%',
+                            marginBottom: '4px',
                             transform: 'translateX(-50%)',
-                            zIndex: 2
-                          }} />
+                            zIndex: 10,
+                            pointerEvents: 'none'
+                          }}>
+                            <div style={{
+                              background: '#18181b',
+                              border: `1.5px solid ${metrics.categoryColor}`,
+                              color: '#fff',
+                              fontSize: '0.7rem',
+                              fontWeight: '800',
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              whiteSpace: 'nowrap',
+                              boxShadow: `0 4px 12px rgba(0,0,0,0.6), 0 0 8px ${metrics.categoryColor}50`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              <span>{metrics.kfa}% KFA</span>
+                            </div>
+                            <div style={{
+                              width: 0,
+                              height: 0,
+                              borderLeft: '4px solid transparent',
+                              borderRight: '4px solid transparent',
+                              borderTop: `4px solid ${metrics.categoryColor}`,
+                              margin: '0 auto'
+                            }} />
+                          </div>
+
+                          {/* Multi-segment Color Bar */}
+                          <div style={{
+                            position: 'relative',
+                            height: '14px',
+                            borderRadius: '7px',
+                            overflow: 'hidden',
+                            display: 'flex',
+                            background: '#222',
+                            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.5)'
+                          }}>
+                            <div style={{ flex: '4', background: '#eab308' }} title="Essentiell (2-5%)" />
+                            <div style={{ flex: '8', background: '#22c55e' }} title="Athlet (6-13%)" />
+                            <div style={{ flex: '4', background: '#06b6d4' }} title="Fitness (14-17%)" />
+                            <div style={{ flex: '7', background: '#f97316' }} title="Durchschnitt (18-24%)" />
+                            <div style={{ flex: '10', background: '#ef4444' }} title="Höherer KFA (25%+)" />
+
+                            {/* Pointer Line */}
+                            <div style={{
+                              position: 'absolute',
+                              left: `${barPercent}%`,
+                              top: '-2px',
+                              bottom: '-2px',
+                              width: '4px',
+                              background: '#fff',
+                              boxShadow: '0 0 8px #fff, 0 0 12px var(--heroui-violet)',
+                              transform: 'translateX(-50%)',
+                              zIndex: 5,
+                              borderRadius: '2px'
+                            }} />
+                          </div>
+
+                          {/* Percentage Ticks - Non-overlapping numeric marks */}
+                          <div style={{
+                            position: 'relative',
+                            height: '16px',
+                            fontSize: '0.68rem',
+                            color: 'var(--text-muted)',
+                            marginTop: '4px',
+                            fontWeight: '600'
+                          }}>
+                            <span style={{ position: 'absolute', left: '0%' }}>2%</span>
+                            <span style={{ position: 'absolute', left: '12.1%', transform: 'translateX(-50%)' }}>6%</span>
+                            <span style={{ position: 'absolute', left: '36.4%', transform: 'translateX(-50%)' }}>14%</span>
+                            <span style={{ position: 'absolute', left: '48.5%', transform: 'translateX(-50%)' }}>18%</span>
+                            <span style={{ position: 'absolute', left: '69.7%', transform: 'translateX(-50%)' }}>25%</span>
+                            <span style={{ position: 'absolute', right: '0%' }}>35%+</span>
+                          </div>
+                        </div>
+
+                        {/* Responsive Legend Cards Grid */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(95px, 1fr))',
+                          gap: '6px',
+                          marginTop: '2px'
+                        }}>
+                          {kfaLevels.map((level, idx) => {
+                            const isActive = idx === currentLevelIndex;
+                            return (
+                              <div
+                                key={level.label}
+                                style={{
+                                  background: isActive ? `${level.color}25` : 'rgba(255, 255, 255, 0.03)',
+                                  border: isActive ? `1.5px solid ${level.color}` : '1px solid rgba(255, 255, 255, 0.06)',
+                                  borderRadius: '8px',
+                                  padding: '6px 8px',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: '2px',
+                                  transition: 'all 0.2s ease',
+                                  boxShadow: isActive ? `0 0 10px ${level.color}30` : 'none'
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                  <span style={{ fontSize: '0.68rem', color: level.color, fontWeight: 'bold' }}>
+                                    {level.range}
+                                  </span>
+                                  {isActive && (
+                                    <span style={{
+                                      fontSize: '0.58rem',
+                                      background: level.color,
+                                      color: '#000',
+                                      fontWeight: '900',
+                                      padding: '1px 4px',
+                                      borderRadius: '4px'
+                                    }}>
+                                      DU
+                                    </span>
+                                  )}
+                                </div>
+                                <span style={{
+                                  fontSize: '0.72rem',
+                                  color: isActive ? '#fff' : 'var(--text-muted)',
+                                  fontWeight: isActive ? '700' : '500',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }}>
+                                  {level.label}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
 
