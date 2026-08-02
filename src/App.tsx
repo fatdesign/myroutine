@@ -8,6 +8,7 @@ import { useAudioDrone } from './hooks/useAudioDrone';
 import { EmotionalScale } from './components/EmotionalScale';
 import { WorkoutDashboard } from './components/WorkoutDashboard';
 import { NutritionDashboard } from './components/NutritionDashboard';
+import { AudioDashboard } from './components/AudioDashboard';
 import './index.css';
 
 const WEEKDAYS = [
@@ -52,7 +53,7 @@ function App() {
   const [history, setHistory] = useState<HistoryRecord>({});
   const { isPlaying: isDronePlaying, toggleDrone } = useAudioDrone();
   
-  const [activeTab, setActiveTab] = useState<'habits' | 'workouts' | 'nutrition'>('habits');
+  const [activeTab, setActiveTab] = useState<'habits' | 'workouts' | 'nutrition' | 'gateway'>('habits');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalKind, setModalKind] = useState<'routine' | 'task'>('routine');
@@ -471,6 +472,10 @@ function App() {
                 onClick={() => setActiveTab('nutrition')}
                 className={`top-bar-tab-btn ${activeTab === 'nutrition' ? 'active' : ''}`}
               >Ernährung</button>
+              <button 
+                onClick={() => setActiveTab('gateway')}
+                className={`top-bar-tab-btn ${activeTab === 'gateway' ? 'active' : ''}`}
+              >Gateway</button>
             </div>
           </div>
 
@@ -671,8 +676,10 @@ function App() {
         </>
         ) : activeTab === 'workouts' ? (
           <WorkoutDashboard />
-        ) : (
+        ) : activeTab === 'nutrition' ? (
           <NutritionDashboard />
+        ) : (
+          <AudioDashboard />
         )}
       </div>
 

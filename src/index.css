@@ -889,7 +889,7 @@ h1, h2, h3, h4 {
     grid-area: tabs;
     width: 100%;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     background: rgba(24, 24, 27, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
