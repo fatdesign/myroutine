@@ -218,7 +218,7 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
         </div>
       </div>
 
-      {/* Live Macro Progress & Telegram Photo Log Panel */}
+      {/* Live Macro Progress, Water Tracker & Weekly Coach Grid */}
       {(() => {
         const loggedCalories = macroLogs.reduce((sum, m) => sum + (m.calories || 0), 0);
         const loggedProtein = macroLogs.reduce((sum, m) => sum + (m.protein || 0), 0);
@@ -239,7 +239,7 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                   <Flame size={18} style={{ color: isOverCal ? '#ef4444' : 'var(--heroui-violet-light)' }} />
                   Tages-Makro-Fortschritt (Heute getrackt)
                 </h3>
-                <span className="badge-pill time" style={{ background: isOverCal ? 'rgba(239, 68, 68, 0.2)' : 'rgba(124, 58, 237, 0.2)', color: isOverCal ? '#ef4444' : 'var(--heroui-violet-light)', fontSize: '0.75rem' }}>
+                <span className="badge-pill time" style={{ background: isOverCal ? 'rgba(239, 68, 68, 0.2)' : 'rgba(124, 58, 237, 0.2)', color: isOverCal ? '#ef4444' : 'var(--heroui-violet-light)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
                   {macroLogs.length} Mahlzeit(en)
                 </span>
               </div>
@@ -374,72 +374,6 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
               </div>
             </div>
 
-            {/* 📸 V-Shape Formcheck & Photo Vault (Transformations-Zeitstrahl) */}
-            <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: '1px solid rgba(168, 85, 247, 0.35)', gridColumn: '1 / -1' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ImageIcon size={18} style={{ color: 'var(--heroui-violet-light)' }} />
-                  V-Shape Transformations-Zeitstrahl (Progress Photo Vault)
-                </h3>
-                <span className="badge-pill" style={{ background: 'rgba(168, 85, 247, 0.2)', color: 'var(--heroui-violet-light)', fontSize: '0.75rem' }}>
-                  {progressPhotos.length} Check-in(s)
-                </span>
-              </div>
-
-              {progressPhotos.length === 0 ? (
-                <div style={{ padding: '24px', textAlign: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                  📸 <strong>Noch keine Transformations-Fotos vorhanden.</strong><br />
-                  Schicke einfach dein Spiegel-Foto oder Workout Check-in mit deinen Messwerten an deinen Telegram Bot!
-                </div>
-              ) : (
-                <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
-                  {progressPhotos.map((photo, idx) => (
-                    <div key={idx} style={{ minWidth: '200px', maxWidth: '220px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
-                      {photo.photo_url ? (
-                        <img src={photo.photo_url} alt={`Formcheck ${photo.date}`} style={{ width: '100%', height: '160px', objectFit: 'cover' }} />
-                      ) : (
-                        <div style={{ width: '100%', height: '120px', background: 'rgba(124, 58, 237, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--heroui-violet-light)' }}>
-                          <Camera size={32} />
-                        </div>
-                      )}
-                      <div style={{ padding: '10px 12px' }}>
-                        <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.8rem', display: 'block' }}>📅 {photo.date}</span>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          {photo.body_weight && <span>⚖️ Gewicht: {photo.body_weight} kg</span>}
-                          {photo.body_fat && <span>🎯 KFA: {photo.body_fat}%</span>}
-                          {photo.waist && <span>📏 Bauch: {photo.waist} cm</span>}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 🌅 Automatischer Telegram Briefings Quick-Bar */}
-            <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: '16px', border: '1px solid rgba(234, 179, 8, 0.35)', gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h4 style={{ margin: 0, color: '#fff', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Sun size={16} style={{ color: '#eab308' }} />
-                  Automatischer Telegram Briefing & Recap Bot (Aktiv: 07:00 & 21:00)
-                </h4>
-                <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Erhalte täglich automatisch dein Morgen-Briefing mit Tages-Zitat & Ritualen sowie deinen abendlichen Disziplin-Recap.
-                </p>
-                {briefingMsg && (
-                  <span style={{ fontSize: '0.78rem', color: '#eab308', fontWeight: 'bold', marginTop: '4px', display: 'block' }}>{briefingMsg}</span>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button type="button" onClick={handleTriggerMorning} style={{ background: 'rgba(234, 179, 8, 0.18)', border: '1px solid rgba(234, 179, 8, 0.4)', color: '#eab308', padding: '8px 14px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Sun size={14} /> Morgen (07:00) testen
-                </button>
-                <button type="button" onClick={handleTriggerEvening} style={{ background: 'rgba(168, 85, 247, 0.18)', border: '1px solid rgba(168, 85, 247, 0.4)', color: 'var(--heroui-violet-light)', padding: '8px 14px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Moon size={14} /> Abend (21:00) testen
-                </button>
-              </div>
-            </div>
-
             {/* KI Wochen-Coach Report Card */}
             <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: '1px solid rgba(34, 197, 94, 0.3)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
@@ -449,7 +383,7 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                     KI Wochen-Coach Report
                   </h3>
                   {coachReport && (
-                    <span className="badge-pill" style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#22c55e', fontSize: '0.85rem', fontWeight: 'bold', border: '1px solid rgba(34, 197, 94, 0.4)' }}>
+                    <span className="badge-pill" style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#22c55e', fontSize: '0.85rem', fontWeight: 'bold', border: '1px solid rgba(34, 197, 94, 0.4)', whiteSpace: 'nowrap' }}>
                       Score: {coachReport.score} / 100 🔥
                     </span>
                   )}
@@ -529,6 +463,72 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
           </div>
         );
       })()}
+
+      {/* 🌅 Automatischer Telegram Briefings Quick-Bar */}
+      <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: '16px', border: '1px solid rgba(234, 179, 8, 0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h4 style={{ margin: 0, color: '#fff', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Sun size={16} style={{ color: '#eab308' }} />
+            Automatischer Telegram Briefing & Recap Bot (Aktiv: 07:00 & 21:00)
+          </h4>
+          <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Erhalte täglich automatisch dein Morgen-Briefing mit Tages-Zitat & Ritualen sowie deinen abendlichen Disziplin-Recap.
+          </p>
+          {briefingMsg && (
+            <span style={{ fontSize: '0.78rem', color: '#eab308', fontWeight: 'bold', marginTop: '4px', display: 'block' }}>{briefingMsg}</span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button type="button" onClick={handleTriggerMorning} style={{ background: 'rgba(234, 179, 8, 0.18)', border: '1px solid rgba(234, 179, 8, 0.4)', color: '#eab308', padding: '8px 14px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Sun size={14} /> Morgen (07:00) testen
+          </button>
+          <button type="button" onClick={handleTriggerEvening} style={{ background: 'rgba(168, 85, 247, 0.18)', border: '1px solid rgba(168, 85, 247, 0.4)', color: 'var(--heroui-violet-light)', padding: '8px 14px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Moon size={14} /> Abend (21:00) testen
+          </button>
+        </div>
+      </div>
+
+      {/* 📸 V-Shape Formcheck & Photo Vault (Transformations-Zeitstrahl) */}
+      <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: '1px solid rgba(168, 85, 247, 0.35)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ImageIcon size={18} style={{ color: 'var(--heroui-violet-light)' }} />
+            V-Shape Transformations-Zeitstrahl (Progress Photo Vault)
+          </h3>
+          <span className="badge-pill" style={{ background: 'rgba(168, 85, 247, 0.2)', color: 'var(--heroui-violet-light)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+            {progressPhotos.length} Check-in(s)
+          </span>
+        </div>
+
+        {progressPhotos.length === 0 ? (
+          <div style={{ padding: '24px', textAlign: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            📸 <strong>Noch keine Transformations-Fotos vorhanden.</strong><br />
+            Schicke einfach dein Spiegel-Foto oder Workout Check-in mit deinen Messwerten an deinen Telegram Bot!
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
+            {progressPhotos.map((photo, idx) => (
+              <div key={idx} style={{ minWidth: '200px', maxWidth: '220px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+                {photo.photo_url ? (
+                  <img src={photo.photo_url} alt={`Formcheck ${photo.date}`} style={{ width: '100%', height: '160px', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '100%', height: '120px', background: 'rgba(124, 58, 237, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--heroui-violet-light)' }}>
+                    <Camera size={32} />
+                  </div>
+                )}
+                <div style={{ padding: '10px 12px' }}>
+                  <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.8rem', display: 'block' }}>📅 {photo.date}</span>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {photo.body_weight && <span>⚖️ Gewicht: {photo.body_weight} kg</span>}
+                    {photo.body_fat && <span>🎯 KFA: {photo.body_fat}%</span>}
+                    {photo.waist && <span>📏 Bauch: {photo.waist} cm</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Main Grid: Profile Settings & AI Generator Trigger */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
