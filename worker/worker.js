@@ -32,8 +32,8 @@ export default {
       if (path === '/auth' || path === '/auth/') {
         if (request.method === 'POST') {
           const { password } = await request.json();
-          const adminPass = env.ADMIN_PASSWORD || 'sanktum2026';
-          if (password && String(password).trim() === String(adminPass).trim()) {
+          const adminPass = env.ADMIN_PASSWORD;
+          if (adminPass && password && String(password).trim() === String(adminPass).trim()) {
             return new Response(JSON.stringify({ success: true, authenticated: true }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
