@@ -79,4 +79,27 @@ export interface NutritionPlan {
   shoppingList: ShoppingItem[];
 }
 
+export interface LoggedMeal {
+  id: string;
+  date: string;
+  time: string;
+  meal_name: string;
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+  photo_url?: string;
+}
+
+export interface WeeklyCoachReport {
+  id?: string;
+  week_start: string;
+  week_end: string;
+  score: number;
+  summary: string;
+  highlights: string[];
+  recommendations: string[];
+  created_at: string;
+}
+
 

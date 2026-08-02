@@ -285,6 +285,148 @@ export default {
         }
       }
 
+      // --- Daily Macro Logs Endpoints (Food Tracking) ---
+      if (path === '/macro-logs' || path === '/macro-logs/') {
+        await env.DB.prepare(
+          `CREATE TABLE IF NOT EXISTS daily_macro_logs (
+            id TEXT PRIMARY KEY,
+            date TEXT,
+            time TEXT,
+            meal_name TEXT,
+            calories INTEGER DEFAULT 0,
+            protein INTEGER DEFAULT 0,
+            fat INTEGER DEFAULT 0,
+            carbs INTEGER DEFAULT 0,
+            photo_url TEXT,
+            created_at TEXT
+          )`
+        ).run();
+
+        if (request.method === 'GET') {
+          const urlObj = new URL(request.url);
+          const dateParam = urlObj.searchParams.get('date') || new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+          const { results } = await env.DB.prepare("SELECT * FROM daily_macro_logs WHERE date = ? ORDER BY time ASC").bind(dateParam).all();
+          return new Response(JSON.stringify(results || []), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        if (request.method === 'POST') {
+          const body = await request.json();
+          const todayStr = body.date || new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+          const nowTime = body.time || new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' }).format(new Date());
+          const id = body.id || `meal_${Date.now()}`;
+
+          await env.DB.prepare(
+            `INSERT INTO daily_macro_logs (id, date, time, meal_name, calories, protein, fat, carbs, photo_url, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          )
+            .bind(id, todayStr, nowTime, body.meal_name || 'Mahlzeit', body.calories || 0, body.protein || 0, body.fat || 0, body.carbs || 0, body.photo_url || null, new Date().toISOString())
+            .run();
+
+          return new Response(JSON.stringify({ success: true, id }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
+      if (path.startsWith('/macro-logs/')) {
+        const mealId = path.split('/').pop();
+        if (request.method === 'DELETE') {
+          await env.DB.prepare("DELETE FROM daily_macro_logs WHERE id = ?").bind(mealId).run();
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        }
+      }
+
+      // --- Weekly Coach Report Endpoints ---
+      if (path === '/weekly-coach-report' || path === '/weekly-coach-report/') {
+        await env.DB.prepare(
+          `CREATE TABLE IF NOT EXISTS weekly_coach_reports (
+            id TEXT PRIMARY KEY DEFAULT 'current_week',
+            week_start TEXT,
+            week_end TEXT,
+            score INTEGER DEFAULT 85,
+            summary TEXT,
+            highlights TEXT,
+            recommendations TEXT,
+            created_at TEXT
+          )`
+        ).run();
+
+        if (request.method === 'GET') {
+          const row = await env.DB.prepare("SELECT * FROM weekly_coach_reports WHERE id = 'current_week'").first();
+          if (row) {
+            return new Response(JSON.stringify({
+              ...row,
+              highlights: JSON.parse(row.highlights || "[]"),
+              recommendations: JSON.parse(row.recommendations || "[]")
+            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+          return new Response(JSON.stringify(null), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
+        if (request.method === 'POST') {
+          const workouts = await env.DB.prepare("SELECT * FROM workout_sessions ORDER BY date DESC LIMIT 7").all();
+          const metrics = await env.DB.prepare("SELECT * FROM body_metrics_inputs WHERE id = 'user_default'").first();
+          const macros = await env.DB.prepare("SELECT SUM(calories) as cals, SUM(protein) as prot FROM daily_macro_logs").first();
+          const tasks = await env.DB.prepare("SELECT COUNT(*) as count FROM tasks WHERE completed = 1").first();
+
+          const prompt = `Du bist ein hochklassiger V-Shape Fitness & Performance Coach.
+Analysiere die Daten der vergangenen Woche für deinen Klienten:
+- Absolvierte Workouts in 7 Tagen: ${workouts.results?.length || 0}
+- Aktuelles Gewicht: ${metrics?.weight || 90} kg, Nacken: ${metrics?.neck || 44} cm, Bauch: ${metrics?.waist || 100} cm
+- Erfüllte Rituale/Aufgaben: ${tasks?.count || 0}
+- Getrackte Nährwerte: ${macros?.cals || 0} kcal, ${macros?.prot || 0}g Eiweiß
+
+Erstelle einen inspirierenden, hochprofessionellen Wochen-Report im JSON Format:
+{
+  "score": (Score von 0-100 basierend auf der Leistung),
+  "summary": "Ein prägnanter, motivierender Absatz zur Leistung der Woche auf Deutsch",
+  "highlights": ["Highlight 1", "Highlight 2", "Highlight 3"],
+  "recommendations": ["Empfehlung 1 für nächste Woche", "Empfehlung 2", "Empfehlung 3"]
+}`;
+
+          const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${env.PLANNER_KI_API}`;
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+          });
+          const aiData = await res.json();
+          let text = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+          if (text.includes('```')) text = text.replace(/```json|```/g, '').trim();
+          let coachJson = { score: 88, summary: "Solide Leistung in dieser Woche. Dein V-Shape Fokus zeigt kontinuierliche Fortschritte!", highlights: ["Körperfett und Umfang-Messungen regelmäßig erfasst", "Ritual-Erfüllung auf hohem Niveau"], recommendations: ["Protein-Zufuhr weiterhin bei mind. 2g/kg halten", "Progressive Überlastung beim Grundtraining anstreben"] };
+          try { coachJson = JSON.parse(text); } catch(e) {}
+
+          const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+          const reportData = {
+            id: 'current_week',
+            week_start: todayStr,
+            week_end: todayStr,
+            score: coachJson.score || 88,
+            summary: coachJson.summary || "Solide Leistung in dieser Woche.",
+            highlights: JSON.stringify(coachJson.highlights || []),
+            recommendations: JSON.stringify(coachJson.recommendations || []),
+            created_at: new Date().toISOString()
+          };
+
+          await env.DB.prepare(
+            `INSERT INTO weekly_coach_reports (id, week_start, week_end, score, summary, highlights, recommendations, created_at)
+             VALUES ('current_week', ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(id) DO UPDATE SET
+               score = excluded.score,
+               summary = excluded.summary,
+               highlights = excluded.highlights,
+               recommendations = excluded.recommendations,
+               created_at = excluded.created_at`
+          )
+            .bind(reportData.week_start, reportData.week_end, reportData.score, reportData.summary, reportData.highlights, reportData.recommendations, reportData.created_at)
+            .run();
+
+          return new Response(JSON.stringify({
+            ...reportData,
+            highlights: coachJson.highlights,
+            recommendations: coachJson.recommendations
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
       // --- Body Metrics Calculator Inputs Endpoint ---
       if (path === '/body-metrics-inputs' || path === '/body-metrics-inputs/') {
         await env.DB.prepare(
@@ -772,32 +914,41 @@ async function handleTelegramUpdate(request, env) {
       .run();
 
     if (update.message.text === '/start') {
-      await sendTelegramMessage(chatId, "Hallo! 🤖 Ich bin dein Planner AI Assistent.\n\nDu kannst mir schreiben oder einfach eine **Sprachnachricht** schicken, z.B.:\n- 'Morgen um 08:30 Uhr Joggen'\n- 'Gewicht 91.5 kg, Nacken 44, Bauch 97'", env);
+      await sendTelegramMessage(chatId, "Hallo! 🤖 Ich bin dein Planner AI Assistent.\n\nDu kannst mir schreiben oder einfach eine **Sprachnachricht** oder ein **Foto deines Essens** schicken, z.B.:\n- 📸 Foto von deinem Teller (KI erkennt Mahlzeit & Makros!)\n- 'Morgen um 08:30 Uhr Joggen'\n- 'Gewicht 91.5 kg, Nacken 44, Bauch 97'", env);
       return new Response('OK');
     }
 
-    let userText = update.message.text;
+    let userText = update.message.text || update.message.caption || "";
     let audioData = null;
+    let photoData = null;
 
-    // Handle Voice Messages
-    if (update.message.voice) {
+    // Handle Photo Messages
+    if (update.message.photo && update.message.photo.length > 0) {
+      console.log('Photo message detected!');
+      await sendTelegramAction(chatId, 'typing', env);
+      const photos = update.message.photo;
+      const largestPhoto = photos[photos.length - 1];
+      photoData = await downloadTelegramFile(largestPhoto.file_id, env);
+      if (!userText) userText = "[Photo - See Image]";
+    } else if (update.message.voice) {
       console.log('Voice message detected!');
-      await sendTelegramAction(chatId, 'record_voice', env); // Visual feedback
+      await sendTelegramAction(chatId, 'record_voice', env);
       const fileId = update.message.voice.file_id;
       audioData = await downloadTelegramFile(fileId, env);
-      userText = "[Voice Message - See Audio]";
+      if (!userText) userText = "[Voice Message - See Audio]";
     }
 
-    if (!userText && !audioData) return new Response('OK');
+    if (!userText && !audioData && !photoData) return new Response('OK');
 
-    // AI Parsing (Handles both text and audio)
+    // AI Parsing (Handles text, audio and photos)
     console.log('Parsing with Gemini Multi-modal...');
-    const aiResponse = await parseWithAI(userText, audioData, env);
+    const aiResponse = await parseWithAI(userText, audioData, photoData, env);
     console.log('AI Response:', JSON.stringify(aiResponse));
 
     if (aiResponse) {
-      // Check if AI detected body measurement metrics
-      if (aiResponse.type === 'body_metrics' || aiResponse.weight || aiResponse.neck || aiResponse.waist) {
+      if (aiResponse.type === 'food_log' || aiResponse.calories || aiResponse.meal_name) {
+        await handleFoodLogTelegram(chatId, aiResponse, env);
+      } else if (aiResponse.type === 'body_metrics' || aiResponse.weight || aiResponse.neck || aiResponse.waist) {
         await handleBodyMetricsTelegram(chatId, aiResponse, env);
       } else if (aiResponse.task) {
         const time = aiResponse.time || '09:00';
@@ -809,7 +960,7 @@ async function handleTelegramUpdate(request, env) {
         const dayText = aiResponse.weekdays ? ` am Wochentag (${aiResponse.weekdays})` : "";
         await sendTelegramMessage(chatId, `✅ Eingetragen: "${aiResponse.task}" um ${aiResponse.time}${dayText}.`, env);
       } else {
-        await sendTelegramMessage(chatId, "Entschuldige, ich konnte keine Aufgabe oder Körpermessung erkennen. Bitte probier es nochmal!", env);
+        await sendTelegramMessage(chatId, "Entschuldige, ich konnte deine Eingabe (Essen, Körpermessung oder Aufgabe) nicht eindeutig zuordnen. Bitte probier es nochmal!", env);
       }
     } else {
       await sendTelegramMessage(chatId, "Entschuldige, ich konnte keine Eingabe verarbeiten. Bitte probier es nochmal!", env);
@@ -827,6 +978,60 @@ async function handleTelegramUpdate(request, env) {
   }
 
   return new Response('OK');
+}
+
+// --- Food Log Handler for Telegram ---
+async function handleFoodLogTelegram(chatId, foodLog, env) {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS daily_macro_logs (
+      id TEXT PRIMARY KEY,
+      date TEXT,
+      time TEXT,
+      meal_name TEXT,
+      calories INTEGER DEFAULT 0,
+      protein INTEGER DEFAULT 0,
+      fat INTEGER DEFAULT 0,
+      carbs INTEGER DEFAULT 0,
+      photo_url TEXT,
+      created_at TEXT
+    )`
+  ).run();
+
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+  const nowTime = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' }).format(new Date());
+
+  const mealId = `meal_${Date.now()}`;
+  const calories = Number(foodLog.calories) || 0;
+  const protein = Number(foodLog.protein) || 0;
+  const fat = Number(foodLog.fat) || 0;
+  const carbs = Number(foodLog.carbs) || 0;
+  const mealName = foodLog.meal_name || "Mahlzeit";
+
+  await env.DB.prepare(
+    `INSERT INTO daily_macro_logs (id, date, time, meal_name, calories, protein, fat, carbs, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  )
+    .bind(mealId, todayStr, nowTime, mealName, calories, protein, fat, carbs, new Date().toISOString())
+    .run();
+
+  const totals = await env.DB.prepare(
+    `SELECT SUM(calories) as total_cals, SUM(protein) as total_prot, SUM(fat) as total_fat, SUM(carbs) as total_carbs
+     FROM daily_macro_logs WHERE date = ?`
+  ).bind(todayStr).first();
+
+  const totalCals = totals?.total_cals || calories;
+  const totalProt = totals?.total_prot || protein;
+  const totalFat = totals?.total_fat || fat;
+  const totalCarbs = totals?.total_carbs || carbs;
+
+  let msg = `🥗 *Ernährungstracking erfasst!*\n\n`;
+  msg += `🍽️ *Mahlzeit:* ${mealName}\n`;
+  msg += `🔥 *Kalorien:* ~${calories} kcal\n`;
+  msg += `🥩 *Eiweiß:* ~${protein}g | 🥑 *Fett:* ~${fat}g | 🍚 *Carbs:* ~${carbs}g\n\n`;
+  msg += `📊 *Tages-Gesamt heute (${todayStr}):*\n`;
+  msg += `🔥 *${totalCals} kcal* | 🥩 *${totalProt}g Eiweiß* | 🥑 *${totalFat}g Fett* | 🍚 *${totalCarbs}g Carbs* 🚀`;
+
+  await sendTelegramMessage(chatId, msg, env);
 }
 
 // --- Body Metrics Handler for Telegram Voice & Text ---
@@ -945,11 +1150,21 @@ async function handleBodyMetricsTelegram(chatId, metricsInput, env) {
 }
 
 // --- AI Engine (Multi-modal) ---
-async function parseWithAI(text, audioBase64, env) {
-  const prompt = `Analysiere die Nachricht (Text oder Sprachnachricht auf Deutsch).
-Klassifiziere die Eingabe in genau EINES der folgenden zwei Formate und antworte AUSSCHLIESSLICH im gültigen JSON-Format:
+async function parseWithAI(text, audioBase64, photoBase64, env) {
+  const prompt = `Analysiere die Nachricht (Text, Sprachnachricht oder Foto auf Deutsch).
+Klassifiziere die Eingabe in genau EINES der folgenden drei Formate und antworte AUSSCHLIESSLICH im gültigen JSON-Format:
 
-1. KÖRPERMESSUNGEN (wenn die Nachricht Körpergewicht, Bauchumfang, Nackenumfang, KFA oder Hüftumfang enthält, z.B. "Gewicht 91.5 kg, Nacken 44, Bauch 97" oder "Habe mich gewogen 90 Kilo Bauch 96cm"):
+1. ERNÄHRUNG / ESSEN (wenn ein Foto von Essen vorliegt ODER Text/Sprachnachricht über gegessene Mahlzeiten wie z.B. "500g Magerquark mit Nüssen", "Döner Teller", "Mittagessen Hähnchen Reis"):
+{
+  "type": "food_log",
+  "meal_name": "Name des Gerichts (z.B. Gegrillte Hähnchenbrust mit Reis)",
+  "calories": 620,
+  "protein": 52,
+  "fat": 14,
+  "carbs": 68
+}
+
+2. KÖRPERMESSUNGEN (wenn die Nachricht Körpergewicht, Bauchumfang, Nackenumfang, KFA oder Hüftumfang enthält, z.B. "Gewicht 91.5 kg, Nacken 44, Bauch 97" oder "Habe mich gewogen 90 Kilo Bauch 96cm"):
 {
   "type": "body_metrics",
   "weight": 91.5 (Zahl in kg oder null),
@@ -958,7 +1173,7 @@ Klassifiziere die Eingabe in genau EINES der folgenden zwei Formate und antworte
   "hip": 100.0 (Zahl in cm oder null)
 }
 
-2. AUFGABEN / REMINDER (für alle anderen Nachrichten):
+3. AUFGABEN / REMINDER (für alle anderen Nachrichten):
 {
   "type": "task",
   "task": "Beschreibung der Aufgabe",
@@ -973,6 +1188,15 @@ Uhrzeit-Fallback für Aufgaben: "09:00".`;
   const parts = [];
   parts.push({ text: prompt });
 
+  if (photoBase64) {
+    parts.push({
+      inline_data: {
+        mime_type: "image/jpeg",
+        data: photoBase64
+      }
+    });
+  }
+
   if (audioBase64) {
     parts.push({
       inline_data: {
@@ -980,8 +1204,10 @@ Uhrzeit-Fallback für Aufgaben: "09:00".`;
         data: audioBase64
       }
     });
-  } else {
-    parts[0].text += `\nNachricht: "${text}"`;
+  }
+
+  if (text) {
+    parts[0].text += `\nNachricht/Beschreibung: "${text}"`;
   }
 
   const contents = [{ parts }];

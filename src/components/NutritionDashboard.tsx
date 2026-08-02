@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Utensils, ShoppingBag, Sparkles, Check, Clock, Save, RefreshCw, ChefHat, Send } from 'lucide-react';
-import type { NutritionProfile, NutritionPlan } from '../types';
-import { fetchNutritionProfile, upsertNutritionProfile, fetchNutritionPlan, generateAiNutritionPlan, fetchBodyMetricsInputs, sendTelegramNutritionPlan } from '../services/plannerApi';
+import { Utensils, ShoppingBag, Sparkles, Check, Clock, Save, RefreshCw, ChefHat, Send, Camera, Trash2, Award, Lightbulb, Target, Flame } from 'lucide-react';
+import type { NutritionProfile, NutritionPlan, LoggedMeal, WeeklyCoachReport } from '../types';
+import { fetchNutritionProfile, upsertNutritionProfile, fetchNutritionPlan, generateAiNutritionPlan, fetchBodyMetricsInputs, sendTelegramNutritionPlan, fetchDailyMacroLogs, deleteLoggedMeal, fetchWeeklyCoachReport, generateWeeklyCoachReport } from '../services/plannerApi';
 import { WORKOUT_PLAN } from '../data/workouts';
 import { getLiveBodyMetrics, type BodyMetrics } from '../utils/bodyMetrics';
 
@@ -61,11 +61,35 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
   const [isTelegramSending, setIsTelegramSending] = useState<boolean>(false);
   const [telegramFeedback, setTelegramFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // New Macro Logs & Coach Report state
+  const [macroLogs, setMacroLogs] = useState<LoggedMeal[]>([]);
+  const [coachReport, setCoachReport] = useState<WeeklyCoachReport | null>(null);
+  const [isReportGenerating, setIsReportGenerating] = useState<boolean>(false);
+
   useEffect(() => {
     fetchBodyMetricsInputs().then(() => setLiveMetrics(getLiveBodyMetrics()));
     fetchNutritionProfile().then(p => setProfile(p));
     fetchNutritionPlan().then(p => setCurrentPlan(p));
+    fetchDailyMacroLogs().then(logs => setMacroLogs(logs));
+    fetchWeeklyCoachReport().then(rep => setCoachReport(rep));
   }, []);
+
+  const handleDeleteMeal = async (id: string) => {
+    await deleteLoggedMeal(id);
+    setMacroLogs(prev => prev.filter(m => m.id !== id));
+  };
+
+  const handleGenerateCoachReport = async () => {
+    setIsReportGenerating(true);
+    try {
+      const report = await generateWeeklyCoachReport();
+      setCoachReport(report);
+    } catch (e: any) {
+      alert("Fehler bei der Generierung des Wochen-Coach Reports!");
+    } finally {
+      setIsReportGenerating(false);
+    }
+  };
 
   const handleSaveProfile = async () => {
     await upsertNutritionProfile(profile);
@@ -143,11 +167,187 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
             </div>
             <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '12px' }}>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Carbs</span>
-              <strong style={{ fontSize: '1.1rem', color: '#38bdf8' }}>{liveMetrics.carbsGrams}g</strong>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Live Macro Progress & Telegram Photo Log Panel */}
+      {(() => {
+        const loggedCalories = macroLogs.reduce((sum, m) => sum + (m.calories || 0), 0);
+        const loggedProtein = macroLogs.reduce((sum, m) => sum + (m.protein || 0), 0);
+        const loggedFat = macroLogs.reduce((sum, m) => sum + (m.fat || 0), 0);
+        const loggedCarbs = macroLogs.reduce((sum, m) => sum + (m.carbs || 0), 0);
+        const calPercent = Math.min(100, Math.round((loggedCalories / (liveMetrics.targetCalories || 1)) * 100));
+        const protPercent = Math.min(100, Math.round((loggedProtein / (liveMetrics.proteinGrams || 1)) * 100));
+
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+            
+            {/* Today's Macro Live Progress */}
+            <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: '1px solid rgba(124, 58, 237, 0.3)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Flame size={18} style={{ color: 'var(--heroui-violet-light)' }} />
+                  Tages-Makro-Fortschritt (Heute getrackt)
+                </h3>
+                <span className="badge-pill time" style={{ background: 'rgba(124, 58, 237, 0.2)', color: 'var(--heroui-violet-light)', fontSize: '0.75rem' }}>
+                  {macroLogs.length} Mahlzeit(en)
+                </span>
+              </div>
+
+              {/* Progress Bars */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>🔥 Kalorien: <strong style={{ color: '#22c55e' }}>{loggedCalories}</strong> / {liveMetrics.targetCalories} kcal</span>
+                    <span style={{ color: '#22c55e', fontWeight: 'bold' }}>{calPercent}%</span>
+                  </div>
+                  <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${calPercent}%`, height: '100%', background: 'linear-gradient(90deg, #22c55e, #16a34a)', transition: 'width 0.4s ease' }} />
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>🥩 Eiweiß: <strong style={{ color: '#ef4444' }}>{loggedProtein}g</strong> / {liveMetrics.proteinGrams}g</span>
+                    <span style={{ color: '#ef4444', fontWeight: 'bold' }}>{protPercent}%</span>
+                  </div>
+                  <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div style={{ width: `${protPercent}%`, height: '100%', background: 'linear-gradient(90deg, #ef4444, #dc2626)', transition: 'width 0.4s ease' }} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', fontSize: '0.78rem', color: 'var(--text-muted)', paddingTop: '4px' }}>
+                  <span>🥑 Fett: <strong style={{ color: '#eab308' }}>{loggedFat}g</strong> / {liveMetrics.fatGrams}g</span>
+                  <span>🍚 Carbs: <strong style={{ color: '#38bdf8' }}>{loggedCarbs}g</strong> / {liveMetrics.carbsGrams}g</span>
+                </div>
+              </div>
+
+              {/* Photo Helper Notice */}
+              <div style={{ background: 'rgba(0, 136, 204, 0.12)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(0, 136, 204, 0.25)', fontSize: '0.78rem', color: '#38bdf8', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+                <Camera size={18} style={{ flexShrink: 0 }} />
+                <span><strong>Foto-Tracking via Telegram:</strong> Schicke einfach ein Teller-Foto an deinen Telegram Bot – Gemini KI schätzt Portionsgrößen & Makros!</span>
+              </div>
+
+              {/* Logged Meals List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+                {macroLogs.length === 0 ? (
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>
+                    Noch keine Mahlzeiten für heute getrackt.
+                  </div>
+                ) : (
+                  macroLogs.map(m => (
+                    <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', fontSize: '0.8rem' }}>
+                      <div>
+                        <span style={{ color: '#fff', fontWeight: 'bold', display: 'block' }}>{m.meal_name}</span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          ⏰ {m.time} | 🔥 {m.calories} kcal | 🥩 {m.protein}g P | 🥑 {m.fat}g F | 🍚 {m.carbs}g C
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMeal(m.id)}
+                        style={{ background: 'transparent', border: 'none', color: '#ef4444', opacity: 0.7, cursor: 'pointer', padding: '4px' }}
+                        title="Mahlzeit löschen"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* KI Wochen-Coach Report Card */}
+            <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: '1px solid rgba(34, 197, 94, 0.3)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Award size={18} style={{ color: '#22c55e' }} />
+                    KI Wochen-Coach Report
+                  </h3>
+                  {coachReport && (
+                    <span className="badge-pill" style={{ background: 'rgba(34, 197, 94, 0.2)', color: '#22c55e', fontSize: '0.85rem', fontWeight: 'bold', border: '1px solid rgba(34, 197, 94, 0.4)' }}>
+                      Score: {coachReport.score} / 100 🔥
+                    </span>
+                  )}
+                </div>
+
+                {coachReport ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <p style={{ margin: 0, fontSize: '0.83rem', color: '#e4e4e7', lineHeight: '1.5', background: 'rgba(0,0,0,0.2)', padding: '10px 12px', borderRadius: '10px' }}>
+                      {coachReport.summary}
+                    </p>
+
+                    {coachReport.highlights && coachReport.highlights.length > 0 && (
+                      <div>
+                        <span style={{ fontSize: '0.75rem', color: '#22c55e', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                          <Target size={12} /> Highlights der Woche:
+                        </span>
+                        <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          {coachReport.highlights.map((h, i) => (
+                            <li key={i}>{h}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {coachReport.recommendations && coachReport.recommendations.length > 0 && (
+                      <div>
+                        <span style={{ fontSize: '0.75rem', color: '#eab308', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+                          <Lightbulb size={12} /> Coach-Tipps für nächste Woche:
+                        </span>
+                        <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          {coachReport.recommendations.map((r, i) => (
+                            <li key={i}>{r}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: '1.5', padding: '16px 0' }}>
+                    🤖 Lass die KI deine absolvierte Woche (Rituale, KFA-Fortschritt, Workouts & Makros) analysieren und dir maßgeschneiderte Tipps erstellen.
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleGenerateCoachReport}
+                disabled={isReportGenerating}
+                style={{
+                  marginTop: '16px',
+                  padding: '10px 16px',
+                  fontSize: '0.82rem',
+                  fontWeight: 'bold',
+                  borderColor: 'rgba(34, 197, 94, 0.4)',
+                  color: '#22c55e',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                {isReportGenerating ? (
+                  <>
+                    <RefreshCw size={14} className="spin" style={{ animation: 'spin 1s linear infinite' }} />
+                    Wochen-Analyse wird erstellt...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={14} />
+                    {coachReport ? '🔄 Wochen-Analyse aktualisieren' : '✨ KI Wochen-Analyse jetzt generieren'}
+                  </>
+                )}
+              </button>
+            </div>
+
+          </div>
+        );
+      })()}
 
       {/* Main Grid: Profile Settings & AI Generator Trigger */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>

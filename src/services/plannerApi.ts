@@ -421,7 +421,7 @@ export async function upsertWorkoutSession(date: string, session: Partial<Workou
 }
 
 // --- Nutrition API Methods ---
-import type { NutritionProfile, NutritionPlan } from '../types';
+import type { NutritionProfile, NutritionPlan, LoggedMeal, WeeklyCoachReport } from '../types';
 
 export async function fetchNutritionProfile(): Promise<NutritionProfile> {
   try {
@@ -596,4 +596,47 @@ export async function upsertBodyMetricsInputs(inputs: BodyMetricsCalculatorInput
     console.warn('Upsert body metrics inputs error:', e);
   }
 }
+
+export async function fetchDailyMacroLogs(dateStr?: string): Promise<LoggedMeal[]> {
+  try {
+    const today = dateStr || new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+    const res = await fetch(`${WORKER_URL}/macro-logs?date=${today}`);
+    if (res.ok) {
+      const data = await res.json();
+      return data || [];
+    }
+  } catch (e) {
+    console.warn('Fetch macro logs error:', e);
+  }
+  return [];
+}
+
+export async function deleteLoggedMeal(id: string): Promise<void> {
+  try {
+    await fetch(`${WORKER_URL}/macro-logs/${id}`, { method: 'DELETE' });
+  } catch (e) {
+    console.warn('Delete logged meal error:', e);
+  }
+}
+
+export async function fetchWeeklyCoachReport(): Promise<WeeklyCoachReport | null> {
+  try {
+    const res = await fetch(`${WORKER_URL}/weekly-coach-report`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.warn('Fetch weekly coach report error:', e);
+  }
+  return null;
+}
+
+export async function generateWeeklyCoachReport(): Promise<WeeklyCoachReport> {
+  const res = await fetch(`${WORKER_URL}/weekly-coach-report`, { method: 'POST' });
+  if (res.ok) {
+    return await res.json();
+  }
+  throw new Error('Fehler bei der Generierung des Wochen-Coach Reports');
+}
+
 
