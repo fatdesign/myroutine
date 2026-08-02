@@ -1029,11 +1029,11 @@ export function WorkoutDashboard() {
                         gap: '12px'
                       }}>
                         {/* Header & Status Pill + Info Modal Trigger */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '600', whiteSpace: 'nowrap' }}>
                             KFA Levels & Einordnung
                           </span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'nowrap' }}>
                             <button
                               type="button"
                               onClick={() => setShowKfaLevelsModal(true)}
