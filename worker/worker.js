@@ -941,12 +941,59 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
 
     // Automatic Briefings Trigger (07:00 Morning Briefing & 21:00 Evening Recap)
     const chatIdResult = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram_chat_id'").first();
-    if (chatIdResult && chatIdResult.value) {
+    const chatIdForBriefing = chatIdResult && chatIdResult.value;
+    if (chatIdForBriefing) {
       if (currentTimeStr === "07:00") {
-        await sendMorningBriefing(chatIdResult.value, env);
+        await sendMorningBriefing(chatIdForBriefing, env);
       }
       if (currentTimeStr === "21:00") {
-        await sendEveningRecap(chatIdResult.value, env);
+        await sendEveningRecap(chatIdForBriefing, env);
+      }
+
+      // --- Smart Hydration Reminder ---
+      // Fires every full hour between 10:00 and 20:00, only if behind on water pace
+      const berlinHour = parseInt(new Intl.DateTimeFormat('de-DE', {
+        timeZone: 'Europe/Berlin',
+        hour: '2-digit',
+        hourCycle: 'h23',
+        hour12: false
+      }).format(now), 10);
+      const berlinMinute = parseInt(new Intl.DateTimeFormat('de-DE', {
+        timeZone: 'Europe/Berlin',
+        minute: '2-digit'
+      }).format(now), 10);
+
+      const isHydrationCheckTime = berlinMinute === 0 && berlinHour >= 10 && berlinHour <= 20;
+
+      if (isHydrationCheckTime) {
+        try {
+          const TARGET_ML = 3500;
+          const DAY_START_HOUR = 7;
+          const DAY_END_HOUR = 22;
+          const totalDayMinutes = (DAY_END_HOUR - DAY_START_HOUR) * 60;
+          const elapsedMinutes = Math.max(0, (berlinHour - DAY_START_HOUR) * 60 + berlinMinute);
+          const expectedSoFar = Math.round((elapsedMinutes / totalDayMinutes) * TARGET_ML);
+
+          const waterResult = await env.DB.prepare(
+            "SELECT COALESCE(SUM(amount_ml), 0) as total FROM daily_water_logs WHERE date = ?"
+          ).bind(today).first();
+
+          const actualMl = waterResult ? Number(waterResult.total) : 0;
+          const deficit = expectedSoFar - actualMl;
+          const percentDone = Math.round((actualMl / TARGET_ML) * 100);
+
+          if (deficit >= 500) {
+            const messages = [
+              `💧 Hydration Alert! Du bist ${deficit}ml hinter deinem Soll-Tempo.\n\n📊 Aktuell: ${actualMl}ml / ${TARGET_ML}ml (${percentDone}%)\n🎯 Erwartet bis ${berlinHour}:00 Uhr: ${expectedSoFar}ml\n\nTrink jetzt mindestens ${Math.round(deficit/250)*250}ml! 🚰`,
+              `🚨 Wasser-Check! Bis ${berlinHour}:00 Uhr solltest du ${expectedSoFar}ml getrunken haben — du hast erst ${actualMl}ml.\n\nFehlen noch: ${deficit}ml. Flasche holen! 💪`,
+              `💧 Psst — dein Körper fragt nach Wasser!\n\nSoll: ${expectedSoFar}ml | Ist: ${actualMl}ml\nDu bist ${deficit}ml im Rückstand. Zeit für eine große Flasche! 🥤`
+            ];
+            const msg = messages[berlinHour % messages.length];
+            await sendTelegramMessage(chatIdForBriefing, msg, env);
+          }
+        } catch (e) {
+          console.error('Hydration check failed:', e.message);
+        }
       }
     }
 
