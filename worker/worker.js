@@ -256,25 +256,29 @@ export default {
       if (path.startsWith('/workout-sessions/')) {
         const date = path.split('/').pop();
         if (request.method === 'PUT') {
-          const { durationSeconds, bodyWeight, photoUrl, bodyFat } = await request.json();
+          const { durationSeconds, bodyWeight, photoUrl, bodyFat, neck, waist, hip } = await request.json();
 
           await env.DB.prepare(
-            "CREATE TABLE IF NOT EXISTS workout_sessions (date TEXT PRIMARY KEY, duration_seconds INTEGER DEFAULT 0, body_weight REAL, photo_url TEXT, body_fat REAL)"
+            "CREATE TABLE IF NOT EXISTS workout_sessions (date TEXT PRIMARY KEY, duration_seconds INTEGER DEFAULT 0, body_weight REAL, photo_url TEXT, body_fat REAL, neck REAL, waist REAL, hip REAL)"
           ).run();
 
-          try {
-            await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN body_fat REAL").run();
-          } catch (e) { /* column exists */ }
+          try { await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN body_fat REAL").run(); } catch (e) {}
+          try { await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN neck REAL").run(); } catch (e) {}
+          try { await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN waist REAL").run(); } catch (e) {}
+          try { await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN hip REAL").run(); } catch (e) {}
 
           await env.DB.prepare(
-            `INSERT INTO workout_sessions (date, duration_seconds, body_weight, photo_url, body_fat) VALUES (?, ?, ?, ?, ?)
+            `INSERT INTO workout_sessions (date, duration_seconds, body_weight, photo_url, body_fat, neck, waist, hip) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(date) DO UPDATE SET
                duration_seconds = COALESCE(excluded.duration_seconds, workout_sessions.duration_seconds),
                body_weight = COALESCE(excluded.body_weight, workout_sessions.body_weight),
                photo_url = COALESCE(excluded.photo_url, workout_sessions.photo_url),
-               body_fat = COALESCE(excluded.body_fat, workout_sessions.body_fat)`
+               body_fat = COALESCE(excluded.body_fat, workout_sessions.body_fat),
+               neck = COALESCE(excluded.neck, workout_sessions.neck),
+               waist = COALESCE(excluded.waist, workout_sessions.waist),
+               hip = COALESCE(excluded.hip, workout_sessions.hip)`
           )
-            .bind(date, durationSeconds ?? 0, bodyWeight ?? null, photoUrl ?? null, bodyFat ?? null)
+            .bind(date, durationSeconds ?? 0, bodyWeight ?? null, photoUrl ?? null, bodyFat ?? null, neck ?? null, waist ?? null, hip ?? null)
             .run();
 
           return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
@@ -910,20 +914,24 @@ async function handleBodyMetricsTelegram(chatId, metricsInput, env) {
   const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
 
   await env.DB.prepare(
-    `CREATE TABLE IF NOT EXISTS workout_sessions (date TEXT PRIMARY KEY, duration_seconds INTEGER DEFAULT 0, body_weight REAL, photo_url TEXT, body_fat REAL)`
+    `CREATE TABLE IF NOT EXISTS workout_sessions (date TEXT PRIMARY KEY, duration_seconds INTEGER DEFAULT 0, body_weight REAL, photo_url TEXT, body_fat REAL, neck REAL, waist REAL, hip REAL)`
   ).run();
 
-  try {
-    await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN body_fat REAL").run();
-  } catch (e) {}
+  try { await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN body_fat REAL").run(); } catch (e) {}
+  try { await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN neck REAL").run(); } catch (e) {}
+  try { await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN waist REAL").run(); } catch (e) {}
+  try { await env.DB.prepare("ALTER TABLE workout_sessions ADD COLUMN hip REAL").run(); } catch (e) {}
 
   await env.DB.prepare(
-    `INSERT INTO workout_sessions (date, duration_seconds, body_weight, photo_url, body_fat) VALUES (?, 0, ?, NULL, ?)
+    `INSERT INTO workout_sessions (date, duration_seconds, body_weight, photo_url, body_fat, neck, waist, hip) VALUES (?, 0, ?, NULL, ?, ?, ?, ?)
      ON CONFLICT(date) DO UPDATE SET
        body_weight = excluded.body_weight,
-       body_fat = excluded.body_fat`
+       body_fat = excluded.body_fat,
+       neck = excluded.neck,
+       waist = excluded.waist,
+       hip = excluded.hip`
   )
-    .bind(todayStr, weight, kfaFormatted)
+    .bind(todayStr, weight, kfaFormatted, neck, waist, hip)
     .run();
 
   let msg = `📊 *V-Shape Körpermessung erfasst!*\n\n`;

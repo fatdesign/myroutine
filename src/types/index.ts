@@ -34,6 +34,9 @@ export interface WorkoutSession {
   durationSeconds: number;
   bodyWeight?: number;
   bodyFat?: number;
+  neck?: number;
+  waist?: number;
+  hip?: number;
   photoUrl?: string;
 }
 

@@ -127,7 +127,10 @@ export function WorkoutDashboard() {
     const metrics = calculateBodyFatMetrics();
     const sessionData: Partial<WorkoutSession> = {
       bodyWeight: calcWeight,
-      bodyFat: metrics.kfa
+      bodyFat: metrics.kfa,
+      neck: calcNeck,
+      waist: calcWaist,
+      hip: calcHip
     };
 
     setSessions(prev => ({
@@ -610,6 +613,16 @@ export function WorkoutDashboard() {
                             <Flame size={12} /> {selectedSession.bodyFat}% KFA
                           </span>
                         )}
+                        {selectedSession.neck && (
+                          <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
+                            👔 {selectedSession.neck} cm Nacken
+                          </span>
+                        )}
+                        {selectedSession.waist && (
+                          <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
+                            📏 {selectedSession.waist} cm Bauch
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -677,7 +690,7 @@ export function WorkoutDashboard() {
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', fontWeight: 'bold' }}>
                           📅 {log.date.split('-').reverse().join('.')}
                         </span>
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '3px', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '3px', alignItems: 'center', flexWrap: 'wrap' }}>
                           {log.bodyWeight && (
                             <span style={{ fontSize: '0.88rem', color: '#fff', fontWeight: 'bold' }}>
                               {log.bodyWeight} kg
@@ -689,6 +702,19 @@ export function WorkoutDashboard() {
                             </span>
                           )}
                         </div>
+                        {(log.neck || log.waist || (log.date === todayStr && (calcNeck || calcWaist))) && (
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '3px', fontSize: '0.74rem', color: 'var(--heroui-violet-light)', fontWeight: '500' }}>
+                            {(log.neck || (log.date === todayStr ? calcNeck : null)) && (
+                              <span>👔 Nacken: {log.neck || calcNeck} cm</span>
+                            )}
+                            {(log.waist || (log.date === todayStr ? calcWaist : null)) && (
+                              <span>📏 Bauch: {log.waist || calcWaist} cm</span>
+                            )}
+                            {log.hip && (
+                              <span>📐 Hüfte: {log.hip} cm</span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
