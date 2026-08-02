@@ -481,22 +481,21 @@ function App() {
               title="432Hz Aura umschalten"
             >
               <Waves size={16} />
-              <span className="btn-label">{isDronePlaying ? 'Aura aktiv' : 'Aura entfachen'}</span>
+              <span className="btn-label">{isDronePlaying ? 'Aura' : 'Aura'}</span>
             </button>
             <button className="btn-primary header-action-btn" onClick={openNewRoutineModal}>
               <span className="btn-plus">+</span>
-              <span className="btn-label">Neues Ritual</span>
+              <span className="btn-label">Ritual</span>
             </button>
             <button
-              className="btn-secondary header-action-btn"
+              className="btn-secondary header-action-btn icon-only-btn"
               onClick={() => setIsSettingsModalOpen(true)}
               title="Einstellungen & Bot-Zeiten"
             >
               <Settings size={16} />
-              <span className="btn-label">Einstellungen</span>
             </button>
             <button
-              className="btn-secondary header-action-btn logout-btn"
+              className="btn-secondary header-action-btn logout-btn icon-only-btn"
               onClick={handleLogout}
               title="Abmelden / Sperren"
             >

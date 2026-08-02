@@ -832,13 +832,24 @@ h1, h2, h3, h4 {
   padding: 8px 12px;
 }
 
+.icon-only-btn {
+  padding: 8px !important;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 @media (max-width: 768px) {
   .top-bar-inner {
     display: grid;
     grid-template-areas:
       "title actions"
       "tabs  tabs";
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto 1fr;
     gap: 10px 8px;
     align-items: center;
     padding: 10px 14px;
@@ -850,16 +861,28 @@ h1, h2, h3, h4 {
 
   .top-bar-title {
     grid-area: title;
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     margin: 0;
   }
 
   .top-bar-actions {
     grid-area: actions;
     display: flex;
-    gap: 6px;
+    gap: 4px;
     align-items: center;
     justify-content: flex-end;
+  }
+
+  .top-bar-actions .header-action-btn {
+    padding: 6px 8px;
+    font-size: 0.75rem;
+  }
+
+  .top-bar-actions .icon-only-btn {
+    padding: 6px !important;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
   }
 
   .top-bar-tabs {
