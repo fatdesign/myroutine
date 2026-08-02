@@ -1006,9 +1006,9 @@ async function handleTelegramUpdate(request, env) {
     if (!update.message) return new Response('OK');
 
     const chatId = update.message.chat.id;
-    const ALLOWED_CHAT_ID = "1917004037"; // Lock to Fatih's Telegram Chat ID
+    const ALLOWED_CHAT_ID = env.TELEGRAM_OWNER_ID;
 
-    if (String(chatId) !== ALLOWED_CHAT_ID) {
+    if (ALLOWED_CHAT_ID && String(chatId) !== String(ALLOWED_CHAT_ID)) {
       await sendTelegramMessage(chatId, "🚫 Zugriff verweigert. Dieser Bot ist privat und für ein anderes Konto konfiguriert.", env);
       return new Response('OK');
     }
