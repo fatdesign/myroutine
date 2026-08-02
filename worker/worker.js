@@ -609,24 +609,24 @@ Erstelle einen inspirierenden, hochprofessionellen Wochen-Report im JSON Format:
             return new Response(JSON.stringify({ success: false, error: "Kein Ernährungsplan vorhanden." }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
           }
 
-          let msg = `🥗 *V-Shape KI Tages-Ernährungsplan*\n`;
-          msg += `📅 *${plan.dayName || 'Tagesplan'}*\n`;
-          msg += `🔥 *${plan.totalCalories} kcal* (P: ${plan.totalProtein}g | F: ${plan.totalFat}g | C: ${plan.totalCarbs}g)\n`;
+          let msg = `🥗 V-Shape KI Tages-Ernährungsplan\n`;
+          msg += `📅 ${plan.dayName || 'Tagesplan'}\n`;
+          msg += `🔥 ${plan.totalCalories} kcal (P: ${plan.totalProtein}g | F: ${plan.totalFat}g | C: ${plan.totalCarbs}g)\n`;
           if (plan.estimatedTotalPriceEur) {
-            msg += `🏷️ *Teller-Kosten:* ca. ${Number(plan.estimatedTotalPriceEur).toFixed(2)} €\n`;
+            msg += `🏷️ Teller-Kosten: ca. ${Number(plan.estimatedTotalPriceEur).toFixed(2)} €\n`;
           }
           msg += `\n-------------------------------\n\n`;
 
-          msg += `🍽️ *MAHLZEITEN:*\n`;
+          msg += `🍽️ MAHLZEITEN:\n`;
           if (plan.meals && plan.meals.length > 0) {
             plan.meals.forEach((meal) => {
-              msg += `\n⏰ *${meal.time || ''} UHR* - *${meal.name}*\n`;
+              msg += `\n⏰ ${meal.time || ''} UHR - ${meal.name}\n`;
               msg += `🔥 ${meal.calories} kcal (P: ${meal.protein}g | F: ${meal.fat}g | C: ${meal.carbs}g)`;
               if (meal.estimatedPriceEur) {
                 msg += ` | 🏷️ ca. ${Number(meal.estimatedPriceEur).toFixed(2)} €`;
               }
               if (meal.ingredients && meal.ingredients.length > 0) {
-                msg += `\n*Zutaten:* ${meal.ingredients.join(', ')}`;
+                msg += `\nZutaten: ${meal.ingredients.join(', ')}`;
               }
               msg += `\n`;
             });
@@ -634,7 +634,7 @@ Erstelle einen inspirierenden, hochprofessionellen Wochen-Report im JSON Format:
 
           if (plan.shoppingList && plan.shoppingList.length > 0) {
             msg += `\n-------------------------------\n\n`;
-            msg += `🛒 *EINKAUFSLISTE*`;
+            msg += `🛒 EINKAUFSLISTE`;
             if (plan.estimatedSupermarketReceiptEur) {
               msg += ` (🇦🇹 Kassenbon: ca. ${Number(plan.estimatedSupermarketReceiptEur).toFixed(2)} €)`;
             }
@@ -648,7 +648,7 @@ Erstelle einen inspirierenden, hochprofessionellen Wochen-Report im JSON Format:
             });
 
             for (const [cat, items] of Object.entries(categories)) {
-              msg += `📌 *${cat}:*\n`;
+              msg += `📌 ${cat}:\n`;
               items.forEach(it => {
                 msg += `[ ] ${it}\n`;
               });
@@ -790,6 +790,94 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
         }
       }
 
+      // --- Water Tracking Endpoints ---
+      if (path === '/water-logs' || path === '/water-logs/') {
+        await env.DB.prepare(
+          `CREATE TABLE IF NOT EXISTS daily_water_logs (
+            id TEXT PRIMARY KEY,
+            date TEXT,
+            time TEXT,
+            amount_ml INTEGER DEFAULT 0,
+            created_at TEXT
+          )`
+        ).run();
+
+        const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+
+        if (request.method === 'GET') {
+          const { results } = await env.DB.prepare(
+            `SELECT * FROM daily_water_logs WHERE date = ? ORDER BY time ASC`
+          ).bind(todayStr).all();
+
+          const totals = await env.DB.prepare(
+            `SELECT SUM(amount_ml) as total_ml FROM daily_water_logs WHERE date = ?`
+          ).bind(todayStr).first();
+
+          return new Response(JSON.stringify({ logs: results || [], totalMl: Number(totals?.total_ml) || 0 }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        if (request.method === 'POST') {
+          const { amount_ml } = await request.json();
+          const amount = Math.max(50, Math.min(5000, Number(amount_ml) || 250));
+          const nowTime = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' }).format(new Date());
+          const logId = `water_${Date.now()}`;
+
+          await env.DB.prepare(
+            `INSERT INTO daily_water_logs (id, date, time, amount_ml, created_at) VALUES (?, ?, ?, ?, ?)`
+          ).bind(logId, todayStr, nowTime, amount, new Date().toISOString()).run();
+
+          return new Response(JSON.stringify({ success: true, id: logId }), { headers: corsHeaders });
+        }
+
+        if (request.method === 'DELETE') {
+          const { id } = await request.json();
+          await env.DB.prepare("DELETE FROM daily_water_logs WHERE id = ?").bind(id).run();
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        }
+      }
+
+      // --- Progress Photos & Timeline Endpoint ---
+      if (path === '/progress-photos' || path === '/progress-photos/') {
+        if (request.method === 'GET') {
+          let photos = [];
+          try {
+            const { results } = await env.DB.prepare(
+              `SELECT date, body_weight, body_fat, neck, waist, photo_url FROM workout_sessions WHERE photo_url IS NOT NULL AND photo_url != '' ORDER BY date DESC`
+            ).all();
+            photos = results || [];
+          } catch (e) {}
+
+          return new Response(JSON.stringify({ photos }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      }
+
+      // --- Trigger Briefings Endpoints ---
+      if (path === '/trigger-morning-briefing' || path === '/trigger-morning-briefing/') {
+        if (request.method === 'POST') {
+          const chatIdResult = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram_chat_id'").first();
+          if (!chatIdResult || !chatIdResult.value) {
+            return new Response(JSON.stringify({ success: false, error: 'Telegram Chat ID not stored yet. Please message the bot first!' }), { status: 400, headers: corsHeaders });
+          }
+          await sendMorningBriefing(chatIdResult.value, env);
+          return new Response(JSON.stringify({ success: true, message: 'Morning Briefing sent to Telegram!' }), { headers: corsHeaders });
+        }
+      }
+
+      if (path === '/trigger-evening-recap' || path === '/trigger-evening-recap/') {
+        if (request.method === 'POST') {
+          const chatIdResult = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram_chat_id'").first();
+          if (!chatIdResult || !chatIdResult.value) {
+            return new Response(JSON.stringify({ success: false, error: 'Telegram Chat ID not stored yet. Please message the bot first!' }), { status: 400, headers: corsHeaders });
+          }
+          await sendEveningRecap(chatIdResult.value, env);
+          return new Response(JSON.stringify({ success: true, message: 'Evening Recap sent to Telegram!' }), { headers: corsHeaders });
+        }
+      }
+
       // --- Telegram Webhook ---
       if ((path === '/webhook' || path === '/webhook/')) {
         if (request.method === 'POST') {
@@ -851,6 +939,17 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
 
     console.log(`Cron Check: [Now: ${currentTimeStr}] [Future: ${targetTimeStr}] [Day: ${currentDow}]`);
 
+    // Automatic Briefings Trigger (07:00 Morning Briefing & 21:00 Evening Recap)
+    const chatIdResult = await env.DB.prepare("SELECT value FROM settings WHERE key = 'telegram_chat_id'").first();
+    if (chatIdResult && chatIdResult.value) {
+      if (currentTimeStr === "07:00") {
+        await sendMorningBriefing(chatIdResult.value, env);
+      }
+      if (currentTimeStr === "21:00") {
+        await sendEveningRecap(chatIdResult.value, env);
+      }
+    }
+
     // 2. Fetch tasks for both NOW and 10 MIN LATER (only those not completed)
     // We filter in the logic for weekdays to handle NULL/Empty values correctly
     const { results } = await env.DB.prepare("SELECT * FROM tasks WHERE (time = ? OR time = ?) AND completed = 0")
@@ -887,10 +986,10 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
           }
 
           if (task.time === currentTimeStr) {
-            await sendTelegramMessage(chatIdResult.value, `🚀 **JETZT FÄLLIG:**\n"${reminderText}"`, env);
+            await sendTelegramMessage(chatIdResult.value, `🚀 JETZT FÄLLIG:\n"${reminderText}"`, env);
           }
           if (task.time === targetTimeStr) {
-            await sendTelegramMessage(chatIdResult.value, `⏰ **IN 10 MINUTEN:**\n"${reminderText}"`, env);
+            await sendTelegramMessage(chatIdResult.value, `⏰ IN 10 MINUTEN:\n"${reminderText}"`, env);
           }
         }
       }
@@ -914,7 +1013,7 @@ async function handleTelegramUpdate(request, env) {
       .run();
 
     if (update.message.text === '/start') {
-      await sendTelegramMessage(chatId, "Hallo! 🤖 Ich bin dein Planner AI Assistent.\n\nDu kannst mir schreiben oder einfach eine **Sprachnachricht** oder ein **Foto deines Essens** schicken, z.B.:\n- 📸 Foto von deinem Teller (KI erkennt Mahlzeit & Makros!)\n- 'Morgen um 08:30 Uhr Joggen'\n- 'Gewicht 91.5 kg, Nacken 44, Bauch 97'", env);
+      await sendTelegramMessage(chatId, "Hallo! 🤖 Ich bin dein Planner AI Assistent.\n\nDu kannst mir schreiben oder einfach eine Sprachnachricht oder ein Foto deines Essens schicken, z.B.:\n- 📸 Foto von deinem Teller (KI erkennt Mahlzeit & Makros!)\n- 'Morgen um 08:30 Uhr Joggen'\n- 'Gewicht 91.5 kg, Nacken 44, Bauch 97'", env);
       return new Response('OK');
     }
 
@@ -946,7 +1045,9 @@ async function handleTelegramUpdate(request, env) {
     console.log('AI Response:', JSON.stringify(aiResponse));
 
     if (aiResponse) {
-      if (aiResponse.type === 'food_log' || aiResponse.calories || aiResponse.meal_name) {
+      if (aiResponse.type === 'water_log' || aiResponse.amount_ml) {
+        await handleWaterLogTelegram(chatId, aiResponse, env);
+      } else if (aiResponse.type === 'food_log' || aiResponse.calories || aiResponse.meal_name) {
         await handleFoodLogTelegram(chatId, aiResponse, env);
       } else if (aiResponse.type === 'body_metrics' || aiResponse.weight || aiResponse.neck || aiResponse.waist) {
         await handleBodyMetricsTelegram(chatId, aiResponse, env);
@@ -978,6 +1079,143 @@ async function handleTelegramUpdate(request, env) {
   }
 
   return new Response('OK');
+}
+
+// --- Water Log Handler for Telegram ---
+async function handleWaterLogTelegram(chatId, waterLog, env) {
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS daily_water_logs (
+      id TEXT PRIMARY KEY,
+      date TEXT,
+      time TEXT,
+      amount_ml INTEGER DEFAULT 0,
+      created_at TEXT
+    )`
+  ).run();
+
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+  const nowTime = new Intl.DateTimeFormat('de-DE', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit' }).format(new Date());
+
+  const logId = `water_${Date.now()}`;
+  const amount = Math.max(50, Math.min(5000, Number(waterLog.amount_ml) || 250));
+
+  await env.DB.prepare(
+    `INSERT INTO daily_water_logs (id, date, time, amount_ml, created_at) VALUES (?, ?, ?, ?, ?)`
+  ).bind(logId, todayStr, nowTime, amount, new Date().toISOString()).run();
+
+  const totals = await env.DB.prepare(
+    `SELECT SUM(amount_ml) as total_ml FROM daily_water_logs WHERE date = ?`
+  ).bind(todayStr).first();
+
+  const totalMl = Number(totals?.total_ml) || amount;
+  const targetMl = 3500;
+  const percent = Math.min(100, Math.round((totalMl / targetMl) * 100));
+
+  let statusText = "";
+  if (totalMl >= targetMl) {
+    statusText = `\n\n🎉 Tages-Wasserziel (3.5L) erfolgreich erreicht! Ausgezeichnete Hydration!`;
+  } else {
+    const remaining = targetMl - totalMl;
+    statusText = `\n\n🎯 Noch ${remaining} ml bis zum Tagesziel von 3.5 Liter`;
+  }
+
+  let msg = `💧 Hydration-Tracking erfasst!\n\n`;
+  msg += `🥤 Aufgenommen: +${amount} ml Wasser\n`;
+  msg += `📊 Tages-Gesamt heute (${todayStr}):\n`;
+  msg += `💧 ${totalMl} ml / ${targetMl} ml (${percent}%) 🚀${statusText}`;
+
+  await sendTelegramMessage(chatId, msg, env);
+}
+
+// --- Morning Briefing Handler ---
+async function sendMorningBriefing(chatId, env) {
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+
+  const quotes = [
+    "Das Hindernis auf dem Weg wird zum Weg. Vergiss nie: In jedem Hindernis steckt eine Chance. – Zen-Sprichwort",
+    "Disziplin ist die Freiheit, deine Träume in die Realität umzusetzen.",
+    "Du hast Macht über deinen Verstand – nicht über äußere Ereignisse. Erkenne dies, und du wirst Stärke finden. – Marcus Aurelius",
+    "Wir leiden öfter in der Vorstellung als in der Realität. – Seneca",
+    "Exzellenz ist keine Handlung, sondern eine Gewohnheit. – Aristoteles"
+  ];
+  const quote = quotes[Math.floor(Math.random() * quotes.length)];
+
+  let routinesMsg = "";
+  try {
+    const { results } = await env.DB.prepare("SELECT text, time FROM tasks WHERE is_routine = 1 ORDER BY time ASC").all();
+    if (results && results.length > 0) {
+      routinesMsg = results.map(r => `• ${r.time || '08:00'} - ${r.text}`).join('\n');
+    }
+  } catch (e) {}
+
+  const metricsRow = await env.DB.prepare("SELECT * FROM body_metrics_inputs WHERE id = 'user_default'").first();
+  const targetCals = calculateTargetCaloriesFromRow(metricsRow);
+
+  let msg = `🌅 MORGEN-BRIEFING (${todayStr})\n\n`;
+  msg += `📜 Zitat des Tages:\n"${quote}"\n\n`;
+  if (routinesMsg) {
+    msg += `⚡ Anstehende Rituale heute:\n${routinesMsg}\n\n`;
+  }
+  msg += `🔥 Tages-Kalorienziel: ${targetCals} kcal (Defizit-Modus aktiv)\n`;
+  msg += `💧 Wasserziel: 3500 ml\n\n`;
+  msg += `💪 Machen wir heute zu einem meisterhaften Tag! YOU ARE THE MASTER! 🚀`;
+
+  await sendTelegramMessage(chatId, msg, env);
+}
+
+// --- Evening Recap Handler ---
+async function sendEveningRecap(chatId, env) {
+  const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+
+  let completedCount = 0;
+  let totalCount = 0;
+  try {
+    const { results } = await env.DB.prepare("SELECT completed FROM tasks WHERE is_routine = 1").all();
+    if (results) {
+      totalCount = results.length;
+      completedCount = results.filter(r => r.completed === 1).length;
+    }
+  } catch (e) {}
+
+  const totals = await env.DB.prepare(
+    `SELECT SUM(calories) as total_cals, SUM(protein) as total_prot, SUM(fat) as total_fat, SUM(carbs) as total_carbs
+     FROM daily_macro_logs WHERE date = ?`
+  ).bind(todayStr).first();
+
+  const totalCals = Number(totals?.total_cals) || 0;
+  const totalProt = Number(totals?.total_prot) || 0;
+  const totalFat = Number(totals?.total_fat) || 0;
+  const totalCarbs = Number(totals?.total_carbs) || 0;
+
+  let totalMl = 0;
+  try {
+    const waterRow = await env.DB.prepare(
+      `SELECT SUM(amount_ml) as total_ml FROM daily_water_logs WHERE date = ?`
+    ).bind(todayStr).first();
+    totalMl = Number(waterRow?.total_ml) || 0;
+  } catch (e) {}
+
+  const metricsRow = await env.DB.prepare("SELECT * FROM body_metrics_inputs WHERE id = 'user_default'").first();
+  const targetCals = calculateTargetCaloriesFromRow(metricsRow);
+
+  let statusMsg = "";
+  if (totalCals > targetCals) {
+    statusMsg = `⚠️ Kalorienziel überschritten (+${totalCals - targetCals} kcal)`;
+  } else if (totalCals === 0) {
+    statusMsg = `⚠️ Heute noch kein Essen getrackt.`;
+  } else {
+    statusMsg = `🎯 Punktlandung im Defizit! (Noch ${targetCals - totalCals} kcal Puffer)`;
+  }
+
+  let msg = `🌙 ABEND-RECAP (${todayStr})\n\n`;
+  msg += `⚡ Rituale: ${completedCount} / ${totalCount} erfüllt (${totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%)\n`;
+  msg += `🔥 Erfasste Kalorien: ${totalCals} / ${targetCals} kcal\n`;
+  msg += `🥩 Eiweiß: ${totalProt}g | 🥑 Fett: ${totalFat}g | 🍚 Carbs: ${totalCarbs}g\n`;
+  msg += `💧 Hydration: ${totalMl} ml / 3500 ml\n\n`;
+  msg += `${statusMsg}\n\n`;
+  msg += `😴 Erhole dich gut für den morgigen Tag! Gute Nacht Champion! 🏆`;
+
+  await sendTelegramMessage(chatId, msg, env);
 }
 
 // --- Food Log Handler for Telegram ---
@@ -1019,17 +1257,31 @@ async function handleFoodLogTelegram(chatId, foodLog, env) {
      FROM daily_macro_logs WHERE date = ?`
   ).bind(todayStr).first();
 
-  const totalCals = totals?.total_cals || calories;
-  const totalProt = totals?.total_prot || protein;
-  const totalFat = totals?.total_fat || fat;
-  const totalCarbs = totals?.total_carbs || carbs;
+  const totalCals = Number(totals?.total_cals) || calories;
+  const totalProt = Number(totals?.total_prot) || protein;
+  const totalFat = Number(totals?.total_fat) || fat;
+  const totalCarbs = Number(totals?.total_carbs) || carbs;
 
-  let msg = `🥗 *Ernährungstracking erfasst!*\n\n`;
-  msg += `🍽️ *Mahlzeit:* ${mealName}\n`;
-  msg += `🔥 *Kalorien:* ~${calories} kcal\n`;
-  msg += `🥩 *Eiweiß:* ~${protein}g | 🥑 *Fett:* ~${fat}g | 🍚 *Carbs:* ~${carbs}g\n\n`;
-  msg += `📊 *Tages-Gesamt heute (${todayStr}):*\n`;
-  msg += `🔥 *${totalCals} kcal* | 🥩 *${totalProt}g Eiweiß* | 🥑 *${totalFat}g Fett* | 🍚 *${totalCarbs}g Carbs* 🚀`;
+  const metricsRow = await env.DB.prepare("SELECT * FROM body_metrics_inputs WHERE id = 'user_default'").first();
+  const targetCals = calculateTargetCaloriesFromRow(metricsRow);
+
+  let deficitNotice = "";
+  if (totalCals > targetCals) {
+    const surplus = totalCals - targetCals;
+    deficitNotice = `\n\n⚠️ Kalorienziel überschritten (+${surplus} kcal über Ziel von ${targetCals} kcal)`;
+  } else if (totalCals === targetCals) {
+    deficitNotice = `\n\n🎯 Kalorienziel punktgenau erreicht! (${targetCals} kcal)`;
+  } else {
+    const remaining = targetCals - totalCals;
+    deficitNotice = `\n\n🎯 Noch ${remaining} kcal offen bis zum Tagesziel (${targetCals} kcal)`;
+  }
+
+  let msg = `🥗 Ernährungstracking erfasst!\n\n`;
+  msg += `🍽️ Mahlzeit: ${mealName}\n`;
+  msg += `🔥 Kalorien: ~${calories} kcal\n`;
+  msg += `🥩 Eiweiß: ~${protein}g | 🥑 Fett: ~${fat}g | 🍚 Carbs: ~${carbs}g\n\n`;
+  msg += `📊 Tages-Gesamt heute (${todayStr}):\n`;
+  msg += `🔥 ${totalCals} kcal | 🥩 ${totalProt}g Eiweiß | 🥑 ${totalFat}g Fett | 🍚 ${totalCarbs}g Carbs 🚀${deficitNotice}`;
 
   await sendTelegramMessage(chatId, msg, env);
 }
@@ -1139,12 +1391,12 @@ async function handleBodyMetricsTelegram(chatId, metricsInput, env) {
     .bind(todayStr, weight, kfaFormatted, neck, waist, hip)
     .run();
 
-  let msg = `📊 *V-Shape Körpermessung erfasst!*\n\n`;
-  msg += `⚖️ *Gewicht:* ${weight} kg\n`;
-  msg += `📐 *Nacken:* ${neck} cm | *Bauch:* ${waist} cm\n`;
-  msg += `🔥 *KFA (US Navy):* ${kfaFormatted}% (${category})\n`;
-  msg += `💪 *Mager-Masse:* ${leanMass} kg | *Fettmasse:* ${fatMass} kg\n\n`;
-  msg += `✅ *Automatisch in deinen heutigen Check-in (${todayStr}) übernommen!* 🚀`;
+  let msg = `📊 V-Shape Körpermessung erfasst!\n\n`;
+  msg += `⚖️ Gewicht: ${weight} kg\n`;
+  msg += `📐 Nacken: ${neck} cm | Bauch: ${waist} cm\n`;
+  msg += `🔥 KFA (US Navy): ${kfaFormatted}% (${category})\n`;
+  msg += `💪 Mager-Masse: ${leanMass} kg | Fettmasse: ${fatMass} kg\n\n`;
+  msg += `✅ Automatisch in deinen heutigen Check-in (${todayStr}) übernommen! 🚀`;
 
   await sendTelegramMessage(chatId, msg, env);
 }
@@ -1152,7 +1404,7 @@ async function handleBodyMetricsTelegram(chatId, metricsInput, env) {
 // --- AI Engine (Multi-modal) ---
 async function parseWithAI(text, audioBase64, photoBase64, env) {
   const prompt = `Analysiere die Nachricht (Text, Sprachnachricht oder Foto auf Deutsch).
-Klassifiziere die Eingabe in genau EINES der folgenden drei Formate und antworte AUSSCHLIESSLICH im gültigen JSON-Format:
+Klassifiziere die Eingabe in genau EINES der folgenden vier Formate und antworte AUSSCHLIESSLICH im gültigen JSON-Format:
 
 1. ERNÄHRUNG / ESSEN (wenn ein Foto von Essen vorliegt ODER Text/Sprachnachricht über gegessene Mahlzeiten wie z.B. "500g Magerquark mit Nüssen", "Döner Teller", "Mittagessen Hähnchen Reis"):
 {
@@ -1164,7 +1416,13 @@ Klassifiziere die Eingabe in genau EINES der folgenden drei Formate und antworte
   "carbs": 68
 }
 
-2. KÖRPERMESSUNGEN (wenn die Nachricht Körpergewicht, Bauchumfang, Nackenumfang, KFA oder Hüftumfang enthält, z.B. "Gewicht 91.5 kg, Nacken 44, Bauch 97" oder "Habe mich gewogen 90 Kilo Bauch 96cm"):
+2. WASSER / HYDRATION (wenn die Nachricht Flüssigkeitsaufnahme betrifft, z.B. "500ml Wasser", "1.5L getrunken", "0.75 Liter Wasser", "Habe 1 Liter getrunken"):
+{
+  "type": "water_log",
+  "amount_ml": 500
+}
+
+3. KÖRPERMESSUNGEN (wenn die Nachricht Körpergewicht, Bauchumfang, Nackenumfang, KFA oder Hüftumfang enthält, z.B. "Gewicht 91.5 kg, Nacken 44, Bauch 97" oder "Habe mich gewogen 90 Kilo Bauch 96cm"):
 {
   "type": "body_metrics",
   "weight": 91.5 (Zahl in kg oder null),
@@ -1173,7 +1431,7 @@ Klassifiziere die Eingabe in genau EINES der folgenden drei Formate und antworte
   "hip": 100.0 (Zahl in cm oder null)
 }
 
-3. AUFGABEN / REMINDER (für alle anderen Nachrichten):
+4. AUFGABEN / REMINDER (für alle anderen Nachrichten):
 {
   "type": "task",
   "task": "Beschreibung der Aufgabe",
@@ -1273,5 +1531,41 @@ async function sendTelegramAction(chatId, action, env) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, action: action })
   });
+}
+
+function calculateTargetCaloriesFromRow(row) {
+  if (!row) return 2090;
+
+  const gender = row.gender || 'male';
+  const height = Number(row.height) || 186;
+  const weight = Number(row.weight) || 90;
+  const neck = Number(row.neck) || 44;
+  const waist = Number(row.waist) || 100;
+  const hip = Number(row.hip) || 100;
+  const activityLevel = Number(row.activity_level) || 1.55;
+  const targetDeficitMode = Number(row.target_deficit_mode) || 500;
+
+  let navyKfa = 0;
+  if (gender === 'male') {
+    if (waist > neck && height > 0) {
+      const density = 1.0324 - 0.19077 * Math.log10(waist - neck) + 0.15456 * Math.log10(height);
+      navyKfa = (495 / density) - 450;
+    }
+  } else {
+    if (waist + hip > neck && height > 0) {
+      const density = 1.29579 - 0.35004 * Math.log10(waist + hip - neck) + 0.22100 * Math.log10(height);
+      navyKfa = (495 / density) - 450;
+    }
+  }
+  if (navyKfa < 2) navyKfa = 2;
+  if (navyKfa > 50) navyKfa = 50;
+
+  const fatMass = weight * (navyKfa / 100);
+  const leanMass = weight - fatMass;
+
+  // Katch-McArdle BMR & TDEE calculation
+  const bmr = 370 + (21.6 * leanMass);
+  const tdee = bmr * activityLevel;
+  return Math.max(1200, Math.round(tdee - targetDeficitMode));
 }
 

@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Utensils, ShoppingBag, Sparkles, Check, Clock, Save, RefreshCw, ChefHat, Send, Camera, Trash2, Award, Lightbulb, Target, Flame } from 'lucide-react';
+import { Utensils, ShoppingBag, Sparkles, Check, Clock, Save, RefreshCw, ChefHat, Send, Camera, Trash2, Award, Lightbulb, Target, Flame, Droplet, Image as ImageIcon, Sun, Moon } from 'lucide-react';
 import type { NutritionProfile, NutritionPlan, LoggedMeal, WeeklyCoachReport } from '../types';
-import { fetchNutritionProfile, upsertNutritionProfile, fetchNutritionPlan, generateAiNutritionPlan, fetchBodyMetricsInputs, sendTelegramNutritionPlan, fetchDailyMacroLogs, deleteLoggedMeal, fetchWeeklyCoachReport, generateWeeklyCoachReport } from '../services/plannerApi';
+import { 
+  fetchNutritionProfile, upsertNutritionProfile, fetchNutritionPlan, generateAiNutritionPlan, 
+  fetchBodyMetricsInputs, sendTelegramNutritionPlan, fetchDailyMacroLogs, deleteLoggedMeal, 
+  fetchWeeklyCoachReport, generateWeeklyCoachReport,
+  fetchDailyWaterLogs, addWaterLog, deleteWaterLog, type WaterLog,
+  fetchProgressPhotos, type ProgressPhoto,
+  triggerMorningBriefing, triggerEveningRecap
+} from '../services/plannerApi';
 import { WORKOUT_PLAN } from '../data/workouts';
 import { getLiveBodyMetrics, type BodyMetrics } from '../utils/bodyMetrics';
 
@@ -61,10 +68,16 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
   const [isTelegramSending, setIsTelegramSending] = useState<boolean>(false);
   const [telegramFeedback, setTelegramFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // New Macro Logs & Coach Report state
+  // Macro Logs & Coach Report state
   const [macroLogs, setMacroLogs] = useState<LoggedMeal[]>([]);
   const [coachReport, setCoachReport] = useState<WeeklyCoachReport | null>(null);
   const [isReportGenerating, setIsReportGenerating] = useState<boolean>(false);
+
+  // New Water Logs, Progress Photos & Briefing Triggers State
+  const [waterLogs, setWaterLogs] = useState<WaterLog[]>([]);
+  const [totalWaterMl, setTotalWaterMl] = useState<number>(0);
+  const [progressPhotos, setProgressPhotos] = useState<ProgressPhoto[]>([]);
+  const [briefingMsg, setBriefingMsg] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBodyMetricsInputs().then(() => setLiveMetrics(getLiveBodyMetrics()));
@@ -72,6 +85,11 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
     fetchNutritionPlan().then(p => setCurrentPlan(p));
     fetchDailyMacroLogs().then(logs => setMacroLogs(logs));
     fetchWeeklyCoachReport().then(rep => setCoachReport(rep));
+    fetchDailyWaterLogs().then(res => {
+      setWaterLogs(res.logs);
+      setTotalWaterMl(res.totalMl);
+    });
+    fetchProgressPhotos().then(photos => setProgressPhotos(photos));
   }, []);
 
   const handleDeleteMeal = async (id: string) => {
@@ -79,6 +97,32 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
     setMacroLogs(prev => prev.filter(m => m.id !== id));
   };
 
+  const handleAddWater = async (amountMl: number) => {
+    await addWaterLog(amountMl);
+    const res = await fetchDailyWaterLogs();
+    setWaterLogs(res.logs);
+    setTotalWaterMl(res.totalMl);
+  };
+
+  const handleDeleteWaterItem = async (id: string) => {
+    await deleteWaterLog(id);
+    const res = await fetchDailyWaterLogs();
+    setWaterLogs(res.logs);
+    setTotalWaterMl(res.totalMl);
+  };
+
+  const handleTriggerMorning = async () => {
+    setBriefingMsg('🌅 Sende Morgen-Briefing an Telegram...');
+    const res = await triggerMorningBriefing();
+    setBriefingMsg(res.success ? '✓ Morgen-Briefing erfolgreich an Telegram gesendet!' : (res.error || 'Fehler beim Senden'));
+    setTimeout(() => setBriefingMsg(null), 4000);
+  };
+
+  const handleTriggerEvening = async () => {
+    setBriefingMsg('🌙 Sende Abend-Recap an Telegram...');
+    const res = await triggerEveningRecap();
+    setBriefingMsg(res.success ? '✓ Abend-Recap erfolgreich an Telegram gesendet!' : (res.error || 'Fehler beim Senden'));
+    setTimeout(() => setBriefingMsg(null), 4000);
   const handleGenerateCoachReport = async () => {
     setIsReportGenerating(true);
     try {
@@ -178,20 +222,22 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
         const loggedProtein = macroLogs.reduce((sum, m) => sum + (m.protein || 0), 0);
         const loggedFat = macroLogs.reduce((sum, m) => sum + (m.fat || 0), 0);
         const loggedCarbs = macroLogs.reduce((sum, m) => sum + (m.carbs || 0), 0);
-        const calPercent = Math.min(100, Math.round((loggedCalories / (liveMetrics.targetCalories || 1)) * 100));
+        const rawCalPercent = Math.round((loggedCalories / (liveMetrics.targetCalories || 1)) * 100);
+        const calPercent = Math.min(100, rawCalPercent);
         const protPercent = Math.min(100, Math.round((loggedProtein / (liveMetrics.proteinGrams || 1)) * 100));
+        const isOverCal = loggedCalories > liveMetrics.targetCalories;
 
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
             
             {/* Today's Macro Live Progress */}
-            <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: '1px solid rgba(124, 58, 237, 0.3)' }}>
+            <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: `1px solid ${isOverCal ? 'rgba(239, 68, 68, 0.4)' : 'rgba(124, 58, 237, 0.3)'}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Flame size={18} style={{ color: 'var(--heroui-violet-light)' }} />
+                  <Flame size={18} style={{ color: isOverCal ? '#ef4444' : 'var(--heroui-violet-light)' }} />
                   Tages-Makro-Fortschritt (Heute getrackt)
                 </h3>
-                <span className="badge-pill time" style={{ background: 'rgba(124, 58, 237, 0.2)', color: 'var(--heroui-violet-light)', fontSize: '0.75rem' }}>
+                <span className="badge-pill time" style={{ background: isOverCal ? 'rgba(239, 68, 68, 0.2)' : 'rgba(124, 58, 237, 0.2)', color: isOverCal ? '#ef4444' : 'var(--heroui-violet-light)', fontSize: '0.75rem' }}>
                   {macroLogs.length} Mahlzeit(en)
                 </span>
               </div>
@@ -200,11 +246,18 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>🔥 Kalorien: <strong style={{ color: '#22c55e' }}>{loggedCalories}</strong> / {liveMetrics.targetCalories} kcal</span>
-                    <span style={{ color: '#22c55e', fontWeight: 'bold' }}>{calPercent}%</span>
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      🔥 Kalorien: <strong style={{ color: isOverCal ? '#ef4444' : '#22c55e' }}>{loggedCalories}</strong> / {liveMetrics.targetCalories} kcal
+                      {isOverCal ? (
+                        <span style={{ color: '#ef4444', marginLeft: '6px', fontSize: '0.75rem' }}>(+{loggedCalories - liveMetrics.targetCalories} kcal Überschuss ⚠️)</span>
+                      ) : (
+                        <span style={{ color: '#22c55e', marginLeft: '6px', fontSize: '0.75rem' }}>(Noch {liveMetrics.targetCalories - loggedCalories} kcal offen 🎯)</span>
+                      )}
+                    </span>
+                    <span style={{ color: isOverCal ? '#ef4444' : '#22c55e', fontWeight: 'bold' }}>{rawCalPercent}%</span>
                   </div>
                   <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${calPercent}%`, height: '100%', background: 'linear-gradient(90deg, #22c55e, #16a34a)', transition: 'width 0.4s ease' }} />
+                    <div style={{ width: `${calPercent}%`, height: '100%', background: isOverCal ? 'linear-gradient(90deg, #f59e0b, #ef4444)' : 'linear-gradient(90deg, #22c55e, #16a34a)', transition: 'width 0.4s ease' }} />
                   </div>
                 </div>
 
@@ -256,6 +309,132 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+
+            {/* 💧 Hydration Guard (Wasser-Tracker) */}
+            <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: '1px solid rgba(56, 189, 248, 0.35)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Droplet size={18} style={{ color: '#38bdf8' }} />
+                    Hydration Guard (Wasser-Tracker)
+                  </h3>
+                  <span className="badge-pill time" style={{ background: 'rgba(56, 189, 248, 0.2)', color: '#38bdf8', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                    Ziel: 3.5 Liter
+                  </span>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '6px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      💧 Getrunken: <strong style={{ color: '#38bdf8' }}>{(totalWaterMl / 1000).toFixed(2)} L</strong> ({totalWaterMl} ml / 3500 ml)
+                    </span>
+                    <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>
+                      {Math.min(100, Math.round((totalWaterMl / 3500) * 100))}%
+                    </span>
+                  </div>
+                  <div style={{ width: '100%', height: '10px', background: 'rgba(255,255,255,0.06)', borderRadius: '5px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(100, Math.round((totalWaterMl / 3500) * 100))}%`, height: '100%', background: 'linear-gradient(90deg, #38bdf8, #0284c7)', transition: 'width 0.4s ease' }} />
+                  </div>
+                </div>
+
+                {/* Quick Add Buttons */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+                  <button type="button" onClick={() => handleAddWater(250)} style={{ flex: 1, padding: '8px', borderRadius: '8px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', fontSize: '0.78rem', fontWeight: 'bold', cursor: 'pointer' }}>
+                    +250 ml Glass
+                  </button>
+                  <button type="button" onClick={() => handleAddWater(500)} style={{ flex: 1, padding: '8px', borderRadius: '8px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', fontSize: '0.78rem', fontWeight: 'bold', cursor: 'pointer' }}>
+                    +500 ml Flasche
+                  </button>
+                  <button type="button" onClick={() => handleAddWater(750)} style={{ flex: 1, padding: '8px', borderRadius: '8px', background: 'rgba(56, 189, 248, 0.15)', border: '1px solid rgba(56, 189, 248, 0.3)', color: '#38bdf8', fontSize: '0.78rem', fontWeight: 'bold', cursor: 'pointer' }}>
+                    +750 ml Shaker
+                  </button>
+                </div>
+
+                {/* Today's Water Logs */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '110px', overflowY: 'auto' }}>
+                  {waterLogs.length === 0 ? (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '6px 0' }}>
+                      Schicke z.B. <em>"500ml Wasser"</em> an Telegram oder nutze die Quick-Buttons.
+                    </div>
+                  ) : (
+                    waterLogs.map(w => (
+                      <div key={w.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: '6px', fontSize: '0.78rem' }}>
+                        <span style={{ color: '#e4e4e7' }}>🥤 {w.time} – +{w.amount_ml} ml</span>
+                        <button type="button" onClick={() => handleDeleteWaterItem(w.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', opacity: 0.7, cursor: 'pointer' }}>
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 📸 V-Shape Formcheck & Photo Vault (Transformations-Zeitstrahl) */}
+            <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: '1px solid rgba(168, 85, 247, 0.35)', gridColumn: '1 / -1' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ImageIcon size={18} style={{ color: 'var(--heroui-violet-light)' }} />
+                  V-Shape Transformations-Zeitstrahl (Progress Photo Vault)
+                </h3>
+                <span className="badge-pill" style={{ background: 'rgba(168, 85, 247, 0.2)', color: 'var(--heroui-violet-light)', fontSize: '0.75rem' }}>
+                  {progressPhotos.length} Check-in(s)
+                </span>
+              </div>
+
+              {progressPhotos.length === 0 ? (
+                <div style={{ padding: '24px', textAlign: 'center', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                  📸 <strong>Noch keine Transformations-Fotos vorhanden.</strong><br />
+                  Schicke einfach dein Spiegel-Foto oder Workout Check-in mit deinen Messwerten an deinen Telegram Bot!
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '16px', overflowX: 'auto', paddingBottom: '8px' }}>
+                  {progressPhotos.map((photo, idx) => (
+                    <div key={idx} style={{ minWidth: '200px', maxWidth: '220px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+                      {photo.photo_url ? (
+                        <img src={photo.photo_url} alt={`Formcheck ${photo.date}`} style={{ width: '100%', height: '160px', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: '120px', background: 'rgba(124, 58, 237, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--heroui-violet-light)' }}>
+                          <Camera size={32} />
+                        </div>
+                      )}
+                      <div style={{ padding: '10px 12px' }}>
+                        <span style={{ color: '#fff', fontWeight: 'bold', fontSize: '0.8rem', display: 'block' }}>📅 {photo.date}</span>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          {photo.body_weight && <span>⚖️ Gewicht: {photo.body_weight} kg</span>}
+                          {photo.body_fat && <span>🎯 KFA: {photo.body_fat}%</span>}
+                          {photo.waist && <span>📏 Bauch: {photo.waist} cm</span>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 🌅 Automatischer Telegram Briefings Quick-Bar */}
+            <div className="glass-panel" style={{ padding: '16px 20px', borderRadius: '16px', border: '1px solid rgba(234, 179, 8, 0.35)', gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h4 style={{ margin: 0, color: '#fff', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sun size={16} style={{ color: '#eab308' }} />
+                  Automatischer Telegram Briefing & Recap Bot (Aktiv: 07:00 & 21:00)
+                </h4>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  Erhalte täglich automatisch dein Morgen-Briefing mit Tages-Zitat & Ritualen sowie deinen abendlichen Disziplin-Recap.
+                </p>
+                {briefingMsg && (
+                  <span style={{ fontSize: '0.78rem', color: '#eab308', fontWeight: 'bold', marginTop: '4px', display: 'block' }}>{briefingMsg}</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button type="button" onClick={handleTriggerMorning} style={{ background: 'rgba(234, 179, 8, 0.18)', border: '1px solid rgba(234, 179, 8, 0.4)', color: '#eab308', padding: '8px 14px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Sun size={14} /> Morgen (07:00) testen
+                </button>
+                <button type="button" onClick={handleTriggerEvening} style={{ background: 'rgba(168, 85, 247, 0.18)', border: '1px solid rgba(168, 85, 247, 0.4)', color: 'var(--heroui-violet-light)', padding: '8px 14px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Moon size={14} /> Abend (21:00) testen
+                </button>
               </div>
             </div>
 
@@ -745,3 +924,4 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
     </div>
   );
 };
+}

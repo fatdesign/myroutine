@@ -639,4 +639,90 @@ export async function generateWeeklyCoachReport(): Promise<WeeklyCoachReport> {
   throw new Error('Fehler bei der Generierung des Wochen-Coach Reports');
 }
 
+// --- Water Log & Hydration Guard API ---
+export interface WaterLog {
+  id: string;
+  date: string;
+  time: string;
+  amount_ml: number;
+}
+
+export async function fetchDailyWaterLogs(): Promise<{ logs: WaterLog[]; totalMl: number }> {
+  try {
+    const res = await fetch(`${WORKER_URL}/water-logs`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.warn('Fetch water logs error:', e);
+  }
+  return { logs: [], totalMl: 0 };
+}
+
+export async function addWaterLog(amountMl: number): Promise<void> {
+  try {
+    await fetch(`${WORKER_URL}/water-logs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount_ml: amountMl })
+    });
+  } catch (e) {
+    console.warn('Add water log error:', e);
+  }
+}
+
+export async function deleteWaterLog(id: string): Promise<void> {
+  try {
+    await fetch(`${WORKER_URL}/water-logs`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+  } catch (e) {
+    console.warn('Delete water log error:', e);
+  }
+}
+
+// --- Progress Photos Vault API ---
+export interface ProgressPhoto {
+  date: string;
+  body_weight?: number;
+  body_fat?: number;
+  neck?: number;
+  waist?: number;
+  photo_url?: string;
+}
+
+export async function fetchProgressPhotos(): Promise<ProgressPhoto[]> {
+  try {
+    const res = await fetch(`${WORKER_URL}/progress-photos`);
+    if (res.ok) {
+      const data = await res.json();
+      return data.photos || [];
+    }
+  } catch (e) {
+    console.warn('Fetch progress photos error:', e);
+  }
+  return [];
+}
+
+// --- Trigger Telegram Briefings API ---
+export async function triggerMorningBriefing(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${WORKER_URL}/trigger-morning-briefing`, { method: 'POST' });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
+export async function triggerEveningRecap(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const res = await fetch(`${WORKER_URL}/trigger-evening-recap`, { method: 'POST' });
+    return await res.json();
+  } catch (e: any) {
+    return { success: false, error: e.message };
+  }
+}
+
 
