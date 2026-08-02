@@ -382,7 +382,7 @@ Erstelle einen inspirierenden, hochprofessionellen Wochen-Report im JSON Format:
   "recommendations": ["Empfehlung 1 für nächste Woche", "Empfehlung 2", "Empfehlung 3"]
 }`;
 
-          const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${env.PLANNER_KI_API}`;
+          const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${env.PLANNER_KI_API}`;
           const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -739,7 +739,7 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
           }
 
           if (!aiPlanResult && env.PLANNER_KI_API) {
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${env.PLANNER_KI_API}`;
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${env.PLANNER_KI_API}`;
             const response = await fetch(url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -1154,7 +1154,11 @@ async function handleTelegramUpdate(request, env) {
       const updateFallback = await clonedRequest.json();
       const fallbackChatId = updateFallback?.message?.chat?.id;
       if (fallbackChatId) {
-        await sendTelegramMessage(fallbackChatId, `❌ Fehler: ${e.message}`, env);
+        const isQuotaError = e.message && (e.message.includes('quota') || e.message.includes('RESOURCE_EXHAUSTED') || e.message.includes('429'));
+        const userMsg = isQuotaError
+          ? `⏳ KI-Limit erreicht! Die Gemini API hat das kostenlose Tageslimit (kurzzeitig) erreicht.\n\nBitte versuche es in 1-2 Minuten nochmal. Deine Nachricht wurde nicht gespeichert.`
+          : `❌ Fehler: ${e.message}`;
+        await sendTelegramMessage(fallbackChatId, userMsg, env);
       }
     } catch (innerError) { }
   }
@@ -1539,7 +1543,7 @@ Klassifiziere die Eingabe in genau EINES der folgenden vier Formate und antworte
 }
 Uhrzeit-Fallback für Aufgaben: "09:00".`;
 
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${env.PLANNER_KI_API}`;
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${env.PLANNER_KI_API}`;
 
   const parts = [];
   parts.push({ text: prompt });
