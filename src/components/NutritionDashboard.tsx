@@ -286,7 +286,7 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
               </div>
 
               {/* Logged Meals List */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
                 {macroLogs.length === 0 ? (
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>
                     Noch keine Mahlzeiten für heute getrackt.
@@ -315,8 +315,8 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
             </div>
 
             {/* 💧 Hydration Guard (Wasser-Tracker) */}
-            <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: '1px solid rgba(56, 189, 248, 0.35)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div>
+            <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: '1px solid rgba(56, 189, 248, 0.35)', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                   <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <Droplet size={18} style={{ color: '#38bdf8' }} />
@@ -355,7 +355,7 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                 </div>
 
                 {/* Today's Water Logs */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '110px', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, minHeight: '180px', maxHeight: '280px', overflowY: 'auto' }}>
                   {waterLogs.length === 0 ? (
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '6px 0' }}>
                       Schicke z.B. <em>"500ml Wasser"</em> an Telegram oder nutze die Quick-Buttons.

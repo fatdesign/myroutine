@@ -1210,3 +1210,39 @@ h1, h2, h3, h4 {
   }
 }
 
+/* ==========================================================================
+   CUSTOM HERO UI SCROLLBAR STYLES (High-End Dark Mode)
+   ========================================================================== */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 85, 247, 0.5) rgba(0, 0, 0, 0.25);
+}
+
+/* WebKit (Chrome, Edge, Safari, Opera) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  transition: all 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--heroui-violet);
+  box-shadow: 0 0 10px rgba(124, 58, 237, 0.8);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
