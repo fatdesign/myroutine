@@ -604,23 +604,23 @@ export function WorkoutDashboard() {
                       )}
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         {selectedSession.bodyWeight && (
-                          <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
+                          <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                             <Weight size={12} /> {selectedSession.bodyWeight} kg
                           </span>
                         )}
                         {selectedSession.bodyFat && (
-                          <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', background: 'var(--heroui-violet)' }}>
+                          <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', background: 'var(--heroui-violet)', whiteSpace: 'nowrap' }}>
                             <Flame size={12} /> {selectedSession.bodyFat}% KFA
                           </span>
                         )}
                         {selectedSession.neck && (
-                          <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
-                            👔 {selectedSession.neck} cm Nacken
+                          <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                            👔 Nacken: {selectedSession.neck} cm
                           </span>
                         )}
                         {selectedSession.waist && (
-                          <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}>
-                            📏 {selectedSession.waist} cm Bauch
+                          <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                            📏 Bauch: {selectedSession.waist} cm
                           </span>
                         )}
                       </div>
@@ -642,7 +642,7 @@ export function WorkoutDashboard() {
                             <span style={{ display: 'block', fontWeight: '500' }}>{exercise.name}</span>
                             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{exercise.equipment}</span>
                           </div>
-                          <span className="badge-pill time" style={{ background: 'var(--heroui-violet)', fontSize: '0.75rem' }}>{sets} / {exercise.sets} Sets</span>
+                          <span className="badge-pill time" style={{ background: 'var(--heroui-violet)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{sets} / {exercise.sets} Sets</span>
                         </div>
                       );
                     })}
@@ -675,74 +675,127 @@ export function WorkoutDashboard() {
                       key={log.date}
                       onClick={() => setSelectedHistoryDate(log.date)}
                       style={{
-                        background: selectedHistoryDate === log.date ? 'rgba(34, 197, 94, 0.15)' : 'rgba(0,0,0,0.3)',
-                        padding: '10px 12px',
-                        borderRadius: '10px',
-                        border: selectedHistoryDate === log.date ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(255,255,255,0.06)',
+                        background: selectedHistoryDate === log.date ? 'rgba(124, 58, 237, 0.15)' : 'rgba(0,0,0,0.3)',
+                        padding: '12px 14px',
+                        borderRadius: '12px',
+                        border: selectedHistoryDate === log.date ? '1px solid var(--heroui-violet)' : '1px solid rgba(255,255,255,0.06)',
                         display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
+                        flexDirection: 'column',
+                        gap: '8px',
                         cursor: 'pointer',
-                        transition: 'all 0.2s ease'
+                        transition: 'all 0.2s ease',
+                        boxShadow: selectedHistoryDate === log.date ? '0 0 15px rgba(124, 58, 237, 0.25)' : 'none'
                       }}
                     >
-                      <div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', fontWeight: 'bold' }}>
-                          📅 {log.date.split('-').reverse().join('.')}
-                        </span>
-                        <div style={{ display: 'flex', gap: '10px', marginTop: '3px', alignItems: 'center', flexWrap: 'wrap' }}>
-                          {log.bodyWeight && (
-                            <span style={{ fontSize: '0.88rem', color: '#fff', fontWeight: 'bold' }}>
-                              {log.bodyWeight} kg
+                      {/* Top Header Row: Date & Main Stats + Delta Badges */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                        <div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', fontWeight: 'bold' }}>
+                            📅 {log.date.split('-').reverse().join('.')}
+                          </span>
+                          <div style={{ display: 'flex', gap: '10px', marginTop: '3px', alignItems: 'center' }}>
+                            {log.bodyWeight && (
+                              <span style={{ fontSize: '0.95rem', color: '#fff', fontWeight: '800', whiteSpace: 'nowrap' }}>
+                                {log.bodyWeight} kg
+                              </span>
+                            )}
+                            {log.bodyFat && (
+                              <span style={{ fontSize: '0.88rem', color: '#22c55e', fontWeight: '800', whiteSpace: 'nowrap' }}>
+                                {log.bodyFat}% KFA
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right Delta Badges - Single Line */}
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
+                          {log.weightDeltaStr && (
+                            <span style={{
+                              fontSize: '0.72rem',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              background: log.weightDeltaStr.startsWith('-') ? 'rgba(34, 197, 94, 0.18)' : 'rgba(239, 68, 68, 0.18)',
+                              border: log.weightDeltaStr.startsWith('-') ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)',
+                              color: log.weightDeltaStr.startsWith('-') ? '#22c55e' : '#ef4444',
+                              fontWeight: 'bold',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {log.weightDeltaStr} kg
                             </span>
                           )}
-                          {log.bodyFat && (
-                            <span style={{ fontSize: '0.82rem', color: '#22c55e', fontWeight: 'bold' }}>
-                              {log.bodyFat}% KFA
+                          {log.kfaDeltaStr && (
+                            <span style={{
+                              fontSize: '0.72rem',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              background: log.kfaDeltaStr.startsWith('-') ? 'rgba(34, 197, 94, 0.18)' : 'rgba(239, 68, 68, 0.18)',
+                              border: log.kfaDeltaStr.startsWith('-') ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)',
+                              color: log.kfaDeltaStr.startsWith('-') ? '#22c55e' : '#ef4444',
+                              fontWeight: 'bold',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {log.kfaDeltaStr}% KFA
                             </span>
                           )}
                         </div>
-                        {(log.neck || log.waist || (log.date === todayStr && (calcNeck || calcWaist))) && (
-                          <div style={{ display: 'flex', gap: '8px', marginTop: '3px', fontSize: '0.74rem', color: 'var(--heroui-violet-light)', fontWeight: '500' }}>
-                            {(log.neck || (log.date === todayStr ? calcNeck : null)) && (
-                              <span>👔 Nacken: {log.neck || calcNeck} cm</span>
-                            )}
-                            {(log.waist || (log.date === todayStr ? calcWaist : null)) && (
-                              <span>📏 Bauch: {log.waist || calcWaist} cm</span>
-                            )}
-                            {log.hip && (
-                              <span>📐 Hüfte: {log.hip} cm</span>
-                            )}
-                          </div>
-                        )}
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
-                        {log.weightDeltaStr && (
-                          <span style={{
-                            fontSize: '0.7rem',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            background: log.weightDeltaStr.startsWith('-') ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                            color: log.weightDeltaStr.startsWith('-') ? '#22c55e' : '#ef4444',
-                            fontWeight: 'bold'
-                          }}>
-                            {log.weightDeltaStr} kg
-                          </span>
-                        )}
-                        {log.kfaDeltaStr && (
-                          <span style={{
-                            fontSize: '0.7rem',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            background: log.kfaDeltaStr.startsWith('-') ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                            color: log.kfaDeltaStr.startsWith('-') ? '#22c55e' : '#ef4444',
-                            fontWeight: 'bold'
-                          }}>
-                            {log.kfaDeltaStr}% KFA
-                          </span>
-                        )}
-                      </div>
+                      {/* Bottom Body Measurement Micro-Chips */}
+                      {(log.neck || log.waist || log.hip || (log.date === todayStr && (calcNeck || calcWaist))) && (
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center', marginTop: '2px' }}>
+                          {(log.neck || (log.date === todayStr ? calcNeck : null)) && (
+                            <span style={{
+                              fontSize: '0.72rem',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              background: 'rgba(124, 58, 237, 0.14)',
+                              border: '1px solid rgba(168, 85, 247, 0.25)',
+                              color: '#c084fc',
+                              fontWeight: '600',
+                              whiteSpace: 'nowrap',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              👔 Nacken: {log.neck || calcNeck} cm
+                            </span>
+                          )}
+                          {(log.waist || (log.date === todayStr ? calcWaist : null)) && (
+                            <span style={{
+                              fontSize: '0.72rem',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              background: 'rgba(124, 58, 237, 0.14)',
+                              border: '1px solid rgba(168, 85, 247, 0.25)',
+                              color: '#c084fc',
+                              fontWeight: '600',
+                              whiteSpace: 'nowrap',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              📏 Bauch: {log.waist || calcWaist} cm
+                            </span>
+                          )}
+                          {log.hip && (
+                            <span style={{
+                              fontSize: '0.72rem',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              background: 'rgba(124, 58, 237, 0.14)',
+                              border: '1px solid rgba(168, 85, 247, 0.25)',
+                              color: '#c084fc',
+                              fontWeight: '600',
+                              whiteSpace: 'nowrap',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              📐 Hüfte: {log.hip} cm
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
