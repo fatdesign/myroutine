@@ -1618,14 +1618,14 @@ Uhrzeit-Fallback für Aufgaben: "09:00".`;
       errorMessage = await response.text();
     }
 
-    // --- Cloudflare Workers AI Fallback (text-only, FREE) ---
-    if (isQuota && env.AI && !photoBase64 && !audioBase64 && text) {
-      console.log('Gemini quota hit — falling back to Cloudflare AI (Llama-3)...');
+    // --- Cloudflare Workers AI Fallback (text or text-caption, FREE) ---
+    if (env.AI && text) {
+      console.log('Gemini API call failed — falling back to Cloudflare Workers AI (Llama-3)...');
       try {
-        const fallbackPrompt = `${prompt}\n\nNachricht: "${text}"\n\nAntworte NUR mit dem JSON-Objekt, kein anderer Text.`;
+        const fallbackPrompt = `${prompt}\n\nEingabe: "${text}"\n\nErzeuge das passende JSON für diesen Text (z.B. type: "food_log" mit geschätzten Kalorien, Protein, Fett, Carbs, wenn es Essen beschreibt). Antworte AUSSCHLIESSLICH mit dem JSON-Objekt.`;
         const cfResult = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
           messages: [
-            { role: 'system', content: 'Du bist ein Assistent. Antworte AUSSCHLIESSLICH mit gültigem JSON, ohne Markdown oder Erklärungen.' },
+            { role: 'system', content: 'Du bist ein nützlicher V-Shape Fitness-Assistent. Antworte AUSSCHLIESSLICH im gültigen JSON-Format.' },
             { role: 'user', content: fallbackPrompt }
           ],
           max_tokens: 300
@@ -1635,13 +1635,15 @@ Uhrzeit-Fallback für Aufgaben: "09:00".`;
         const firstBrace = cfContent.indexOf('{');
         const lastBrace = cfContent.lastIndexOf('}');
         if (firstBrace !== -1) cfContent = cfContent.slice(firstBrace, lastBrace + 1);
-        return JSON.parse(cfContent);
+        const parsed = JSON.parse(cfContent);
+        if (parsed && (parsed.type || parsed.meal_name || parsed.calories || parsed.task || parsed.amount_ml)) {
+          return parsed;
+        }
       } catch (cfErr) {
-        console.error('Cloudflare AI fallback also failed:', cfErr.message);
+        console.error('Cloudflare AI fallback error:', cfErr.message);
       }
     }
 
-    // For photos/audio when quota is exceeded: throw with a clear quota error
     throw new Error(`AI API Error: ${errorMessage}`);
   }
 
