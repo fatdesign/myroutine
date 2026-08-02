@@ -1515,188 +1515,10 @@ async function handleBodyMetricsTelegram(chatId, metricsInput, env, photoUrl = n
   await sendTelegramMessage(chatId, msg, env);
 }
 
-// --- Smart Offline Food Database & Precision Parser ---
-function parseOfflineSmartFood(text) {
-  if (!text) return null;
-  const raw = text.trim();
-  const lower = raw.toLowerCase();
-
-  // Extract quantity if present at start (e.g., "1 gekochtes Ei", "2 eier", "500g magerquark", "200g hähnchen")
-  let quantity = 1;
-  const qtyMatch = lower.match(/^(\d+(?:[.,]\d+)?)\s*(g|gramm|ml|stk|stück|eier|ei|dose|scheibe|scheiben)?/i);
-  if (qtyMatch) {
-    quantity = parseFloat(qtyMatch[1].replace(',', '.'));
-  }
-
-  // 1. Eier / Gekochtes Ei / Spiegelei / Rührei
-  if (lower.includes('ei') || lower.includes('eier')) {
-    if (!lower.includes('eiweiß') && !lower.includes('eintopf') && !lower.includes('reis')) {
-      const numEggs = Math.max(1, Math.min(20, quantity || 1));
-      return {
-        type: 'food_log',
-        meal_name: raw,
-        calories: Math.round(numEggs * 78),
-        protein: Math.round(numEggs * 6.5),
-        fat: Math.round(numEggs * 5.3),
-        carbs: Math.round(numEggs * 0.5)
-      };
-    }
-  }
-
-  // 2. Magerquark / Quark / Skyr
-  if (lower.includes('quark') || lower.includes('skyr')) {
-    let grams = quantity > 10 ? quantity : 250;
-    const factor = grams / 100;
-    return {
-      type: 'food_log',
-      meal_name: raw,
-      calories: Math.round(factor * 68),
-      protein: Math.round(factor * 12),
-      fat: Math.round(factor * 0.2),
-      carbs: Math.round(factor * 4)
-    };
-  }
-
-  // 3. Banane
-  if (lower.includes('banane') || lower.includes('bananen')) {
-    const num = Math.max(1, Math.min(10, quantity || 1));
-    return {
-      type: 'food_log',
-      meal_name: raw,
-      calories: Math.round(num * 105),
-      protein: Math.round(num * 1.2),
-      fat: Math.round(num * 0.3),
-      carbs: Math.round(num * 27)
-    };
-  }
-
-  // 4. Apfel
-  if (lower.includes('apfel') || lower.includes('äpfel')) {
-    const num = Math.max(1, Math.min(10, quantity || 1));
-    return {
-      type: 'food_log',
-      meal_name: raw,
-      calories: Math.round(num * 95),
-      protein: Math.round(num * 0.5),
-      fat: Math.round(num * 0.3),
-      carbs: Math.round(num * 25)
-    };
-  }
-
-  // 5. Whey / Protein Shake
-  if (lower.includes('whey') || lower.includes('protein shake') || lower.includes('shake')) {
-    const num = Math.max(1, Math.min(5, quantity || 1));
-    return {
-      type: 'food_log',
-      meal_name: raw,
-      calories: Math.round(num * 120),
-      protein: Math.round(num * 24),
-      fat: Math.round(num * 1.5),
-      carbs: Math.round(num * 2.5)
-    };
-  }
-
-  // 6. Hähnchen / Pute / Huhn
-  if (lower.includes('hähnchen') || lower.includes('pute') || lower.includes('huhn')) {
-    let grams = quantity > 10 ? quantity : 200;
-    const factor = grams / 100;
-    return {
-      type: 'food_log',
-      meal_name: raw,
-      calories: Math.round(factor * 165),
-      protein: Math.round(factor * 31),
-      fat: Math.round(factor * 3.6),
-      carbs: 0
-    };
-  }
-
-  // 7. Reis (gekocht)
-  if (lower.includes('reis')) {
-    let grams = quantity > 10 ? quantity : 150;
-    const factor = grams / 100;
-    return {
-      type: 'food_log',
-      meal_name: raw,
-      calories: Math.round(factor * 130),
-      protein: Math.round(factor * 2.7),
-      fat: Math.round(factor * 0.3),
-      carbs: Math.round(factor * 28)
-    };
-  }
-
-  // 8. Haferflocken / Oats
-  if (lower.includes('haferflocken') || lower.includes('oats')) {
-    let grams = quantity > 10 ? quantity : 80;
-    const factor = grams / 100;
-    return {
-      type: 'food_log',
-      meal_name: raw,
-      calories: Math.round(factor * 370),
-      protein: Math.round(factor * 13),
-      fat: Math.round(factor * 7),
-      carbs: Math.round(factor * 59)
-    };
-  }
-
-  // 9. Thunfisch
-  if (lower.includes('thunfisch')) {
-    const num = Math.max(1, Math.min(5, quantity || 1));
-    return {
-      type: 'food_log',
-      meal_name: raw,
-      calories: Math.round(num * 116),
-      protein: Math.round(num * 26),
-      fat: Math.round(num * 1),
-      carbs: 0
-    };
-  }
-
-  // 10. Vollkornbrot / Brot
-  if (lower.includes('brot')) {
-    const num = Math.max(1, Math.min(10, quantity || 2));
-    return {
-      type: 'food_log',
-      meal_name: raw,
-      calories: Math.round(num * 110),
-      protein: Math.round(num * 4),
-      fat: Math.round(num * 1),
-      carbs: Math.round(num * 20)
-    };
-  }
-
-  // 11. Döner / Kebab
-  if (lower.includes('döner') || lower.includes('kebab')) {
-    const num = Math.max(1, Math.min(5, quantity || 1));
-    return {
-      type: 'food_log',
-      meal_name: raw,
-      calories: Math.round(num * 650),
-      protein: Math.round(num * 35),
-      fat: Math.round(num * 25),
-      carbs: Math.round(num * 65)
-    };
-  }
-
-  // Generic fallback if keyword not found
-  let cals = 350, prot = 25, fat = 10, carbs = 35;
-  if (lower.includes('rind') || lower.includes('steak') || lower.includes('fleisch')) { prot += 15; cals += 80; }
-  if (lower.includes('gemüse') || lower.includes('salat')) { carbs += 10; cals -= 40; }
-  if (lower.includes('nuss') || lower.includes('käse') || lower.includes('öl')) { fat += 10; cals += 90; }
-
-  return {
-    type: 'food_log',
-    meal_name: raw,
-    calories: Math.round(cals),
-    protein: Math.round(prot),
-    fat: Math.round(fat),
-    carbs: Math.round(carbs)
-  };
-}
-
 // --- AI Engine (Multi-modal) ---
 async function parseWithAI(text, audioBase64, photoBase64, env) {
 
-  // --- FAST PATH: Simple Regex & Direct Food Pre-Parser ---
+  // --- FAST PATH: Simple Regex Pre-Parser (Water & Body Metrics ONLY) ---
   if (text && !audioBase64 && !photoBase64) {
     const t = text.toLowerCase().trim();
     // Check Water: "500ml", "1.5l", "2 liter", "habe 750 ml getrunken" etc.
@@ -1722,54 +1544,30 @@ async function parseWithAI(text, audioBase64, photoBase64, env) {
         hip: null
       };
     }
-
-    // Check direct simple foods (e.g. "1 gekochtes Ei", "2 eier", "500g magerquark", "1 banane")
-    const isDirectFood = (
-      t.includes('ei') || t.includes('eier') || t.includes('quark') || t.includes('skyr') ||
-      t.includes('banane') || t.includes('apfel') || t.includes('shake') || t.includes('whey') ||
-      t.includes('hähnchen') || t.includes('pute') || t.includes('reis') || t.includes('haferflocken') ||
-      t.includes('thunfisch') || t.includes('brot') || t.includes('döner')
-    ) && !t.includes('morgen') && !t.includes('termin') && !t.includes('uhr');
-
-    if (isDirectFood) {
-      const fastFood = parseOfflineSmartFood(text);
-      if (fastFood) {
-        console.log('Fast-path direct food parsed:', JSON.stringify(fastFood));
-        return fastFood;
-      }
-    }
   }
 
-  const prompt = `Analysiere die Nachricht (Text, Sprachnachricht oder Foto auf Deutsch).
-Klassifiziere die Eingabe in genau EINES der folgenden vier Formate und antworte AUSSCHLIESSLICH im gültigen JSON-Format.
+  const prompt = `Analysiere die Nachricht (Text, Sprachnachricht oder Foto von Essen auf Deutsch).
+Schätze die Nährwerte und Makros der Mahlzeit realistisch ein und antworte AUSSCHLIESSLICH im gültigen JSON-Format.
 
-WICHTIGE REALISTISCHE NÄHRWERT-REGELN:
-- 1 Ei (gekocht, Spiegelei, Rührei) = ca. 78 kcal (6.5g Eiweiß, 5.3g Fett, 0.5g Carbs).
-- 100g Hähnchenbrust/Putenbrust = ca. 165 kcal (31g Eiweiß, 3.6g Fett, 0g Carbs).
-- 100g gekochter Reis = ca. 130 kcal (2.7g Eiweiß, 0.3g Fett, 28g Carbs).
-- 100g Magerquark/Skyr = ca. 68 kcal (12g Eiweiß, 0.2g Fett, 4g Carbs).
-- 1 Banane = ca. 105 kcal (1.2g Eiweiß, 0.3g Fett, 27g Carbs).
-- 100g Apfel = ca. 52 kcal.
-- 1 Portion Whey Protein (30g) = ca. 120 kcal (24g Eiweiß).
-- Berechne Gesamtkalorien EXAKT als: (Eiweiß * 4) + (Carbs * 4) + (Fett * 9).
+Klassifiziere die Eingabe in genau EINES der folgenden Formate:
 
-FORMAT 1: ERNÄHRUNG / ESSEN (wenn ein Foto von Essen vorliegt ODER Text/Sprachnachricht über gegessene Mahlzeiten):
+1. ERNÄHRUNG / ESSEN (für alle gegessenen Mahlzeiten oder Lebensmittelfotos):
 {
   "type": "food_log",
-  "meal_name": "Name des Gerichts (z.B. 1 gekochtes Ei)",
-  "calories": 78,
-  "protein": 7,
-  "fat": 5,
-  "carbs": 1
+  "meal_name": "Name der Mahlzeit",
+  "calories": 650,
+  "protein": 35,
+  "fat": 20,
+  "carbs": 70
 }
 
-FORMAT 2: WASSER / HYDRATION:
+2. WASSER / HYDRATION:
 {
   "type": "water_log",
   "amount_ml": 500
 }
 
-FORMAT 3: KÖRPERMESSUNGEN:
+3. KÖRPERMESSUNGEN:
 {
   "type": "body_metrics",
   "weight": 91.5,
@@ -1778,7 +1576,7 @@ FORMAT 3: KÖRPERMESSUNGEN:
   "hip": 100.0
 }
 
-FORMAT 4: AUFGABEN / REMINDER:
+4. AUFGABEN / REMINDER:
 {
   "type": "task",
   "task": "Beschreibung der Aufgabe",
@@ -1835,36 +1633,51 @@ FORMAT 4: AUFGABEN / REMINDER:
     }
   }
 
-  // --- Fallback 1: Cloudflare Workers AI ---
+  // --- Fallback: Cloudflare Workers AI (100% Unlimited Free Edge AI) ---
   if (env.AI && text) {
-    console.log('Gemini models failed — trying Cloudflare Workers AI...');
+    console.log('Gemini models rate-limited — seamlessly failing over to Cloudflare Workers AI...');
     try {
-      const fallbackPrompt = `${prompt}\n\nEingabe: "${text}"\n\nAntworte AUSSCHLIESSLICH im gültigen JSON-Format.`;
+      const fallbackPrompt = `Analysiere folgendes Essen/Getränk und berechne Nährwerte:
+Eingabe: "${text}"
+
+Antworte AUSSCHLIESSLICH im gültigen JSON-Format:
+{
+  "type": "food_log",
+  "meal_name": "${text}",
+  "calories": 380,
+  "protein": 8,
+  "fat": 12,
+  "carbs": 60
+}`;
+
       const cfResult = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
         messages: [
-          { role: 'system', content: 'Du bist ein Fitness-Assistent. Antworte AUSSCHLIESSLICH mit JSON.' },
+          { role: 'system', content: 'Du bist ein KI-Nährwert-Assistent. Antworte AUSSCHLIESSLICH im JSON-Format.' },
           { role: 'user', content: fallbackPrompt }
         ],
         max_tokens: 300
       });
-      let cfContent = cfResult?.response || '{}';
-      if (cfContent.includes('```')) cfContent = cfContent.replace(/```json|```/g, '').trim();
-      const firstBrace = cfContent.indexOf('{');
-      const lastBrace = cfContent.lastIndexOf('}');
-      if (firstBrace !== -1) cfContent = cfContent.slice(firstBrace, lastBrace + 1);
-      const parsed = JSON.parse(cfContent);
-      if (parsed && (parsed.type || parsed.meal_name || parsed.calories)) {
-        return parsed;
+
+      let cfContent = typeof cfResult === 'string' ? cfResult : (cfResult?.response || JSON.stringify(cfResult));
+      console.log('Cloudflare AI response:', cfContent);
+
+      const jsonMatch = cfContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed) {
+          return {
+            type: parsed.type || 'food_log',
+            meal_name: parsed.meal_name || text,
+            calories: Math.round(Number(parsed.calories) || 300),
+            protein: Math.round(Number(parsed.protein) || 10),
+            fat: Math.round(Number(parsed.fat) || 10),
+            carbs: Math.round(Number(parsed.carbs) || 40)
+          };
+        }
       }
     } catch (cfErr) {
       console.log('Cloudflare AI fallback error:', cfErr.message);
     }
-  }
-
-  // --- Fallback 2: Offline Smart Text Meal Parser (GUARANTEED FOR TEXT MEALS) ---
-  if (text && !photoBase64 && !audioBase64) {
-    console.log('Using Offline Smart Meal Parser for text...');
-    return parseOfflineSmartFood(text);
   }
 
   throw new Error(`AI API Error: ${lastError || 'Quota exceeded'}`);
