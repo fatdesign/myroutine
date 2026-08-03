@@ -208,12 +208,13 @@ export default {
         }
       }
 
-      // --- Exercise Overrides (custom Sets/Reps target per exercise, persisted across devices) ---
+      // --- Exercise Overrides (custom Sets/Reps/Weight target per exercise, persisted across devices) ---
       if (path === '/exercise-overrides' || path === '/exercise-overrides/') {
         if (request.method === 'GET') {
           await env.DB.prepare(
-            "CREATE TABLE IF NOT EXISTS exercise_overrides (exercise_id TEXT PRIMARY KEY, sets INTEGER, reps INTEGER)"
+            "CREATE TABLE IF NOT EXISTS exercise_overrides (exercise_id TEXT PRIMARY KEY, sets INTEGER, reps INTEGER, weight REAL)"
           ).run();
+          try { await env.DB.prepare("ALTER TABLE exercise_overrides ADD COLUMN weight REAL").run(); } catch (e) {}
 
           const { results } = await env.DB.prepare("SELECT * FROM exercise_overrides").all();
           return new Response(JSON.stringify(results), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -223,19 +224,21 @@ export default {
       if (path.startsWith('/exercise-overrides/')) {
         const exerciseId = path.split('/').pop();
         if (request.method === 'PUT') {
-          const { sets, reps } = await request.json();
+          const { sets, reps, weight } = await request.json();
 
           await env.DB.prepare(
-            "CREATE TABLE IF NOT EXISTS exercise_overrides (exercise_id TEXT PRIMARY KEY, sets INTEGER, reps INTEGER)"
+            "CREATE TABLE IF NOT EXISTS exercise_overrides (exercise_id TEXT PRIMARY KEY, sets INTEGER, reps INTEGER, weight REAL)"
           ).run();
+          try { await env.DB.prepare("ALTER TABLE exercise_overrides ADD COLUMN weight REAL").run(); } catch (e) {}
 
           await env.DB.prepare(
-            `INSERT INTO exercise_overrides (exercise_id, sets, reps) VALUES (?, ?, ?)
+            `INSERT INTO exercise_overrides (exercise_id, sets, reps, weight) VALUES (?, ?, ?, ?)
              ON CONFLICT(exercise_id) DO UPDATE SET
-               sets = excluded.sets,
-               reps = excluded.reps`
+               sets = COALESCE(excluded.sets, exercise_overrides.sets),
+               reps = COALESCE(excluded.reps, exercise_overrides.reps),
+               weight = COALESCE(excluded.weight, exercise_overrides.weight)`
           )
-            .bind(exerciseId, sets ?? null, reps ?? null)
+            .bind(exerciseId, sets ?? null, reps ?? null, weight ?? null)
             .run();
 
           return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });

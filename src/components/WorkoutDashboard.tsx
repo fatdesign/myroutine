@@ -305,10 +305,27 @@ export function WorkoutDashboard() {
     });
   }, [todayStr]);
 
-  // Merge a persisted Sets/Reps override into an exercise from the static plan
+  // Parses equipment strings like "23kg Langhantel" or "2x 13kg Kurzhanteln" into an
+  // editable weight number. Bodyweight exercises ("Körpergewicht"...) return null.
+  const parseEquipmentWeight = (equipment: string): { multiplierPrefix: string; weight: number; label: string } | null => {
+    const match = equipment.match(/^(\d+x\s+)?(\d+(?:[.,]\d+)?)kg\s+(.+)$/i);
+    if (!match) return null;
+    return { multiplierPrefix: match[1] || '', weight: parseFloat(match[2].replace(',', '.')), label: match[3] };
+  };
+
+  const formatEquipmentWeight = (parsed: { multiplierPrefix: string; weight: number; label: string }): string =>
+    `${parsed.multiplierPrefix}${parsed.weight}kg ${parsed.label}`;
+
+  // Merge a persisted Sets/Reps/Weight override into an exercise from the static plan
   const withOverrides = (ex: Exercise): Exercise => {
     const o = exerciseOverrides[ex.id];
-    return o ? { ...ex, sets: o.sets ?? ex.sets, reps: o.reps ?? ex.reps } : ex;
+    if (!o) return ex;
+    let equipment = ex.equipment;
+    if (o.weight !== undefined) {
+      const parsed = parseEquipmentWeight(ex.equipment);
+      if (parsed) equipment = formatEquipmentWeight({ ...parsed, weight: o.weight });
+    }
+    return { ...ex, sets: o.sets ?? ex.sets, reps: o.reps ?? ex.reps, equipment };
   };
 
   const adjustExercise = (ex: Exercise, field: 'sets' | 'reps', delta: number) => {
@@ -317,7 +334,17 @@ export function WorkoutDashboard() {
     const nextReps = field === 'reps' ? Math.max(minValue, ex.reps + delta) : ex.reps;
     const updated = { sets: nextSets, reps: nextReps };
 
-    setExerciseOverrides(prev => ({ ...prev, [ex.id]: updated }));
+    setExerciseOverrides(prev => ({ ...prev, [ex.id]: { ...prev[ex.id], ...updated } }));
+    upsertExerciseOverride(ex.id, updated);
+  };
+
+  const adjustWeight = (ex: Exercise, delta: number) => {
+    const parsed = parseEquipmentWeight(ex.equipment);
+    if (!parsed) return;
+    const nextWeight = Math.max(1, parsed.weight + delta);
+    const updated = { weight: nextWeight };
+
+    setExerciseOverrides(prev => ({ ...prev, [ex.id]: { ...prev[ex.id], ...updated } }));
     upsertExerciseOverride(ex.id, updated);
   };
 
@@ -1381,8 +1408,14 @@ export function WorkoutDashboard() {
                             <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <Timer size={12} /> {ex.restTime} Pause
                             </span>
-                            <span className="badge-pill equipment">
-                              {ex.equipment}
+                            <span className="badge-pill equipment" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              {parseEquipmentWeight(ex.equipment) ? (
+                                <>
+                                  <button type="button" className="stepper-btn" onClick={() => adjustWeight(ex, -1)} title="Weniger Gewicht">−</button>
+                                  {ex.equipment}
+                                  <button type="button" className="stepper-btn" onClick={() => adjustWeight(ex, 1)} title="Mehr Gewicht">+</button>
+                                </>
+                              ) : ex.equipment}
                             </span>
                           </div>
                         </div>
