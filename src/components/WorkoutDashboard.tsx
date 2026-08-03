@@ -131,7 +131,7 @@ export function WorkoutDashboard() {
       bodyFat: metrics.kfa,
       neck: calcNeck,
       waist: calcWaist,
-      hip: calcHip
+      ...(calcGender === 'female' ? { hip: calcHip } : {})
     };
 
     setSessions(prev => ({
@@ -778,7 +778,7 @@ export function WorkoutDashboard() {
                               📏 Bauch: {log.waist || calcWaist} cm
                             </span>
                           )}
-                          {log.hip && (
+                          {log.hip && calcGender === 'female' && (
                             <span style={{
                               fontSize: '0.72rem',
                               padding: '3px 8px',
