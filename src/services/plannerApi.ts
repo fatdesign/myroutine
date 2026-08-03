@@ -378,7 +378,7 @@ export async function fetchWorkoutSessions(): Promise<WorkoutSessionRecord> {
   try {
     const res = await fetch(`${WORKER_URL}/workout-sessions`);
     if (!res.ok) throw new Error('Failed to fetch workout sessions');
-    const data: { date: string; duration_seconds: number; body_weight?: number; body_fat?: number; photo_url?: string }[] = await res.json();
+    const data: { date: string; duration_seconds: number; body_weight?: number; body_fat?: number; neck?: number; waist?: number; hip?: number; photo_url?: string }[] = await res.json();
     const record: WorkoutSessionRecord = {};
     for (const row of data) {
       record[row.date] = {
@@ -386,6 +386,9 @@ export async function fetchWorkoutSessions(): Promise<WorkoutSessionRecord> {
         durationSeconds: row.duration_seconds,
         bodyWeight: row.body_weight,
         bodyFat: row.body_fat,
+        neck: row.neck,
+        waist: row.waist,
+        hip: row.hip,
         photoUrl: row.photo_url,
       };
     }
@@ -407,6 +410,9 @@ export async function upsertWorkoutSession(date: string, session: Partial<Workou
         durationSeconds: session.durationSeconds,
         bodyWeight: session.bodyWeight,
         bodyFat: session.bodyFat,
+        neck: session.neck,
+        waist: session.waist,
+        hip: session.hip,
         photoUrl: session.photoUrl,
       }),
     });
