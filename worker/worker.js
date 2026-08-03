@@ -295,6 +295,25 @@ export default {
       }
 
       // --- Daily Macro Logs Endpoints (Food Tracking) ---
+      if (path === '/macro-logs/months' || path === '/macro-logs/months/') {
+        await env.DB.prepare(
+          `CREATE TABLE IF NOT EXISTS daily_macro_logs (
+            id TEXT PRIMARY KEY,
+            date TEXT,
+            time TEXT,
+            meal_name TEXT,
+            calories INTEGER DEFAULT 0,
+            protein INTEGER DEFAULT 0,
+            fat INTEGER DEFAULT 0,
+            carbs INTEGER DEFAULT 0,
+            photo_url TEXT,
+            created_at TEXT
+          )`
+        ).run();
+        const { results } = await env.DB.prepare("SELECT DISTINCT substr(date, 1, 7) as month FROM daily_macro_logs WHERE date IS NOT NULL AND date != '' ORDER BY month DESC").all();
+        return new Response(JSON.stringify(results?.map(r => r.month).filter(Boolean) || []), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
       if (path === '/macro-logs' || path === '/macro-logs/') {
         await env.DB.prepare(
           `CREATE TABLE IF NOT EXISTS daily_macro_logs (

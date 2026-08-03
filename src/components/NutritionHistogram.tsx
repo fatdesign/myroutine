@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, Utensils, Trash2, BarChart2 } from 'lucide-react';
 import type { LoggedMeal } from '../types';
-import { fetchMonthlyMacroLogs, deleteLoggedMeal } from '../services/plannerApi';
+import { fetchMonthlyMacroLogs, fetchMacroLogMonths, deleteLoggedMeal } from '../services/plannerApi';
 
 interface NutritionHistogramProps {
   targetCalories?: number;
@@ -27,24 +27,35 @@ export const NutritionHistogram: React.FC<NutritionHistogramProps> = ({
 
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
+  const [dbMonths, setDbMonths] = useState<string[]>([]);
   const [monthlyLogs, setMonthlyLogs] = useState<LoggedMeal[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [hoveredDay, setHoveredDay] = useState<{ dayNum: number; dateStr: string; calories: number; protein: number; fat: number; carbs: number; mealsCount: number } | null>(null);
 
-  // Generate list of available months (last 12 months)
-  const monthOptions = useMemo(() => {
-    const options: { value: string; label: string }[] = [];
-    const now = new Date();
-    for (let i = 0; i < 12; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const year = d.getFullYear();
-      const monthNum = String(d.getMonth() + 1).padStart(2, '0');
-      const val = `${year}-${monthNum}`;
-      const label = d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
-      options.push({ value: val, label: label.charAt(0).toUpperCase() + label.slice(1) });
-    }
-    return options;
+  // Fetch distinct months with recorded data on mount
+  useEffect(() => {
+    fetchMacroLogMonths().then(months => {
+      if (months && months.length > 0) {
+        setDbMonths(months);
+      }
+    });
   }, []);
+
+  // Generate list of available months (ONLY months with data + current month)
+  const monthOptions = useMemo(() => {
+    const setOfMonths = new Set<string>([currentMonthStr, ...dbMonths]);
+    const sortedMonths = Array.from(setOfMonths).sort((a, b) => b.localeCompare(a));
+
+    return sortedMonths.map(val => {
+      const [year, monthNum] = val.split('-').map(Number);
+      const d = new Date(year, monthNum - 1, 1);
+      const label = d.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+      return {
+        value: val,
+        label: label.charAt(0).toUpperCase() + label.slice(1)
+      };
+    });
+  }, [dbMonths, currentMonthStr]);
 
   // Fetch monthly logs when selectedMonth changes
   const loadMonthlyData = async (monthKey: string) => {

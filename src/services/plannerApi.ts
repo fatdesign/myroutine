@@ -624,6 +624,19 @@ export async function fetchMonthlyMacroLogs(monthStr: string): Promise<LoggedMea
   return [];
 }
 
+export async function fetchMacroLogMonths(): Promise<string[]> {
+  try {
+    const res = await fetch(`${WORKER_URL}/macro-logs/months`);
+    if (res.ok) {
+      const data = await res.json();
+      return data || [];
+    }
+  } catch (e) {
+    console.warn('Fetch macro log months error:', e);
+  }
+  return [];
+}
+
 export async function deleteLoggedMeal(id: string): Promise<void> {
   try {
     await fetch(`${WORKER_URL}/macro-logs/${id}`, { method: 'DELETE' });
