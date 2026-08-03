@@ -1576,15 +1576,84 @@ function getGeminiApiKey(env) {
   ).trim();
 }
 
+function estimateSmartOfflineMacros(text) {
+  const t = (text || '').toLowerCase().trim();
+
+  // 1. Black Coffee / Instant Coffee / Espresso / Water / Zero drinks -> 2-5 kcal
+  if (/instant\s*kaffee|schwarz(?:er)?\s*kaffee|kaffee\s*schwarz|espresso|americano|filterkaffee/i.test(t)) {
+    return { type: 'food_log', meal_name: text.trim(), calories: 4, protein: 0, fat: 0, carbs: 1 };
+  }
+  if (/\bkaffee\b|\bcoffee\b/i.test(t)) {
+    if (/milch|zucker|latte|cappuccino|crema|sahne/i.test(t)) {
+      return { type: 'food_log', meal_name: text.trim(), calories: 45, protein: 2, fat: 2, carbs: 5 };
+    }
+    return { type: 'food_log', meal_name: text.trim(), calories: 5, protein: 0, fat: 0, carbs: 1 };
+  }
+  if (/\btee\b|\bherb\b|\bkräutertee\b|\bpfefferminztee\b|\bkamillentee\b/i.test(t)) {
+    return { type: 'food_log', meal_name: text.trim(), calories: 2, protein: 0, fat: 0, carbs: 0 };
+  }
+  if (/\bcola\s*zero\b|\bpepsi\s*max\b|\bzero\b|\bwater\b|\bwasser\b/i.test(t)) {
+    return { type: 'food_log', meal_name: text.trim(), calories: 0, protein: 0, fat: 0, carbs: 0 };
+  }
+
+  // 2. Common Fruits & Snacks
+  if (/\bapfel\b|\bämpfel\b/i.test(t)) {
+    return { type: 'food_log', meal_name: text.trim(), calories: 80, protein: 0, fat: 0, carbs: 20 };
+  }
+  if (/\bbanane\b|\bbananen\b/i.test(t)) {
+    return { type: 'food_log', meal_name: text.trim(), calories: 105, protein: 1, fat: 0, carbs: 27 };
+  }
+  if (/\bei\b|\beier\b/i.test(t)) {
+    const countMatch = t.match(/(\d+)\s*(?:x|stück)?\s*eier?/i);
+    const count = countMatch ? parseInt(countMatch[1]) : 2;
+    return { type: 'food_log', meal_name: text.trim(), calories: 75 * count, protein: 6 * count, fat: 5 * count, carbs: 1 };
+  }
+  if (/\bmagerquark\b|\bquark\b/i.test(t)) {
+    return { type: 'food_log', meal_name: text.trim(), calories: 170, protein: 30, fat: 1, carbs: 10 };
+  }
+  if (/\bprotein\s*shake\b|\beiweißshake\b/i.test(t)) {
+    return { type: 'food_log', meal_name: text.trim(), calories: 150, protein: 25, fat: 2, carbs: 4 };
+  }
+  if (/\bhähnchen\b|\bputenbrust\b|\bchicken\b/i.test(t)) {
+    return { type: 'food_log', meal_name: text.trim(), calories: 240, protein: 45, fat: 4, carbs: 0 };
+  }
+  if (/\breis\b|\breisteller\b/i.test(t)) {
+    return { type: 'food_log', meal_name: text.trim(), calories: 280, protein: 6, fat: 1, carbs: 60 };
+  }
+
+  return {
+    type: 'food_log',
+    meal_name: text.trim(),
+    calories: 220,
+    protein: 15,
+    fat: 7,
+    carbs: 25
+  };
+}
+
 async function parseWithAI(text, audioBase64, photoBase64, env) {
 
-  // --- FAST PATH: Regex Pre-Parser (Water, Body Metrics & Tasks) ---
+  // --- FAST PATH: Instant Coffee, Beverages, Water, Body Metrics & Tasks ---
   if (text && !audioBase64 && !photoBase64) {
     const t = text.toLowerCase().trim();
 
+    // 0. Instant Coffee / Black Coffee / Tea / Water fast path
+    if (/instant\s*kaffee|schwarz(?:er)?\s*kaffee|kaffee\s*schwarz|espresso|americano|filterkaffee/i.test(t)) {
+      console.log(`Fast-path instant coffee/espresso: "${text}"`);
+      return { type: 'food_log', meal_name: text.trim(), calories: 4, protein: 0, fat: 0, carbs: 1 };
+    }
+    if (/^(?:1\s+tasse\s+|200ml\s+|300ml\s+)?kaffee$/i.test(t)) {
+      console.log(`Fast-path plain coffee: "${text}"`);
+      return { type: 'food_log', meal_name: text.trim(), calories: 4, protein: 0, fat: 0, carbs: 1 };
+    }
+    if (/^(?:1\s+tasse\s+|200ml\s+)?tee$/i.test(t)) {
+      console.log(`Fast-path plain tea: "${text}"`);
+      return { type: 'food_log', meal_name: text.trim(), calories: 2, protein: 0, fat: 0, carbs: 0 };
+    }
+
     // 1. Water: "500ml", "1.5l", "2 liter", "habe 750 ml getrunken" etc.
     const waterMatch = t.match(/(\d+(?:[.,]\d+)?)\s*(?:ml|l(?:iter)?|liter)/i);
-    if (waterMatch) {
+    if (waterMatch && !t.includes('kaffee') && !t.includes('tee') && !t.includes('milch')) {
       let amount = parseFloat(waterMatch[1].replace(',', '.'));
       if (t.includes('liter') || (waterMatch[0].toLowerCase().endsWith('l') && !waterMatch[0].toLowerCase().endsWith('ml'))) amount *= 1000;
       if (amount >= 50 && amount <= 5000) {
@@ -1635,7 +1704,13 @@ async function parseWithAI(text, audioBase64, photoBase64, env) {
   }
 
   const prompt = `Analysiere die Nachricht (Text, Sprachnachricht oder Foto von Essen auf Deutsch).
-Schätze die Nährwerte und Makros der Mahlzeit realistisch ein und antworte AUSSCHLIESSLICH im gültigen JSON-Format.
+Schätze die Nährwerte und Makros der Mahlzeit PRÄZISE und REALISTISCH ein und antworte AUSSCHLIESSLICH im gültigen JSON-Format.
+
+WICHTIGE NÄHRWERT-REGELN FÜR GETRÄNKE & SPEISEN:
+- Instant-Kaffee, schwarzer Kaffee, Espresso, Filterkaffee, ungesüßter Tee & Wasser haben ca. 0 bis 5 KALORIEN (~2-5 kcal, 0g Eiweiß, 0g Fett, 1g Carbs)! Schätze Kaffee oder Tee OHNE Milch/Zucker NIEMALS mit mehr als 10 kcal ein!
+- Kaffee mit Milch/Zucker: ca. 30-70 kcal.
+- Schätze Portionsgrößen realistisch anhand des Eingabetextes (z.B. "200ml Instant Kaffee" = ca. 4 kcal).
+- Verwende NIEMALS pauschale Standardwerte für einfache Getränke oder leichte Snacks!
 
 Klassifiziere die Eingabe in genau EINES der folgenden Formate:
 
@@ -1643,10 +1718,10 @@ Klassifiziere die Eingabe in genau EINES der folgenden Formate:
 {
   "type": "food_log",
   "meal_name": "Name der Mahlzeit",
-  "calories": 650,
-  "protein": 35,
-  "fat": 20,
-  "carbs": 70
+  "calories": 4,
+  "protein": 0,
+  "fat": 0,
+  "carbs": 1
 }
 
 2. WASSER / HYDRATION:
@@ -1728,18 +1803,18 @@ Klassifiziere die Eingabe in genau EINES der folgenden Formate:
   if (env.AI && text) {
     console.log('Gemini models rate-limited/unavailable — seamlessly failing over to Cloudflare Workers AI...');
     try {
-      const fallbackPrompt = `Analysiere folgende Nachricht auf Deutsch: "${text}"
-
-Antworte AUSSCHLIESSLICH im gültigen JSON-Format:
-Wähle genau EINES dieser 4 Formate:
-1. Aufgabe/Reminder: {"type":"task","task":"Beschreibung","time":"HH:mm","is_routine":false}
-2. Mahlzeit/Essen: {"type":"food_log","meal_name":"Name","calories":400,"protein":25,"fat":15,"carbs":45}
+      const fallbackPrompt = `Analysiere folgende Nachricht auf Deutsch präzise: "${text}"
+WICHTIG: Instant-Kaffee, schwarzer Kaffee, Tee & Wasser haben 0–5 kcal!
+Antworte AUSSCHLIESSLICH im gültigen JSON-Format.
+Formate:
+1. Aufgabe: {"type":"task","task":"Beschreibung","time":"HH:mm","is_routine":false}
+2. Mahlzeit: {"type":"food_log","meal_name":"Name","calories":4,"protein":0,"fat":0,"carbs":1}
 3. Wasser: {"type":"water_log","amount_ml":500}
 4. Körpermessung: {"type":"body_metrics","weight":90.0,"neck":44.0,"waist":97.0}`;
 
       const cfResult = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
         messages: [
-          { role: 'system', content: 'Du bist ein KI-Assistent. Antworte AUSSCHLIESSLICH im JSON-Format.' },
+          { role: 'system', content: 'Du bist ein präziser Ernährungs-Assistent. Antworte AUSSCHLIESSLICH im JSON-Format. Kaffee/Tee/Wasser haben 0-5 kcal!' },
           { role: 'user', content: fallbackPrompt }
         ],
         max_tokens: 300
@@ -1776,13 +1851,14 @@ Wähle genau EINES dieser 4 Formate:
               hip: parsed.hip ? Number(parsed.hip) : null
             };
           }
+          const smartFallback = estimateSmartOfflineMacros(parsed.meal_name || text);
           return {
             type: 'food_log',
             meal_name: parsed.meal_name || text,
-            calories: Math.round(Number(parsed.calories) || 350),
-            protein: Math.round(Number(parsed.protein) || 25),
-            fat: Math.round(Number(parsed.fat) || 12),
-            carbs: Math.round(Number(parsed.carbs) || 35)
+            calories: typeof parsed.calories === 'number' ? Math.round(parsed.calories) : smartFallback.calories,
+            protein: typeof parsed.protein === 'number' ? Math.round(parsed.protein) : smartFallback.protein,
+            fat: typeof parsed.fat === 'number' ? Math.round(parsed.fat) : smartFallback.fat,
+            carbs: typeof parsed.carbs === 'number' ? Math.round(parsed.carbs) : smartFallback.carbs
           };
         }
       }
@@ -1791,23 +1867,16 @@ Wähle genau EINES dieser 4 Formate:
     }
   }
 
-  // --- Ultimate Deterministic Offline Fallback: Guarantee no breakdown ---
+  // --- Ultimate Smart Offline Fallback ---
   if (text) {
-    console.log('Using ultimate offline fallback for text input...');
+    console.log('Using smart offline macro calculator for text input...');
     const timeMatch = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
     if (timeMatch || /aufgabe|task|todo|erinnere|remind|routine/i.test(text)) {
       const timeStr = timeMatch ? `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}` : '09:00';
       const cleanTask = text.replace(/^(aufgabe|task|todo|erinnere\s+mich\s+(an\s+)?)\s*:?/i, '').replace(/\b([01]?\d|2[0-3]):([0-5]\d)\b/g, '').trim() || text;
       return { type: 'task', task: cleanTask, time: timeStr, is_routine: false };
     }
-    return {
-      type: 'food_log',
-      meal_name: text.trim(),
-      calories: 350,
-      protein: 25,
-      fat: 12,
-      carbs: 35
-    };
+    return estimateSmartOfflineMacros(text);
   }
 
   throw new Error(`AI API Error: ${lastError || 'Quota exceeded'}`);
