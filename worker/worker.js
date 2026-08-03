@@ -424,7 +424,7 @@ Erstelle einen inspirierenden, hochprofessionellen Wochen-Report im JSON Format:
 }`;
 
           const apiKey = getGeminiApiKey(env);
-          const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+          const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
           const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -760,10 +760,50 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
 }`;
 
           let aiPlanResult = null;
+          let planError = null;
 
-          if (env.AI) {
+          // Gemini first — this plan needs strong structured-JSON reasoning (prices, ingredients,
+          // instructions across multiple meals), which a small 8B edge model struggles with.
+          const apiKey = getGeminiApiKey(env);
+          if (apiKey) {
+            for (const model of ['gemini-2.5-flash', 'gemini-3.6-flash']) {
+              try {
+                const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
+                const response = await fetch(url, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+
+                if (response.ok) {
+                  const data = await response.json();
+                  let content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                  if (content) {
+                    if (content.includes('```')) {
+                      content = content.replace(/```json|```/g, '').trim();
+                    }
+                    const firstBrace = content.indexOf('{');
+                    const lastBrace = content.lastIndexOf('}');
+                    if (firstBrace !== -1) content = content.slice(firstBrace, lastBrace + 1);
+                    aiPlanResult = JSON.parse(content);
+                    break;
+                  }
+                } else {
+                  const errorData = await response.json().catch(() => ({}));
+                  planError = errorData.error?.message || `HTTP ${response.status}`;
+                  console.warn(`Gemini model ${model} failed for nutrition plan (${planError}), trying next...`);
+                }
+              } catch (err) {
+                planError = err.message;
+                console.warn(`Gemini model ${model} error for nutrition plan (${err.message}), trying next...`);
+              }
+            }
+          }
+
+          // Cloudflare Workers AI as fallback only if Gemini is unavailable/failed entirely.
+          if (!aiPlanResult && env.AI) {
             try {
-              console.log("Calling Cloudflare Workers AI @cf/meta/llama-3.1-8b-instruct...");
+              console.log("Gemini unavailable for nutrition plan — falling back to Cloudflare Workers AI...");
               const aiRes = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
                 messages: [
                   { role: 'system', content: 'Du antwortest ausschließlich im gültigen JSON Format.' },
@@ -776,30 +816,8 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
               }
               aiPlanResult = JSON.parse(responseText);
             } catch (err) {
-              console.warn("Cloudflare Workers AI call failed, falling back to Gemini:", err.message);
-            }
-          }
-
-          const apiKey = getGeminiApiKey(env);
-          if (!aiPlanResult && apiKey) {
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
-            const response = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-              })
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              let content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (content) {
-                if (content.includes('```')) {
-                  content = content.replace(/```json|```/g, '').trim();
-                }
-                aiPlanResult = JSON.parse(content);
-              }
+              planError = err.message;
+              console.warn("Cloudflare Workers AI fallback also failed:", err.message);
             }
           }
 
@@ -825,7 +843,7 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
           } else {
-            return new Response(JSON.stringify({ success: false, error: 'AI generation failed' }), {
+            return new Response(JSON.stringify({ success: false, error: planError || 'AI generation failed' }), {
               status: 500,
               headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
@@ -1576,80 +1594,12 @@ function getGeminiApiKey(env) {
   ).trim();
 }
 
-function estimateSmartOfflineMacros(text) {
-  const t = (text || '').toLowerCase().trim();
-
-  // 1. Black Coffee / Instant Coffee / Espresso / Water / Zero drinks -> 2-5 kcal
-  if (/instant\s*kaffee|schwarz(?:er)?\s*kaffee|kaffee\s*schwarz|espresso|americano|filterkaffee/i.test(t)) {
-    return { type: 'food_log', meal_name: text.trim(), calories: 4, protein: 0, fat: 0, carbs: 1 };
-  }
-  if (/\bkaffee\b|\bcoffee\b/i.test(t)) {
-    if (/milch|zucker|latte|cappuccino|crema|sahne/i.test(t)) {
-      return { type: 'food_log', meal_name: text.trim(), calories: 45, protein: 2, fat: 2, carbs: 5 };
-    }
-    return { type: 'food_log', meal_name: text.trim(), calories: 5, protein: 0, fat: 0, carbs: 1 };
-  }
-  if (/\btee\b|\bherb\b|\bkräutertee\b|\bpfefferminztee\b|\bkamillentee\b/i.test(t)) {
-    return { type: 'food_log', meal_name: text.trim(), calories: 2, protein: 0, fat: 0, carbs: 0 };
-  }
-  if (/\bcola\s*zero\b|\bpepsi\s*max\b|\bzero\b|\bwater\b|\bwasser\b/i.test(t)) {
-    return { type: 'food_log', meal_name: text.trim(), calories: 0, protein: 0, fat: 0, carbs: 0 };
-  }
-
-  // 2. Common Fruits & Snacks
-  if (/\bapfel\b|\bämpfel\b/i.test(t)) {
-    return { type: 'food_log', meal_name: text.trim(), calories: 80, protein: 0, fat: 0, carbs: 20 };
-  }
-  if (/\bbanane\b|\bbananen\b/i.test(t)) {
-    return { type: 'food_log', meal_name: text.trim(), calories: 105, protein: 1, fat: 0, carbs: 27 };
-  }
-  if (/\bei\b|\beier\b/i.test(t)) {
-    const countMatch = t.match(/(\d+)\s*(?:x|stück)?\s*eier?/i);
-    const count = countMatch ? parseInt(countMatch[1]) : 2;
-    return { type: 'food_log', meal_name: text.trim(), calories: 75 * count, protein: 6 * count, fat: 5 * count, carbs: 1 };
-  }
-  if (/\bmagerquark\b|\bquark\b/i.test(t)) {
-    return { type: 'food_log', meal_name: text.trim(), calories: 170, protein: 30, fat: 1, carbs: 10 };
-  }
-  if (/\bprotein\s*shake\b|\beiweißshake\b/i.test(t)) {
-    return { type: 'food_log', meal_name: text.trim(), calories: 150, protein: 25, fat: 2, carbs: 4 };
-  }
-  if (/\bhähnchen\b|\bputenbrust\b|\bchicken\b/i.test(t)) {
-    return { type: 'food_log', meal_name: text.trim(), calories: 240, protein: 45, fat: 4, carbs: 0 };
-  }
-  if (/\breis\b|\breisteller\b/i.test(t)) {
-    return { type: 'food_log', meal_name: text.trim(), calories: 280, protein: 6, fat: 1, carbs: 60 };
-  }
-
-  return {
-    type: 'food_log',
-    meal_name: text.trim(),
-    calories: 220,
-    protein: 15,
-    fat: 7,
-    carbs: 25
-  };
-}
-
 async function parseWithAI(text, audioBase64, photoBase64, env) {
 
-  // --- FAST PATH: Instant Coffee, Beverages, Water, Body Metrics & Tasks ---
+  // --- FAST PATH: only deterministic, non-nutrition data (Water amount, Body Metrics, Tasks). ---
+  // Food/meal calorie & macro estimation is NEVER hardcoded here — it always goes through the AI below.
   if (text && !audioBase64 && !photoBase64) {
     const t = text.toLowerCase().trim();
-
-    // 0. Instant Coffee / Black Coffee / Tea / Water fast path
-    if (/instant\s*kaffee|schwarz(?:er)?\s*kaffee|kaffee\s*schwarz|espresso|americano|filterkaffee/i.test(t)) {
-      console.log(`Fast-path instant coffee/espresso: "${text}"`);
-      return { type: 'food_log', meal_name: text.trim(), calories: 4, protein: 0, fat: 0, carbs: 1 };
-    }
-    if (/^(?:1\s+tasse\s+|200ml\s+|300ml\s+)?kaffee$/i.test(t)) {
-      console.log(`Fast-path plain coffee: "${text}"`);
-      return { type: 'food_log', meal_name: text.trim(), calories: 4, protein: 0, fat: 0, carbs: 1 };
-    }
-    if (/^(?:1\s+tasse\s+|200ml\s+)?tee$/i.test(t)) {
-      console.log(`Fast-path plain tea: "${text}"`);
-      return { type: 'food_log', meal_name: text.trim(), calories: 2, protein: 0, fat: 0, carbs: 0 };
-    }
 
     // 1. Water: "500ml", "1.5l", "2 liter", "habe 750 ml getrunken" etc.
     const waterMatch = t.match(/(\d+(?:[.,]\d+)?)\s*(?:ml|l(?:iter)?|liter)/i);
@@ -1748,9 +1698,9 @@ Klassifiziere die Eingabe in genau EINES der folgenden Formate:
   "is_routine": boolean
 }`;
 
-  // Try Gemini with multi-model fallback chain: 2.0-flash -> 1.5-flash -> 2.0-flash-lite
+  // Try Gemini with multi-model fallback chain (verified reachable on the v1 API as of Aug 2026).
   const apiKey = getGeminiApiKey(env);
-  const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite'];
+  const models = ['gemini-2.5-flash', 'gemini-3.6-flash'];
   let lastError = null;
 
   if (apiKey) {
@@ -1851,15 +1801,17 @@ Formate:
               hip: parsed.hip ? Number(parsed.hip) : null
             };
           }
-          const smartFallback = estimateSmartOfflineMacros(parsed.meal_name || text);
-          return {
-            type: 'food_log',
-            meal_name: parsed.meal_name || text,
-            calories: typeof parsed.calories === 'number' ? Math.round(parsed.calories) : smartFallback.calories,
-            protein: typeof parsed.protein === 'number' ? Math.round(parsed.protein) : smartFallback.protein,
-            fat: typeof parsed.fat === 'number' ? Math.round(parsed.fat) : smartFallback.fat,
-            carbs: typeof parsed.carbs === 'number' ? Math.round(parsed.carbs) : smartFallback.carbs
-          };
+          // Only accept the meal if the AI actually returned real numbers — never fabricate macros.
+          if (typeof parsed.calories === 'number') {
+            return {
+              type: 'food_log',
+              meal_name: parsed.meal_name || text,
+              calories: Math.round(parsed.calories),
+              protein: typeof parsed.protein === 'number' ? Math.round(parsed.protein) : 0,
+              fat: typeof parsed.fat === 'number' ? Math.round(parsed.fat) : 0,
+              carbs: typeof parsed.carbs === 'number' ? Math.round(parsed.carbs) : 0
+            };
+          }
         }
       }
     } catch (cfErr) {
@@ -1867,19 +1819,18 @@ Formate:
     }
   }
 
-  // --- Ultimate Smart Offline Fallback ---
+  // --- Deterministic task fallback (no nutrition guessing) ---
   if (text) {
-    console.log('Using smart offline macro calculator for text input...');
     const timeMatch = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
     if (timeMatch || /aufgabe|task|todo|erinnere|remind|routine/i.test(text)) {
       const timeStr = timeMatch ? `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}` : '09:00';
       const cleanTask = text.replace(/^(aufgabe|task|todo|erinnere\s+mich\s+(an\s+)?)\s*:?/i, '').replace(/\b([01]?\d|2[0-3]):([0-5]\d)\b/g, '').trim() || text;
       return { type: 'task', task: cleanTask, time: timeStr, is_routine: false };
     }
-    return estimateSmartOfflineMacros(text);
   }
 
-  throw new Error(`AI API Error: ${lastError || 'Quota exceeded'}`);
+  // Both AI providers failed to produce a usable result — tell the user honestly instead of logging a guessed value.
+  throw new Error(`KI konnte die Mahlzeit nicht analysieren (${lastError || 'kein Ergebnis'}). Bitte versuche es gleich nochmal.`);
 }
 
 // --- Helper Functions ---
