@@ -690,7 +690,7 @@ export function WorkoutDashboard() {
                             <span style={{ display: 'block', fontWeight: '500' }}>{exercise.name}</span>
                             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{exercise.equipment}</span>
                           </div>
-                          <span className="badge-pill time" style={{ background: 'var(--heroui-violet)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{sets} / {exercise.sets} Sets</span>
+                          <span className="badge-pill time" style={{ background: 'var(--heroui-violet)', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{sets} / {exercise.sets} Sets × {exercise.reps} Reps</span>
                         </div>
                       );
                     })}
