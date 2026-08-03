@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Headphones, Play, Pause, Volume2, VolumeX, SkipForward, SkipBack, Music, Disc, Sparkles, AlertCircle } from 'lucide-react';
+import { Headphones, Play, Pause, Volume2, VolumeX, SkipForward, SkipBack, Music, Disc, Sparkles } from 'lucide-react';
 
 export interface AudioTrack {
   id: string;
@@ -10,13 +10,16 @@ export interface AudioTrack {
   category: string;
 }
 
+const baseUrl = import.meta.env.BASE_URL || '/';
+const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+
 const DEFAULT_TRACKS: AudioTrack[] = [
   {
     id: 'tape-8',
     title: 'Tape #8: Problem Solving',
     subtitle: 'Wave II: Threshold',
     fileName: 'tape_8_problem_solving.mp3',
-    url: 'audio/tape_8_problem_solving.mp3',
+    url: `${cleanBaseUrl}audio/tape_8_problem_solving.mp3`,
     category: 'Wave II'
   },
   {
@@ -24,7 +27,7 @@ const DEFAULT_TRACKS: AudioTrack[] = [
     title: 'Tape #9: One-Month Patterning',
     subtitle: 'Wave II: Threshold',
     fileName: 'tape_9_one_month_patterning.mp3',
-    url: 'audio/tape_9_one_month_patterning.mp3',
+    url: `${cleanBaseUrl}audio/tape_9_one_month_patterning.mp3`,
     category: 'Wave II'
   },
   {
@@ -32,7 +35,7 @@ const DEFAULT_TRACKS: AudioTrack[] = [
     title: 'Tape #11: Energy Bar Tool (EBT)',
     subtitle: 'Wave II: Threshold',
     fileName: 'tape_11_energy_bar_tool.mp3',
-    url: 'audio/tape_11_energy_bar_tool.mp3',
+    url: `${cleanBaseUrl}audio/tape_11_energy_bar_tool.mp3`,
     category: 'Wave II'
   },
   {
@@ -40,7 +43,7 @@ const DEFAULT_TRACKS: AudioTrack[] = [
     title: 'Tape #13: Liftoff',
     subtitle: 'Wave III: Freedom',
     fileName: 'tape_13_liftoff.mp3',
-    url: 'audio/tape_13_liftoff.mp3',
+    url: `${cleanBaseUrl}audio/tape_13_liftoff.mp3`,
     category: 'Wave III'
   },
   {
@@ -48,7 +51,7 @@ const DEFAULT_TRACKS: AudioTrack[] = [
     title: 'Tape #19: One-Year Patterning',
     subtitle: 'Wave IV: Adventure',
     fileName: 'tape_19_one_year_patterning.mp3',
-    url: 'audio/tape_19_one_year_patterning.mp3',
+    url: `${cleanBaseUrl}audio/tape_19_one_year_patterning.mp3`,
     category: 'Wave IV'
   }
 ];
@@ -61,26 +64,10 @@ export function AudioDashboard() {
   const [duration, setDuration] = useState<number>(0);
   const [volume, setVolume] = useState<number>(0.8);
   const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [audioError, setAudioError] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const currentTrack = tracks[currentTrackIndex] || tracks[0];
-
-  useEffect(() => {
-    if (audioRef.current) {
-      setAudioError(null);
-      audioRef.current.load();
-      if (isPlaying) {
-        audioRef.current.play()
-          .then(() => setIsPlaying(true))
-          .catch(err => {
-            console.warn('Playback error:', err);
-            setIsPlaying(false);
-          });
-      }
-    }
-  }, [currentTrackIndex]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -90,30 +77,32 @@ export function AudioDashboard() {
 
   const togglePlay = () => {
     if (!audioRef.current) return;
-    setAudioError(null);
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
       audioRef.current.play()
-        .then(() => {
-          setIsPlaying(true);
-        })
+        .then(() => setIsPlaying(true))
         .catch(err => {
-          console.error('Audio play error:', err);
+          console.warn('Audio play error:', err);
           setIsPlaying(false);
-          setAudioError(`Wiedergabe-Fehler: ${err.message || 'Audiodatei kann nicht geladen werden.'}`);
         });
     }
   };
 
   const handleTrackSelect = (index: number) => {
-    if (index === currentTrackIndex) {
-      togglePlay();
-    } else {
-      setCurrentTrackIndex(index);
-      setIsPlaying(true);
-    }
+    setCurrentTrackIndex(index);
+    setIsPlaying(true);
+    setTimeout(() => {
+      if (audioRef.current) {
+        audioRef.current.play()
+          .then(() => setIsPlaying(true))
+          .catch(err => {
+            console.warn('Play error:', err);
+            setIsPlaying(false);
+          });
+      }
+    }, 100);
   };
 
   const handleTimeUpdate = () => {
@@ -146,14 +135,6 @@ export function AudioDashboard() {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
-
-  const handleAudioError = () => {
-    if (audioRef.current && audioRef.current.error) {
-      const code = audioRef.current.error.code;
-      console.error('Audio element error code:', code);
-      setAudioError(`Audiodatei kann nicht abgerufen werden (HTTP/PFAD FEHLER). Bitte prüfe die Netzwerkverbindung.`);
-    }
   };
 
   return (
@@ -202,25 +183,6 @@ export function AudioDashboard() {
         </div>
       </div>
 
-      {/* Error Alert if any */}
-      {audioError && (
-        <div style={{
-          padding: '14px 18px',
-          borderRadius: '12px',
-          marginBottom: '20px',
-          background: 'rgba(239, 68, 68, 0.15)',
-          border: '1px solid rgba(239, 68, 68, 0.3)',
-          color: '#f87171',
-          fontSize: '0.9rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px'
-        }}>
-          <AlertCircle size={20} />
-          <span>{audioError}</span>
-        </div>
-      )}
-
       {/* Hidden HTML5 Audio Element */}
       <audio
         ref={audioRef}
@@ -228,7 +190,6 @@ export function AudioDashboard() {
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleNext}
         onLoadedMetadata={handleTimeUpdate}
-        onError={handleAudioError}
       />
 
       {/* Now Playing Main Card */}

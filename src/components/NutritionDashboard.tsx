@@ -11,6 +11,7 @@ import {
 } from '../services/plannerApi';
 import { WORKOUT_PLAN } from '../data/workouts';
 import { getLiveBodyMetrics, type BodyMetrics } from '../utils/bodyMetrics';
+import { NutritionHistogram } from './NutritionHistogram';
 
 interface NutritionDashboardProps {
   metrics?: {
@@ -922,6 +923,12 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
 
         </div>
       )}
+
+      {/* 📊 Monats-Kalorien Histogramm & Tagesspeisen Detail Panel (Ganz unten) */}
+      <NutritionHistogram 
+        targetCalories={liveMetrics.targetCalories} 
+        onMealDeleted={() => fetchDailyMacroLogs().then(logs => setMacroLogs(logs))}
+      />
 
     </div>
   );

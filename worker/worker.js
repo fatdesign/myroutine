@@ -313,8 +313,21 @@ export default {
 
         if (request.method === 'GET') {
           const urlObj = new URL(request.url);
-          const dateParam = urlObj.searchParams.get('date') || new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
-          const { results } = await env.DB.prepare("SELECT * FROM daily_macro_logs WHERE date = ? ORDER BY time ASC").bind(dateParam).all();
+          const monthParam = urlObj.searchParams.get('month');
+          const allParam = urlObj.searchParams.get('all');
+          const dateParam = urlObj.searchParams.get('date');
+
+          if (monthParam) {
+            const { results } = await env.DB.prepare("SELECT * FROM daily_macro_logs WHERE date LIKE ? ORDER BY date ASC, time ASC").bind(`${monthParam}%`).all();
+            return new Response(JSON.stringify(results || []), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+          if (allParam === 'true') {
+            const { results } = await env.DB.prepare("SELECT * FROM daily_macro_logs ORDER BY date ASC, time ASC").all();
+            return new Response(JSON.stringify(results || []), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+          }
+
+          const targetDate = dateParam || new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+          const { results } = await env.DB.prepare("SELECT * FROM daily_macro_logs WHERE date = ? ORDER BY time ASC").bind(targetDate).all();
           return new Response(JSON.stringify(results || []), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
 
@@ -391,7 +404,8 @@ Erstelle einen inspirierenden, hochprofessionellen Wochen-Report im JSON Format:
   "recommendations": ["Empfehlung 1 für nächste Woche", "Empfehlung 2", "Empfehlung 3"]
 }`;
 
-          const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${env.PLANNER_KI_API}`;
+          const apiKey = getGeminiApiKey(env);
+          const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
           const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -747,8 +761,9 @@ Antworte AUSSCHLIESSLICH im folgenden gültigen JSON Format ohne Markdown Format
             }
           }
 
-          if (!aiPlanResult && env.PLANNER_KI_API) {
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${env.PLANNER_KI_API}`;
+          const apiKey = getGeminiApiKey(env);
+          if (!aiPlanResult && apiKey) {
+            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
             const response = await fetch(url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -1530,22 +1545,36 @@ async function handleBodyMetricsTelegram(chatId, metricsInput, env, photoUrl = n
 }
 
 // --- AI Engine (Multi-modal) ---
+function getGeminiApiKey(env) {
+  if (!env) return '';
+  return (
+    env.PLANNER_KI_API ||
+    env.GEMINI_API_KEY ||
+    env.GEMINI_KEY ||
+    env.GOOGLE_AI_KEY ||
+    env.API_KEY ||
+    ''
+  ).trim();
+}
+
 async function parseWithAI(text, audioBase64, photoBase64, env) {
 
-  // --- FAST PATH: Simple Regex Pre-Parser (Water & Body Metrics ONLY) ---
+  // --- FAST PATH: Regex Pre-Parser (Water, Body Metrics & Tasks) ---
   if (text && !audioBase64 && !photoBase64) {
     const t = text.toLowerCase().trim();
-    // Check Water: "500ml", "1.5l", "2 liter", "habe 750 ml getrunken" etc.
+
+    // 1. Water: "500ml", "1.5l", "2 liter", "habe 750 ml getrunken" etc.
     const waterMatch = t.match(/(\d+(?:[.,]\d+)?)\s*(?:ml|l(?:iter)?|liter)/i);
     if (waterMatch) {
       let amount = parseFloat(waterMatch[1].replace(',', '.'));
-      if (t.includes('liter') || (waterMatch[0].endsWith('l') && !waterMatch[0].endsWith('ml'))) amount *= 1000;
+      if (t.includes('liter') || (waterMatch[0].toLowerCase().endsWith('l') && !waterMatch[0].toLowerCase().endsWith('ml'))) amount *= 1000;
       if (amount >= 50 && amount <= 5000) {
         console.log(`Fast-path water: ${amount}ml`);
         return { type: 'water_log', amount_ml: Math.round(amount) };
       }
     }
-    // Check Body metrics: "gewicht 90 nacken 44 bauch 97" etc.
+
+    // 2. Body metrics: "gewicht 90 nacken 44 bauch 97" etc.
     const weightMatch = t.match(/gewicht\s+(\d+(?:[.,]\d+)?)/i);
     const neckMatch = t.match(/nacken?\s+(\d+(?:[.,]\d+)?)/i);
     const waistMatch = t.match(/(?:bauch|taille)\s+(\d+(?:[.,]\d+)?)/i);
@@ -1556,6 +1585,32 @@ async function parseWithAI(text, audioBase64, photoBase64, env) {
         neck: neckMatch ? parseFloat(neckMatch[1].replace(',', '.')) : null,
         waist: waistMatch ? parseFloat(waistMatch[1].replace(',', '.')) : null,
         hip: null
+      };
+    }
+
+    // 3. Task / Reminder Fast Path: e.g. "Aufgabe 10:00 Boxenstopp Webseite optimieren"
+    const timeMatch = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+    const hasTaskKeyword = /^(aufgabe|task|todo|erinnere|remind|routine|termin)/i.test(t);
+
+    if (timeMatch || hasTaskKeyword) {
+      const timeStr = timeMatch ? `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}` : '09:00';
+      let cleanTask = text
+        .replace(/^(aufgabe|task|todo|erinnere\s+mich\s+(an\s+)?)\s*:?/i, '')
+        .replace(/\b([01]?\d|2[0-3]):([0-5]\d)\b/g, '')
+        .replace(/\bum\b/gi, '')
+        .trim();
+
+      if (!cleanTask) cleanTask = text.trim();
+
+      const isRoutine = /routine|jeden tag|täglich|jede woche/i.test(text);
+
+      console.log(`Fast-path task: "${cleanTask}" at ${timeStr}`);
+      return {
+        type: 'task',
+        task: cleanTask,
+        time: timeStr,
+        weekdays: null,
+        is_routine: isRoutine
       };
     }
   }
@@ -1600,73 +1655,72 @@ Klassifiziere die Eingabe in genau EINES der folgenden Formate:
 }`;
 
   // Try Gemini with multi-model fallback chain: 2.0-flash -> 1.5-flash -> 2.0-flash-lite
+  const apiKey = getGeminiApiKey(env);
   const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.0-flash-lite'];
   let lastError = null;
 
-  for (const model of models) {
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${env.PLANNER_KI_API}`;
-      const parts = [{ text: prompt }];
+  if (apiKey) {
+    for (const model of models) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
+        const parts = [{ text: prompt }];
 
-      if (photoBase64) {
-        parts.push({ inline_data: { mime_type: "image/jpeg", data: photoBase64 } });
-      }
-      if (audioBase64) {
-        parts.push({ inline_data: { mime_type: "audio/ogg", data: audioBase64 } });
-      }
-      if (text) {
-        parts[0].text += `\nNachricht/Beschreibung: "${text}"`;
-      }
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts }] })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        let content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (content) {
-          if (content.includes('```')) {
-            content = content.replace(/```json|```/g, '').trim();
-          }
-          const firstBrace = content.indexOf('{');
-          const lastBrace = content.lastIndexOf('}');
-          if (firstBrace !== -1) content = content.slice(firstBrace, lastBrace + 1);
-          return JSON.parse(content);
+        if (photoBase64) {
+          parts.push({ inline_data: { mime_type: "image/jpeg", data: photoBase64 } });
         }
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        lastError = errorData.error?.message || `HTTP ${response.status}`;
-        console.log(`Model ${model} failed (${lastError}), trying next...`);
+        if (audioBase64) {
+          parts.push({ inline_data: { mime_type: "audio/ogg", data: audioBase64 } });
+        }
+        if (text) {
+          parts[0].text += `\nNachricht/Beschreibung: "${text}"`;
+        }
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts }] })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (content) {
+            if (content.includes('```')) {
+              content = content.replace(/```json|```/g, '').trim();
+            }
+            const firstBrace = content.indexOf('{');
+            const lastBrace = content.lastIndexOf('}');
+            if (firstBrace !== -1) content = content.slice(firstBrace, lastBrace + 1);
+            return JSON.parse(content);
+          }
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          lastError = errorData.error?.message || `HTTP ${response.status}`;
+          console.log(`Model ${model} failed (${lastError}), trying next...`);
+        }
+      } catch (err) {
+        lastError = err.message;
+        console.log(`Model ${model} error (${err.message}), trying next...`);
       }
-    } catch (err) {
-      lastError = err.message;
-      console.log(`Model ${model} error (${err.message}), trying next...`);
     }
   }
 
   // --- Fallback: Cloudflare Workers AI (100% Unlimited Free Edge AI) ---
   if (env.AI && text) {
-    console.log('Gemini models rate-limited — seamlessly failing over to Cloudflare Workers AI...');
+    console.log('Gemini models rate-limited/unavailable — seamlessly failing over to Cloudflare Workers AI...');
     try {
-      const fallbackPrompt = `Analysiere folgendes Essen/Getränk und berechne Nährwerte:
-Eingabe: "${text}"
+      const fallbackPrompt = `Analysiere folgende Nachricht auf Deutsch: "${text}"
 
 Antworte AUSSCHLIESSLICH im gültigen JSON-Format:
-{
-  "type": "food_log",
-  "meal_name": "${text}",
-  "calories": 380,
-  "protein": 8,
-  "fat": 12,
-  "carbs": 60
-}`;
+Wähle genau EINES dieser 4 Formate:
+1. Aufgabe/Reminder: {"type":"task","task":"Beschreibung","time":"HH:mm","is_routine":false}
+2. Mahlzeit/Essen: {"type":"food_log","meal_name":"Name","calories":400,"protein":25,"fat":15,"carbs":45}
+3. Wasser: {"type":"water_log","amount_ml":500}
+4. Körpermessung: {"type":"body_metrics","weight":90.0,"neck":44.0,"waist":97.0}`;
 
       const cfResult = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
         messages: [
-          { role: 'system', content: 'Du bist ein KI-Nährwert-Assistent. Antworte AUSSCHLIESSLICH im JSON-Format.' },
+          { role: 'system', content: 'Du bist ein KI-Assistent. Antworte AUSSCHLIESSLICH im JSON-Format.' },
           { role: 'user', content: fallbackPrompt }
         ],
         max_tokens: 300
@@ -1679,19 +1733,62 @@ Antworte AUSSCHLIESSLICH im gültigen JSON-Format:
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         if (parsed) {
+          if (parsed.task || parsed.type === 'task') {
+            return {
+              type: 'task',
+              task: parsed.task || text,
+              time: parsed.time || '09:00',
+              weekdays: parsed.weekdays || null,
+              is_routine: Boolean(parsed.is_routine)
+            };
+          }
+          if (parsed.amount_ml || parsed.type === 'water_log') {
+            return {
+              type: 'water_log',
+              amount_ml: Math.round(Number(parsed.amount_ml) || 250)
+            };
+          }
+          if (parsed.weight || parsed.type === 'body_metrics') {
+            return {
+              type: 'body_metrics',
+              weight: parsed.weight ? Number(parsed.weight) : null,
+              neck: parsed.neck ? Number(parsed.neck) : null,
+              waist: parsed.waist ? Number(parsed.waist) : null,
+              hip: parsed.hip ? Number(parsed.hip) : null
+            };
+          }
           return {
-            type: parsed.type || 'food_log',
+            type: 'food_log',
             meal_name: parsed.meal_name || text,
-            calories: Math.round(Number(parsed.calories) || 300),
-            protein: Math.round(Number(parsed.protein) || 10),
-            fat: Math.round(Number(parsed.fat) || 10),
-            carbs: Math.round(Number(parsed.carbs) || 40)
+            calories: Math.round(Number(parsed.calories) || 350),
+            protein: Math.round(Number(parsed.protein) || 25),
+            fat: Math.round(Number(parsed.fat) || 12),
+            carbs: Math.round(Number(parsed.carbs) || 35)
           };
         }
       }
     } catch (cfErr) {
       console.log('Cloudflare AI fallback error:', cfErr.message);
     }
+  }
+
+  // --- Ultimate Deterministic Offline Fallback: Guarantee no breakdown ---
+  if (text) {
+    console.log('Using ultimate offline fallback for text input...');
+    const timeMatch = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+    if (timeMatch || /aufgabe|task|todo|erinnere|remind|routine/i.test(text)) {
+      const timeStr = timeMatch ? `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}` : '09:00';
+      const cleanTask = text.replace(/^(aufgabe|task|todo|erinnere\s+mich\s+(an\s+)?)\s*:?/i, '').replace(/\b([01]?\d|2[0-3]):([0-5]\d)\b/g, '').trim() || text;
+      return { type: 'task', task: cleanTask, time: timeStr, is_routine: false };
+    }
+    return {
+      type: 'food_log',
+      meal_name: text.trim(),
+      calories: 350,
+      protein: 25,
+      fat: 12,
+      carbs: 35
+    };
   }
 
   throw new Error(`AI API Error: ${lastError || 'Quota exceeded'}`);
