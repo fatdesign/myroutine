@@ -1209,6 +1209,32 @@ h1, h2, h3, h4 {
   cursor: pointer;
 }
 
+.stepper-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 0;
+}
+
+.stepper-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.stepper-btn:active {
+  transform: scale(0.9);
+}
+
 @media (max-width: 520px) {
   .exercise-thumb {
     width: 60px;

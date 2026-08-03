@@ -352,6 +352,43 @@ export async function upsertWorkoutHistory(date: string, exercises: Record<strin
   localStorage.setItem('sanktum_workout_history', JSON.stringify(record));
 }
 
+export type ExerciseOverrideRecord = Record<string, { sets?: number; reps?: number }>;
+
+export async function fetchExerciseOverrides(): Promise<ExerciseOverrideRecord> {
+  try {
+    const res = await fetch(`${WORKER_URL}/exercise-overrides`);
+    if (!res.ok) throw new Error('Failed to fetch exercise overrides');
+    const data: { exercise_id: string; sets?: number; reps?: number }[] = await res.json();
+    const record: ExerciseOverrideRecord = {};
+    for (const row of data) {
+      record[row.exercise_id] = { sets: row.sets ?? undefined, reps: row.reps ?? undefined };
+    }
+    localStorage.setItem('sanktum_exercise_overrides', JSON.stringify(record));
+    return record;
+  } catch (e) {
+    console.warn('Worker exercise overrides error:', e);
+    const local = localStorage.getItem('sanktum_exercise_overrides');
+    return local ? JSON.parse(local) : {};
+  }
+}
+
+export async function upsertExerciseOverride(exerciseId: string, override: { sets: number; reps: number }): Promise<void> {
+  try {
+    await fetch(`${WORKER_URL}/exercise-overrides/${exerciseId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(override),
+    });
+  } catch (e) {
+    console.warn('Worker exercise override upsert error:', e);
+  }
+
+  const local = localStorage.getItem('sanktum_exercise_overrides');
+  const record: ExerciseOverrideRecord = local ? JSON.parse(local) : {};
+  record[exerciseId] = override;
+  localStorage.setItem('sanktum_exercise_overrides', JSON.stringify(record));
+}
+
 export async function uploadImage(file: File): Promise<string> {
   try {
     const arrayBuffer = await file.arrayBuffer();

@@ -208,6 +208,40 @@ export default {
         }
       }
 
+      // --- Exercise Overrides (custom Sets/Reps target per exercise, persisted across devices) ---
+      if (path === '/exercise-overrides' || path === '/exercise-overrides/') {
+        if (request.method === 'GET') {
+          await env.DB.prepare(
+            "CREATE TABLE IF NOT EXISTS exercise_overrides (exercise_id TEXT PRIMARY KEY, sets INTEGER, reps INTEGER)"
+          ).run();
+
+          const { results } = await env.DB.prepare("SELECT * FROM exercise_overrides").all();
+          return new Response(JSON.stringify(results), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+      }
+
+      if (path.startsWith('/exercise-overrides/')) {
+        const exerciseId = path.split('/').pop();
+        if (request.method === 'PUT') {
+          const { sets, reps } = await request.json();
+
+          await env.DB.prepare(
+            "CREATE TABLE IF NOT EXISTS exercise_overrides (exercise_id TEXT PRIMARY KEY, sets INTEGER, reps INTEGER)"
+          ).run();
+
+          await env.DB.prepare(
+            `INSERT INTO exercise_overrides (exercise_id, sets, reps) VALUES (?, ?, ?)
+             ON CONFLICT(exercise_id) DO UPDATE SET
+               sets = excluded.sets,
+               reps = excluded.reps`
+          )
+            .bind(exerciseId, sets ?? null, reps ?? null)
+            .run();
+
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        }
+      }
+
       // --- R2 Upload & Serve Endpoints ---
       if (path === '/upload' || path === '/upload/') {
         if (request.method === 'POST') {

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { WORKOUT_PLAN } from '../data/workouts';
+import type { Exercise } from '../data/workouts';
 import { getTodayStr, getDateStr } from '../utils/habitUtils';
 import { getStoredCalculatorInputs, calculateMetricsFromInputs } from '../utils/bodyMetrics';
-import { fetchWorkoutHistory, upsertWorkoutHistory, fetchWorkoutSessions, upsertWorkoutSession, uploadImage, fetchBodyMetricsInputs, upsertBodyMetricsInputs } from '../services/plannerApi';
+import { fetchWorkoutHistory, upsertWorkoutHistory, fetchWorkoutSessions, upsertWorkoutSession, uploadImage, fetchBodyMetricsInputs, upsertBodyMetricsInputs, fetchExerciseOverrides, upsertExerciseOverride, type ExerciseOverrideRecord } from '../services/plannerApi';
 import type { WorkoutHistoryRecord, WorkoutSessionRecord, WorkoutSession } from '../types';
 import { Check, Dumbbell, Timer, Flame, CalendarDays, Activity, Play, StopCircle, Upload, Weight, Camera, X, Save, Trophy, Sparkles, TrendingDown, Info } from 'lucide-react';
 
@@ -11,6 +12,7 @@ export function WorkoutDashboard() {
   const [selectedDay, setSelectedDay] = useState<string>('1');
   const [history, setHistory] = useState<WorkoutHistoryRecord>({});
   const [sessions, setSessions] = useState<WorkoutSessionRecord>({});
+  const [exerciseOverrides, setExerciseOverrides] = useState<ExerciseOverrideRecord>({});
   const [selectedHistoryDate, setSelectedHistoryDate] = useState<string | null>(null);
   const [previewPhotoUrl, setPreviewPhotoUrl] = useState<string | null>(null);
   const [showKfaLevelsModal, setShowKfaLevelsModal] = useState(false);
@@ -233,7 +235,7 @@ export function WorkoutDashboard() {
           setHistory(currentHistory => {
             const dayHist = currentHistory[todayStr] || {};
             const currentCount = dayHist[prev.exerciseId] || 0;
-            const allEx = WORKOUT_PLAN.flatMap(d => d.exercises);
+            const allEx = WORKOUT_PLAN.flatMap(d => d.exercises).map(withOverrides);
             const exercise = allEx.find(e => e.id === prev.exerciseId);
             if (exercise && currentCount < exercise.sets) {
               const newCount = currentCount + 1;
@@ -293,14 +295,31 @@ export function WorkoutDashboard() {
       setSelectedDay('1');
     }
 
-    Promise.all([fetchWorkoutHistory(), fetchWorkoutSessions()]).then(([histData, sessData]) => {
+    Promise.all([fetchWorkoutHistory(), fetchWorkoutSessions(), fetchExerciseOverrides()]).then(([histData, sessData, overridesData]) => {
       setHistory(histData);
       setSessions(sessData);
+      setExerciseOverrides(overridesData);
       if (sessData[todayStr]?.bodyWeight) {
         setBodyWeightInput(String(sessData[todayStr].bodyWeight));
       }
     });
   }, [todayStr]);
+
+  // Merge a persisted Sets/Reps override into an exercise from the static plan
+  const withOverrides = (ex: Exercise): Exercise => {
+    const o = exerciseOverrides[ex.id];
+    return o ? { ...ex, sets: o.sets ?? ex.sets, reps: o.reps ?? ex.reps } : ex;
+  };
+
+  const adjustExercise = (ex: Exercise, field: 'sets' | 'reps', delta: number) => {
+    const minValue = 1;
+    const nextSets = field === 'sets' ? Math.max(minValue, ex.sets + delta) : ex.sets;
+    const nextReps = field === 'reps' ? Math.max(minValue, ex.reps + delta) : ex.reps;
+    const updated = { sets: nextSets, reps: nextReps };
+
+    setExerciseOverrides(prev => ({ ...prev, [ex.id]: updated }));
+    upsertExerciseOverride(ex.id, updated);
+  };
 
   // Live Timer Interval
   useEffect(() => {
@@ -342,7 +361,7 @@ export function WorkoutDashboard() {
     const activeWorkout = WORKOUT_PLAN.find(d => d.dayId === selectedDay);
     const isWorkoutFullyCompleted = activeWorkout && activeWorkout.exercises.every(ex => {
       const done = nextDaySets[ex.id] || 0;
-      return done >= ex.sets;
+      return done >= (exerciseOverrides[ex.id]?.sets ?? ex.sets);
     });
 
     if (isWorkoutFullyCompleted && newCount > currentCount) {
@@ -471,8 +490,9 @@ export function WorkoutDashboard() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const activeWorkout = WORKOUT_PLAN.find(d => d.dayId === selectedDay);
-  const allExercises = WORKOUT_PLAN.flatMap(d => d.exercises);
+  const rawActiveWorkout = WORKOUT_PLAN.find(d => d.dayId === selectedDay);
+  const activeWorkout = rawActiveWorkout ? { ...rawActiveWorkout, exercises: rawActiveWorkout.exercises.map(withOverrides) } : undefined;
+  const allExercises = WORKOUT_PLAN.flatMap(d => d.exercises).map(withOverrides);
 
   const renderCalendar = () => {
     const now = new Date();
@@ -1348,8 +1368,15 @@ export function WorkoutDashboard() {
                           </h3>
 
                           <div className="exercise-badges-row">
-                            <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Flame size={12} /> {ex.sets} Sets × {ex.reps} Reps
+                            <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                              <Flame size={12} />
+                              <button type="button" className="stepper-btn" onClick={() => adjustExercise(ex, 'sets', -1)} title="Weniger Sets">−</button>
+                              {ex.sets} Sets
+                              <button type="button" className="stepper-btn" onClick={() => adjustExercise(ex, 'sets', 1)} title="Mehr Sets">+</button>
+                              ×
+                              <button type="button" className="stepper-btn" onClick={() => adjustExercise(ex, 'reps', -1)} title="Weniger Reps">−</button>
+                              {ex.reps} Reps
+                              <button type="button" className="stepper-btn" onClick={() => adjustExercise(ex, 'reps', 1)} title="Mehr Reps">+</button>
                             </span>
                             <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <Timer size={12} /> {ex.restTime} Pause
