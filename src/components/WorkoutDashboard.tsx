@@ -6,6 +6,7 @@ import { getStoredCalculatorInputs, calculateMetricsFromInputs } from '../utils/
 import { fetchWorkoutHistory, upsertWorkoutHistory, fetchWorkoutSessions, upsertWorkoutSession, uploadImage, fetchBodyMetricsInputs, upsertBodyMetricsInputs, fetchExerciseOverrides, upsertExerciseOverride, type ExerciseOverrideRecord } from '../services/plannerApi';
 import type { WorkoutHistoryRecord, WorkoutSessionRecord, WorkoutSession } from '../types';
 import { Check, Dumbbell, Timer, Flame, CalendarDays, Activity, Play, StopCircle, Upload, Weight, Camera, X, Save, Trophy, Sparkles, TrendingDown, Info } from 'lucide-react';
+import { WeightHistogram } from './WeightHistogram';
 
 export function WorkoutDashboard() {
   const [viewMode, setViewMode] = useState<'today' | 'calendar'>('today');
@@ -606,6 +607,7 @@ export function WorkoutDashboard() {
     }).reverse();
 
     return (
+      <>
       <div className="glass-panel" style={{ padding: '20px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
           
@@ -853,6 +855,10 @@ export function WorkoutDashboard() {
 
         </div>
       </div>
+      
+      {/* Body Weight Histogram placed directly underneath the calendar layout */}
+      <WeightHistogram sessions={sessions} />
+    </>
     );
   };
 
