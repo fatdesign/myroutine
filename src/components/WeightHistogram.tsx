@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar, Activity, Weight, Flame, TrendingDown } from 'lucide-react';
+import { Calendar, Weight, Flame, TrendingDown } from 'lucide-react';
 import type { WorkoutSessionRecord } from '../types';
 
 interface WeightHistogramProps {
