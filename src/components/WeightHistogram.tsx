@@ -22,13 +22,19 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
 
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
   const [selectedDate, setSelectedDate] = useState<string>(todayStr);
-  const [hoveredDay, setHoveredDay] = useState<{ dayNum: number; dateStr: string; weight: number; kfa: number | null } | null>(null);
+  const [hoveredDay, setHoveredDay] = useState<any | null>(null);
+
+  // Toggles for different metrics
+  const [showWeight, setShowWeight] = useState(true);
+  const [showKfa, setShowKfa] = useState(true);
+  const [showNeck, setShowNeck] = useState(true);
+  const [showWaist, setShowWaist] = useState(true);
 
   // Extract distinct months that have bodyWeight or bodyFat data
   const dbMonths = useMemo(() => {
     const monthsSet = new Set<string>();
     Object.values(sessions).forEach(session => {
-      if (session.bodyWeight || session.bodyFat) {
+      if (session.bodyWeight || session.bodyFat || session.neck || session.waist) {
         const monthPrefix = session.date.substring(0, 7); // YYYY-MM
         monthsSet.add(monthPrefix);
       }
@@ -58,27 +64,31 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
     return new Date(year, month, 0).getDate();
   }, [selectedMonth]);
 
-  // Build daily data for the selected month (carrying forward last known weight)
+  // Build daily data for the selected month (carrying forward last known values)
   const chartPoints = useMemo(() => {
     const allDates = Object.keys(sessions).sort();
     let currentWeight = 0;
+    let currentKfa = 0;
+    let currentNeck = 0;
+    let currentWaist = 0;
     
-    // Find last known weight BEFORE or ON the first of the selected month
+    // Find last known values BEFORE or ON the first of the selected month
     for (const d of allDates) {
-      if (d < `${selectedMonth}-01` && sessions[d].bodyWeight) {
-        currentWeight = sessions[d].bodyWeight;
+      if (d < `${selectedMonth}-01`) {
+        if (sessions[d].bodyWeight) currentWeight = sessions[d].bodyWeight!;
+        if (sessions[d].bodyFat) currentKfa = sessions[d].bodyFat!;
+        if (sessions[d].neck) currentNeck = sessions[d].neck!;
+        if (sessions[d].waist) currentWaist = sessions[d].waist!;
       }
     }
 
-    // If still 0, find the FIRST weight in this month to use as baseline
-    if (currentWeight === 0) {
-      for (let day = 1; day <= daysInMonth; day++) {
-         const d = `${selectedMonth}-${String(day).padStart(2, '0')}`;
-         if (sessions[d]?.bodyWeight) {
-            currentWeight = sessions[d].bodyWeight;
-            break;
-         }
-      }
+    // If still 0, find the FIRST value in this month to use as baseline
+    for (let day = 1; day <= daysInMonth; day++) {
+       const d = `${selectedMonth}-${String(day).padStart(2, '0')}`;
+       if (currentWeight === 0 && sessions[d]?.bodyWeight) currentWeight = sessions[d].bodyWeight!;
+       if (currentKfa === 0 && sessions[d]?.bodyFat) currentKfa = sessions[d].bodyFat!;
+       if (currentNeck === 0 && sessions[d]?.neck) currentNeck = sessions[d].neck!;
+       if (currentWaist === 0 && sessions[d]?.waist) currentWaist = sessions[d].waist!;
     }
 
     const points = [];
@@ -87,18 +97,28 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
       const dateKey = `${selectedMonth}-${dayStr}`;
       
       const session = sessions[dateKey];
-      const hasActualData = !!(session && session.bodyWeight);
+      const hasActualWeight = !!(session && session.bodyWeight);
+      const hasActualKfa = !!(session && session.bodyFat);
+      const hasActualNeck = !!(session && session.neck);
+      const hasActualWaist = !!(session && session.waist);
       
-      if (hasActualData) {
-        currentWeight = session.bodyWeight!;
-      }
+      if (hasActualWeight) currentWeight = session.bodyWeight!;
+      if (hasActualKfa) currentKfa = session.bodyFat!;
+      if (hasActualNeck) currentNeck = session.neck!;
+      if (hasActualWaist) currentWaist = session.waist!;
 
       points.push({
         dayNum: day,
         dateStr: dateKey,
         weight: currentWeight,
-        hasActualData,
-        kfa: session?.bodyFat || null,
+        kfa: currentKfa,
+        neck: currentNeck,
+        waist: currentWaist,
+        hasActualWeight,
+        hasActualKfa,
+        hasActualNeck,
+        hasActualWaist,
+        hasAnyData: hasActualWeight || hasActualKfa || hasActualNeck || hasActualWaist,
         session
       });
     }
@@ -114,51 +134,79 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
   const totalSvgWidth = chartWidth + paddingLeft + 30;
   const totalSvgHeight = chartHeight + paddingTop + 40;
 
-  const yDomain = useMemo(() => {
-    const weights = chartPoints.map(p => p.weight).filter(w => w > 0);
-    if (weights.length === 0) return { min: 0, max: 100, range: 100 };
+  // Helper to calculate Y domain for a specific metric
+  const getDomain = (key: 'weight' | 'kfa' | 'neck' | 'waist') => {
+    const vals = chartPoints.map(p => p[key]).filter(v => v > 0);
+    if (vals.length === 0) return { min: 0, max: 100, range: 100 };
     
-    const minW = Math.min(...weights);
-    const maxW = Math.max(...weights);
-    const padding = (maxW - minW) * 0.4 || 2; // Add padding to top and bottom, or 2kg if constant
+    const minV = Math.min(...vals);
+    const maxV = Math.max(...vals);
+    const padding = (maxV - minV) * 0.4 || 2; 
     
     return {
-      min: Math.max(0, minW - padding),
-      max: maxW + padding,
-      range: (maxW + padding) - Math.max(0, minW - padding) || 10
+      min: Math.max(0, minV - padding),
+      max: maxV + padding,
+      range: (maxV + padding) - Math.max(0, minV - padding) || 10
     };
-  }, [chartPoints]);
+  };
+
+  const domains = useMemo(() => ({
+    weight: getDomain('weight'),
+    kfa: getDomain('kfa'),
+    neck: getDomain('neck'),
+    waist: getDomain('waist'),
+  }), [chartPoints]);
 
   const svgPoints = useMemo(() => {
     return chartPoints.map(pt => {
       const x = paddingLeft + ((pt.dayNum - 1) / Math.max(1, daysInMonth - 1)) * chartWidth;
-      const y = pt.weight > 0 ? paddingTop + chartHeight - ((pt.weight - yDomain.min) / yDomain.range) * chartHeight : paddingTop + chartHeight;
-      return { ...pt, x, y };
+      
+      const getY = (val: number, domain: any) => 
+        val > 0 ? paddingTop + chartHeight - ((val - domain.min) / domain.range) * chartHeight : null;
+
+      return { 
+        ...pt, 
+        x, 
+        yWeight: getY(pt.weight, domains.weight) || (paddingTop + chartHeight),
+        yKfa: getY(pt.kfa, domains.kfa),
+        yNeck: getY(pt.neck, domains.neck),
+        yWaist: getY(pt.waist, domains.waist)
+      };
     });
-  }, [chartPoints, daysInMonth, yDomain]);
+  }, [chartPoints, daysInMonth, domains]);
 
   // Build SVG Path strings (Line & Area under curve)
-  const linePathD = useMemo(() => {
-    if (svgPoints.length === 0) return '';
-    return svgPoints.reduce((acc, pt, idx) => {
-      if (idx === 0) return `M ${pt.x} ${pt.y}`;
+  const buildPath = (key: 'yWeight' | 'yKfa' | 'yNeck' | 'yWaist') => {
+    const validPoints = svgPoints.filter(p => p[key] !== null);
+    if (validPoints.length === 0) return '';
+    return validPoints.reduce((acc, pt, idx) => {
+      if (idx === 0) return `M ${pt.x} ${pt[key]}`;
       // Smooth curve interpolation
-      const prev = svgPoints[idx - 1];
+      const prev = validPoints[idx - 1];
       const cx1 = prev.x + (pt.x - prev.x) / 2;
-      const cy1 = prev.y;
+      const cy1 = prev[key];
       const cx2 = prev.x + (pt.x - prev.x) / 2;
-      const cy2 = pt.y;
-      return `${acc} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${pt.x} ${pt.y}`;
+      const cy2 = pt[key];
+      return `${acc} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${pt.x} ${pt[key]}`;
     }, '');
-  }, [svgPoints]);
+  };
 
-  const areaPathD = useMemo(() => {
-    if (svgPoints.length === 0) return '';
-    const firstX = svgPoints[0].x;
-    const lastX = svgPoints[svgPoints.length - 1].x;
+  const paths = useMemo(() => ({
+    weight: buildPath('yWeight'),
+    kfa: buildPath('yKfa'),
+    neck: buildPath('yNeck'),
+    waist: buildPath('yWaist'),
+  }), [svgPoints]);
+
+  const areaPathWeightD = useMemo(() => {
+    if (!paths.weight) return '';
+    const validPoints = svgPoints.filter(p => p.yWeight !== null);
+    if (validPoints.length === 0) return '';
+    const firstX = validPoints[0].x;
+    const lastX = validPoints[validPoints.length - 1].x;
     const bottomY = paddingTop + chartHeight;
-    return `${linePathD} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
-  }, [linePathD, svgPoints, chartHeight]);
+    return `${paths.weight} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
+  }, [paths.weight, svgPoints]);
 
   // Selected Date Display Label (German format)
   const selectedDateLabel = useMemo(() => {
@@ -188,6 +236,14 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
     return null;
   }, [selectedDate, sessions, selectedDayData]);
 
+  // Colors
+  const COLORS = {
+    weight: 'var(--heroui-emerald)', // #10b981
+    kfa: '#ef4444',                  // Red
+    neck: '#3b82f6',                 // Blue
+    waist: '#eab308'                 // Yellow
+  };
+
   return (
     <div className="glass-panel" style={{ padding: '24px', borderRadius: '16px', border: '1px solid rgba(16, 185, 129, 0.35)', background: 'linear-gradient(180deg, rgba(20, 24, 20, 0.7) 0%, rgba(12, 16, 12, 0.85) 100%)', marginTop: '20px' }}>
       
@@ -199,7 +255,7 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
           </div>
           <div>
             <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              Monats-Körpergewicht Histogramm
+              Monats-Körperentwicklung
             </h3>
             <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               Klicke auf einen Tag im Diagramm, um rechts die Messwerte einzusehen.
@@ -249,11 +305,24 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
         {/* LEFT: SVG Line Chart / Histogram Box */}
         <div style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '16px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.08)', position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
           
-          {/* Chart Header Stats */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><div style={{ width: '12px', height: '3px', background: 'var(--heroui-emerald)' }} /> Körpergewicht</span>
-            </div>
+          {/* Chart Header Stats (Legend) */}
+          <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px', fontSize: '0.8rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: showWeight ? '#fff' : 'var(--text-muted)' }}>
+              <input type="checkbox" checked={showWeight} onChange={() => setShowWeight(!showWeight)} style={{ accentColor: COLORS.weight }} />
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: COLORS.weight, opacity: showWeight ? 1 : 0.3 }} /> Gewicht
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: showKfa ? '#fff' : 'var(--text-muted)' }}>
+              <input type="checkbox" checked={showKfa} onChange={() => setShowKfa(!showKfa)} style={{ accentColor: COLORS.kfa }} />
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: COLORS.kfa, opacity: showKfa ? 1 : 0.3 }} /> KFA
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: showNeck ? '#fff' : 'var(--text-muted)' }}>
+              <input type="checkbox" checked={showNeck} onChange={() => setShowNeck(!showNeck)} style={{ accentColor: COLORS.neck }} />
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: COLORS.neck, opacity: showNeck ? 1 : 0.3 }} /> Nacken
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', color: showWaist ? '#fff' : 'var(--text-muted)' }}>
+              <input type="checkbox" checked={showWaist} onChange={() => setShowWaist(!showWaist)} style={{ accentColor: COLORS.waist }} />
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: COLORS.waist, opacity: showWaist ? 1 : 0.3 }} /> Bauch
+            </label>
           </div>
 
           <div style={{ flex: 1, position: 'relative', minHeight: '260px' }}>
@@ -264,37 +333,53 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
                   <stop offset="100%" stopColor="rgba(16, 185, 129, 0.0)" />
                 </linearGradient>
                 <filter id="glowGreen" x="-20%" y="-20%" width="140%" height="140%">
-                  <feGaussianBlur stdDeviation="4" result="blur" />
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+                <filter id="glowRed" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+                <filter id="glowBlue" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+                <filter id="glowYellow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
                   <feComposite in="SourceGraphic" in2="blur" operator="over" />
                 </filter>
               </defs>
 
-              {/* Y-Axis Grid Lines & Labels */}
+              {/* Y-Axis Grid Lines & Labels (Only showing Weight axis for clarity) */}
               {[1, 0.75, 0.5, 0.25, 0].map((ratio) => {
                 const y = paddingTop + chartHeight * (1 - ratio);
-                const val = (yDomain.min + yDomain.range * ratio).toFixed(1);
+                const val = (domains.weight.min + domains.weight.range * ratio).toFixed(1);
                 return (
                   <g key={`y-grid-${ratio}`}>
                     <line x1={paddingLeft} y1={y} x2={paddingLeft + chartWidth} y2={y} stroke="rgba(255, 255, 255, 0.05)" strokeDasharray="4 4" />
-                    <text x={paddingLeft - 10} y={y + 4} fill="var(--text-muted)" fontSize="11" textAnchor="end" fontFamily="sans-serif">
+                    <text x={paddingLeft - 10} y={y + 4} fill={showWeight ? "var(--text-muted)" : "rgba(255,255,255,0.05)"} fontSize="11" textAnchor="end" fontFamily="sans-serif">
                       {val} kg
                     </text>
                   </g>
                 );
               })}
 
-              {/* Data Area & Line */}
-              {svgPoints.length > 0 && (
-                <>
-                  <path d={areaPathD} fill="url(#weightAreaGrad)" />
-                  <path d={linePathD} fill="none" stroke="var(--heroui-emerald)" strokeWidth="3" filter="url(#glowGreen)" />
-                </>
+              {/* Data Area (Weight only) */}
+              {showWeight && paths.weight && (
+                <path d={areaPathWeightD} fill="url(#weightAreaGrad)" />
               )}
+
+              {/* Data Lines */}
+              {showWaist && paths.waist && <path d={paths.waist} fill="none" stroke={COLORS.waist} strokeWidth="2.5" filter="url(#glowYellow)" />}
+              {showNeck && paths.neck && <path d={paths.neck} fill="none" stroke={COLORS.neck} strokeWidth="2.5" filter="url(#glowBlue)" />}
+              {showKfa && paths.kfa && <path d={paths.kfa} fill="none" stroke={COLORS.kfa} strokeWidth="2.5" filter="url(#glowRed)" />}
+              {showWeight && paths.weight && <path d={paths.weight} fill="none" stroke={COLORS.weight} strokeWidth="3" filter="url(#glowGreen)" />}
 
               {/* Data Points */}
               {svgPoints.map((pt, idx) => {
                 const isSelected = pt.dateStr === selectedDate;
-                const isReal = pt.hasActualData;
+                const isHovered = hoveredDay && hoveredDay.dateStr === pt.dateStr;
+                const isHighlighted = isSelected || isHovered;
                 
                 return (
                   <g 
@@ -305,25 +390,27 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
                     style={{ cursor: 'pointer' }}
                   >
                     {/* Vertical guideline on hover/selection */}
-                    {(isSelected || (hoveredDay && hoveredDay.dayNum === pt.dayNum)) && (
+                    {isHighlighted && (
                       <line x1={pt.x} y1={paddingTop} x2={pt.x} y2={paddingTop + chartHeight} stroke="rgba(255, 255, 255, 0.2)" strokeDasharray="2 2" />
                     )}
 
-                    {/* Outer Selection Ring */}
-                    {isSelected && isReal && (
-                      <circle cx={pt.x} cy={pt.y} r={10} fill="none" stroke="var(--heroui-emerald)" strokeWidth="2" filter="url(#glowGreen)" />
+                    {/* Node Circles */}
+                    {showWaist && pt.yWaist !== null && pt.hasActualWaist && (
+                      <circle cx={pt.x} cy={pt.yWaist} r={isHighlighted ? 5 : 3.5} fill={isHighlighted ? '#fff' : COLORS.waist} stroke="#12121a" strokeWidth={isHighlighted ? 2 : 1} />
+                    )}
+                    {showNeck && pt.yNeck !== null && pt.hasActualNeck && (
+                      <circle cx={pt.x} cy={pt.yNeck} r={isHighlighted ? 5 : 3.5} fill={isHighlighted ? '#fff' : COLORS.neck} stroke="#12121a" strokeWidth={isHighlighted ? 2 : 1} />
+                    )}
+                    {showKfa && pt.yKfa !== null && pt.hasActualKfa && (
+                      <circle cx={pt.x} cy={pt.yKfa} r={isHighlighted ? 5 : 3.5} fill={isHighlighted ? '#fff' : COLORS.kfa} stroke="#12121a" strokeWidth={isHighlighted ? 2 : 1} />
+                    )}
+                    {showWeight && pt.hasActualWeight && (
+                      <circle cx={pt.x} cy={pt.yWeight} r={isHighlighted ? 6 : 4.5} fill={isHighlighted ? '#fff' : COLORS.weight} stroke="#12121a" strokeWidth={isHighlighted ? 2 : 1} />
                     )}
 
-                    {/* Node Circle */}
-                    {isReal && (
-                      <circle
-                        cx={pt.x}
-                        cy={pt.y}
-                        r={isSelected ? 6 : 4.5}
-                        fill={isSelected ? '#fff' : 'var(--heroui-emerald)'}
-                        stroke="#12121a"
-                        strokeWidth={isSelected ? 2 : 1}
-                      />
+                    {/* Outer Selection Ring for Weight if selected */}
+                    {isSelected && showWeight && pt.hasActualWeight && (
+                      <circle cx={pt.x} cy={pt.yWeight} r={10} fill="none" stroke={COLORS.weight} strokeWidth="2" filter="url(#glowGreen)" />
                     )}
 
                     {/* X-Axis Day Number Labels */}
@@ -331,9 +418,9 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
                       <text
                         x={pt.x}
                         y={paddingTop + chartHeight + 18}
-                        fill={isSelected ? 'var(--heroui-emerald)' : (isReal ? '#fff' : 'rgba(255, 255, 255, 0.4)')}
+                        fill={isSelected ? '#fff' : (pt.hasAnyData ? 'rgba(255, 255, 255, 0.7)' : 'rgba(255, 255, 255, 0.3)')}
                         fontSize={isSelected ? '11' : '10'}
-                        fontWeight={isSelected || isReal ? 'bold' : 'normal'}
+                        fontWeight={isSelected || pt.hasAnyData ? 'bold' : 'normal'}
                         textAnchor="middle"
                         fontFamily="sans-serif"
                       >
@@ -353,26 +440,29 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
               top: '12px',
               right: '16px',
               background: 'rgba(18, 18, 28, 0.95)',
-              padding: '6px 12px',
+              padding: '8px 14px',
               borderRadius: '8px',
               border: '1px solid rgba(16, 185, 129, 0.4)',
               fontSize: '0.75rem',
               color: '#fff',
               pointerEvents: 'none',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
             }}>
-              <strong>Tag {hoveredDay.dayNum} ({hoveredDay.dateStr})</strong>: {hoveredDay.weight > 0 ? `${hoveredDay.weight} kg` : 'Kein Eintrag'} {hoveredDay.kfa ? `| ${hoveredDay.kfa}% KFA` : ''}
+              <strong style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px', marginBottom: '2px' }}>
+                Tag {hoveredDay.dayNum} ({hoveredDay.dateStr})
+              </strong>
+              {hoveredDay.weight > 0 && <span style={{ color: COLORS.weight }}>Gewicht: {hoveredDay.weight} kg {hoveredDay.hasActualWeight ? '' : '(alt)'}</span>}
+              {hoveredDay.kfa > 0 && <span style={{ color: COLORS.kfa }}>KFA: {hoveredDay.kfa}% {hoveredDay.hasActualKfa ? '' : '(alt)'}</span>}
+              {hoveredDay.neck > 0 && <span style={{ color: COLORS.neck }}>Nacken: {hoveredDay.neck} cm {hoveredDay.hasActualNeck ? '' : '(alt)'}</span>}
+              {hoveredDay.waist > 0 && <span style={{ color: COLORS.waist }}>Bauch: {hoveredDay.waist} cm {hoveredDay.hasActualWaist ? '' : '(alt)'}</span>}
             </div>
           )}
-
-          {/* Bottom legend note */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', fontSize: '0.73rem', color: 'var(--text-muted)', flexWrap: 'wrap', gap: '8px' }}>
-            <span>💡 <strong>Punkte</strong> = Tag mit echtem Gewichtseintrag | <strong>Klick auf Punkt</strong> zeigt Messwerte rechts</span>
-            <span>Tag 1–{daysInMonth}</span>
-          </div>
         </div>
 
-        {/* RIGHT: Selected Day Food Log List Panel */}
+        {/* RIGHT: Selected Day Details Panel */}
         <div className="nutrition-right-panel" style={{
           background: 'rgba(0, 0, 0, 0.35)',
           padding: '18px',
@@ -385,7 +475,7 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
           {/* Header for Selected Day */}
           <div style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px', marginBottom: '14px' }}>
             <span style={{ fontSize: '0.7rem', color: 'var(--heroui-emerald)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Selected Day Overview
+              Messwerte am Tag
             </span>
             <h4 style={{ margin: '2px 0 6px 0', fontSize: '1.05rem', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span>📅 {selectedDateLabel}</span>
@@ -399,7 +489,7 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
 
           {/* Details for Selected Date */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0, overflowY: 'auto', paddingRight: '4px' }}>
-            {!selectedDayData || !selectedDayData.hasActualData ? (
+            {!selectedDayData || !selectedDayData.hasAnyData ? (
               <div style={{
                 flex: 1,
                 display: 'flex',
@@ -414,61 +504,68 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
                 border: '1px dashed rgba(255, 255, 255, 0.1)'
               }}>
                 <Weight size={32} style={{ marginBottom: '12px', opacity: 0.3 }} />
-                <p style={{ margin: 0, fontSize: '0.85rem' }}>Kein Gewicht an diesem Tag getrackt.</p>
-                <p style={{ margin: '6px 0 0 0', fontSize: '0.75rem', opacity: 0.6 }}>Das Diagramm zeigt das zuletzt bekannte Gewicht von {selectedDayData?.weight || 0} kg.</p>
+                <p style={{ margin: 0, fontSize: '0.85rem' }}>Keine Daten für diesen Tag geloggt.</p>
+                <p style={{ margin: '6px 0 0 0', fontSize: '0.75rem', opacity: 0.6 }}>Das Diagramm interpoliert Werte zwischen Messungen.</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: 'rgba(16, 185, 129, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                     <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Weight size={16} /> Körpergewicht
-                     </span>
-                     <span style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {selectedDayData.weight} kg
-                        {deltaInfo && (
-                           <span style={{ 
-                              fontSize: '0.75rem', 
-                              padding: '2px 6px', 
-                              borderRadius: '4px', 
-                              background: deltaInfo.startsWith('-') ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)', 
-                              color: deltaInfo.startsWith('-') ? '#22c55e' : '#ef4444' 
-                           }}>
-                              {deltaInfo}
-                           </span>
-                        )}
-                     </span>
-                  </div>
-
-                  {selectedDayData.kfa && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                  
+                  {/* Weight */}
+                  {selectedDayData.weight > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Flame size={16} style={{ color: '#ef4444' }} /> Körperfettanteil
+                          <Weight size={16} style={{ color: COLORS.weight }} /> Gewicht {selectedDayData.hasActualWeight ? '' : '(alt)'}
                        </span>
-                       <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#22c55e' }}>
-                          {selectedDayData.kfa}% KFA
+                       <span style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          {selectedDayData.weight} kg
+                          {selectedDayData.hasActualWeight && deltaInfo && (
+                             <span style={{ 
+                                fontSize: '0.75rem', 
+                                padding: '2px 6px', 
+                                borderRadius: '4px', 
+                                background: deltaInfo.startsWith('-') ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)', 
+                                color: deltaInfo.startsWith('-') ? '#22c55e' : '#ef4444' 
+                             }}>
+                                {deltaInfo}
+                             </span>
+                          )}
                        </span>
                     </div>
                   )}
 
-                  {selectedDayData.session?.neck && (
+                  {/* KFA */}
+                  {selectedDayData.kfa > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          👔 Nacken
+                          <Flame size={16} style={{ color: COLORS.kfa }} /> KFA {selectedDayData.hasActualKfa ? '' : '(alt)'}
                        </span>
-                       <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#fff' }}>
-                          {selectedDayData.session.neck} cm
+                       <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: COLORS.kfa }}>
+                          {selectedDayData.kfa}%
                        </span>
                     </div>
                   )}
 
-                  {selectedDayData.session?.waist && (
+                  {/* Neck */}
+                  {selectedDayData.neck > 0 && (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
                        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          📏 Bauch
+                          <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: COLORS.neck, flexShrink: 0 }} /> Nacken {selectedDayData.hasActualNeck ? '' : '(alt)'}
                        </span>
                        <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#fff' }}>
-                          {selectedDayData.session.waist} cm
+                          {selectedDayData.neck} cm
+                       </span>
+                    </div>
+                  )}
+
+                  {/* Waist */}
+                  {selectedDayData.waist > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                       <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: COLORS.waist, flexShrink: 0 }} /> Bauch {selectedDayData.hasActualWaist ? '' : '(alt)'}
+                       </span>
+                       <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#fff' }}>
+                          {selectedDayData.waist} cm
                        </span>
                     </div>
                   )}

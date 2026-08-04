@@ -857,9 +857,6 @@ export function WorkoutDashboard() {
       </div>
       
       {/* Body Weight Histogram placed directly underneath the calendar layout */}
-      <div style={{ background: 'red', color: 'white', padding: '20px', margin: '20px 0', fontSize: '24px', fontWeight: 'bold', textAlign: 'center' }}>
-        DEV SERVER TEST: WENN DU DAS SIEHST, DANN LÄDT ER DIE NEUE DATEI!
-      </div>
       <WeightHistogram sessions={sessions} />
     </>
     );
