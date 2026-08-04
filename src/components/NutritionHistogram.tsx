@@ -264,7 +264,7 @@ export const NutritionHistogram: React.FC<NutritionHistogramProps> = ({
       <div className="nutrition-grid" style={{ gap: '20px', alignItems: 'stretch' }}>
         
         {/* LEFT: SVG Line Chart / Histogram Box */}
-        <div style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '16px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.08)', position: 'relative' }}>
+        <div style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '16px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.08)', position: 'relative', height: '100%', display: 'flex', flexDirection: 'column' }}>
           
           {/* Chart Header Stats */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -415,15 +415,14 @@ export const NutritionHistogram: React.FC<NutritionHistogramProps> = ({
         </div>
 
         {/* RIGHT: Selected Day Food Log List Panel */}
-        <div className="nutrition-right-wrapper">
-          <div className="nutrition-right-panel" style={{
-            background: 'rgba(0, 0, 0, 0.35)',
-            padding: '18px',
-            borderRadius: '14px',
-            border: '1px solid rgba(168, 85, 247, 0.3)',
-            display: 'flex',
-            flexDirection: 'column'
-          }}>
+        <div className="nutrition-right-panel" style={{
+          background: 'rgba(0, 0, 0, 0.35)',
+          padding: '18px',
+          borderRadius: '14px',
+          border: '1px solid rgba(168, 85, 247, 0.3)',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
           
           {/* Header for Selected Day */}
           <div style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px', marginBottom: '14px' }}>
@@ -529,7 +528,6 @@ export const NutritionHistogram: React.FC<NutritionHistogramProps> = ({
           </div>
 
           </div>
-        </div>
 
       </div>
 
