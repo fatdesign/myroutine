@@ -261,14 +261,14 @@ export const NutritionHistogram: React.FC<NutritionHistogramProps> = ({
       </div>
 
       {/* Main Grid: Left Chart + Right Food Log List */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.6fr) minmax(320px, 1fr)', gap: '20px', alignItems: 'start' }}>
+      <div className="nutrition-grid" style={{ gap: '20px', alignItems: 'start' }}>
         
         {/* LEFT: SVG Line Chart / Histogram Box */}
         <div style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '16px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.08)', position: 'relative' }}>
           
           {/* Chart Header Stats */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{ width: '12px', height: '3px', background: '#a855f7', borderRadius: '2px', display: 'inline-block' }} /> Kalorienzufuhr
               </span>
@@ -408,7 +408,7 @@ export const NutritionHistogram: React.FC<NutritionHistogramProps> = ({
           )}
 
           {/* Bottom legend note */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', fontSize: '0.73rem', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', fontSize: '0.73rem', color: 'var(--text-muted)', flexWrap: 'wrap', gap: '8px' }}>
             <span>💡 <strong>Grüne/Rote Punkte</strong> = Tag mit getrackten Speisen | <strong>Klick auf Punkt</strong> zeigt Tages-Speisen rechts</span>
             <span>Tag 1–{daysInMonth}</span>
           </div>

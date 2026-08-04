@@ -1295,3 +1295,17 @@ h1, h2, h3, h4 {
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* ==========================================================================
+   Nutrition Histogram Responsive Grid
+   ========================================================================== */
+.nutrition-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(320px, 1fr);
+}
+
+@media (max-width: 900px) {
+  .nutrition-grid {
+    grid-template-columns: 1fr;
+  }
+}
