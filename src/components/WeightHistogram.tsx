@@ -129,32 +129,47 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
   // SVG Chart Dimensions
   const chartWidth = 760;
   const chartHeight = 220;
-  const paddingLeft = 40;
+  const paddingLeft = 95;
+  const paddingRight = 95;
   const paddingTop = 40;
-  const totalSvgWidth = chartWidth + paddingLeft + 30;
-  const totalSvgHeight = chartHeight + paddingTop + 40;
+  const paddingBottom = 40;
+  const totalSvgWidth = chartWidth + paddingLeft + paddingRight;
+  const totalSvgHeight = chartHeight + paddingTop + paddingBottom;
 
   // Helper to calculate Y domain for a specific metric
-  const getDomain = (key: 'weight' | 'kfa' | 'neck' | 'waist') => {
+  const getDomain = (key: 'weight' | 'kfa' | 'neck' | 'waist', flatOffsetIndex: number) => {
     const vals = chartPoints.map(p => p[key]).filter(v => v > 0);
-    if (vals.length === 0) return { min: 0, max: 100, range: 100 };
+    if (vals.length === 0) return { min: 0, max: 100, range: 100, isFlat: true };
     
     const minV = Math.min(...vals);
     const maxV = Math.max(...vals);
-    const padding = (maxV - minV) * 0.4 || 2; 
+    const isFlat = minV === maxV;
     
+    let padBottom = (maxV - minV) * 0.4 || 2; 
+    let padTop = (maxV - minV) * 0.4 || 2; 
+    
+    // Offset flat lines so they don't perfectly overlap in the middle
+    if (isFlat) {
+       if (flatOffsetIndex === 1) { padBottom = 3; padTop = 1; }
+       if (flatOffsetIndex === 2) { padBottom = 1; padTop = 3; }
+       if (flatOffsetIndex === 3) { padBottom = 3.5; padTop = 0.5; }
+    }
+    
+    const finalMin = Math.max(0, minV - padBottom);
+    const finalMax = maxV + padTop;
     return {
-      min: Math.max(0, minV - padding),
-      max: maxV + padding,
-      range: (maxV + padding) - Math.max(0, minV - padding) || 10
+      min: finalMin,
+      max: finalMax,
+      range: finalMax - finalMin || 10,
+      isFlat
     };
   };
 
   const domains = useMemo(() => ({
-    weight: getDomain('weight'),
-    kfa: getDomain('kfa'),
-    neck: getDomain('neck'),
-    waist: getDomain('waist'),
+    weight: getDomain('weight', 0),
+    kfa: getDomain('kfa', 1),
+    neck: getDomain('neck', 2),
+    waist: getDomain('waist', 3),
   }), [chartPoints]);
 
   const svgPoints = useMemo(() => {
@@ -350,16 +365,42 @@ export const WeightHistogram: React.FC<WeightHistogramProps> = ({ sessions }) =>
                 </filter>
               </defs>
 
-              {/* Y-Axis Grid Lines & Labels (Only showing Weight axis for clarity) */}
+              {/* Y-Axis Grid Lines & Multi-Labels */}
               {[1, 0.75, 0.5, 0.25, 0].map((ratio) => {
                 const y = paddingTop + chartHeight * (1 - ratio);
-                const val = (domains.weight.min + domains.weight.range * ratio).toFixed(1);
+                
+                const valW = (domains.weight.min + domains.weight.range * ratio).toFixed(1);
+                const valK = (domains.kfa.min + domains.kfa.range * ratio).toFixed(1);
+                const valN = (domains.neck.min + domains.neck.range * ratio).toFixed(1);
+                const valB = (domains.waist.min + domains.waist.range * ratio).toFixed(1);
+
                 return (
                   <g key={`y-grid-${ratio}`}>
                     <line x1={paddingLeft} y1={y} x2={paddingLeft + chartWidth} y2={y} stroke="rgba(255, 255, 255, 0.05)" strokeDasharray="4 4" />
-                    <text x={paddingLeft - 10} y={y + 4} fill={showWeight ? "var(--text-muted)" : "rgba(255,255,255,0.05)"} fontSize="11" textAnchor="end" fontFamily="sans-serif">
-                      {val} kg
-                    </text>
+                    
+                    {/* LEFT AXIS */}
+                    {showWeight && (
+                      <text x={paddingLeft - 50} y={y + 4} fill={COLORS.weight} fontSize="10" fontWeight="bold" textAnchor="end" fontFamily="sans-serif">
+                        {valW} kg
+                      </text>
+                    )}
+                    {showKfa && (
+                      <text x={paddingLeft - 10} y={y + 4} fill={COLORS.kfa} fontSize="10" fontWeight="bold" textAnchor="end" fontFamily="sans-serif">
+                        {valK} %
+                      </text>
+                    )}
+
+                    {/* RIGHT AXIS */}
+                    {showNeck && (
+                      <text x={paddingLeft + chartWidth + 10} y={y + 4} fill={COLORS.neck} fontSize="10" fontWeight="bold" textAnchor="start" fontFamily="sans-serif">
+                        {valN} cm
+                      </text>
+                    )}
+                    {showWaist && (
+                      <text x={paddingLeft + chartWidth + 50} y={y + 4} fill={COLORS.waist} fontSize="10" fontWeight="bold" textAnchor="start" fontFamily="sans-serif">
+                        {valB} cm
+                      </text>
+                    )}
                   </g>
                 );
               })}
