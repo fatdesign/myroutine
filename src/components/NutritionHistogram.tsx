@@ -261,7 +261,7 @@ export const NutritionHistogram: React.FC<NutritionHistogramProps> = ({
       </div>
 
       {/* Main Grid: Left Chart + Right Food Log List */}
-      <div className="nutrition-grid" style={{ gap: '20px', alignItems: 'start' }}>
+      <div className="nutrition-grid" style={{ gap: '20px', alignItems: 'stretch' }}>
         
         {/* LEFT: SVG Line Chart / Histogram Box */}
         <div style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '16px', borderRadius: '14px', border: '1px solid rgba(255, 255, 255, 0.08)', position: 'relative' }}>
@@ -415,15 +415,15 @@ export const NutritionHistogram: React.FC<NutritionHistogramProps> = ({
         </div>
 
         {/* RIGHT: Selected Day Food Log List Panel */}
-        <div style={{
-          background: 'rgba(0, 0, 0, 0.35)',
-          padding: '18px',
-          borderRadius: '14px',
-          border: '1px solid rgba(168, 85, 247, 0.3)',
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: '280px'
-        }}>
+        <div className="nutrition-right-wrapper">
+          <div className="nutrition-right-panel" style={{
+            background: 'rgba(0, 0, 0, 0.35)',
+            padding: '18px',
+            borderRadius: '14px',
+            border: '1px solid rgba(168, 85, 247, 0.3)',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
           
           {/* Header for Selected Day */}
           <div style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '12px', marginBottom: '14px' }}>
@@ -457,7 +457,7 @@ export const NutritionHistogram: React.FC<NutritionHistogramProps> = ({
           </div>
 
           {/* Logged Meals List for the Selected Day */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', minHeight: 0, overflowY: 'auto', paddingRight: '4px' }}>
             {selectedDayData.meals.length === 0 ? (
               <div style={{
                 flex: 1,
@@ -528,6 +528,7 @@ export const NutritionHistogram: React.FC<NutritionHistogramProps> = ({
             )}
           </div>
 
+          </div>
         </div>
 
       </div>
