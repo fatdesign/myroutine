@@ -881,27 +881,6 @@ export function WorkoutDashboard() {
             <CalendarDays size={16} /> Kalender
           </button>
         </div>
-
-        {/* Timer Control Bar */}
-        {viewMode === 'today' && (
-          <div>
-            {!isTimerActive ? (
-              <button className="btn-primary" onClick={handleStartWorkoutClick} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Play size={18} /> Training starten
-              </button>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(124,58,237,0.2)', border: '1px solid var(--heroui-violet)', padding: '8px 16px', borderRadius: '30px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--heroui-violet-light)', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                  <Timer className="animate-pulse" size={20} />
-                  {formatTime(elapsedSeconds)}
-                </div>
-                <button className="btn-secondary" onClick={handleFinishWorkout} style={{ borderColor: '#ef4444', color: '#ef4444', padding: '6px 12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <StopCircle size={16} /> Beenden
-                </button>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {viewMode === 'calendar' ? renderCalendar() : (
@@ -1374,11 +1353,33 @@ export function WorkoutDashboard() {
 
           {activeWorkout ? (
             <div className="glass-panel" style={{ padding: '24px' }}>
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--heroui-violet-light)', marginBottom: '8px' }}>
-                <Dumbbell size={24} />
-                {activeWorkout.dayName} Workout
-              </h2>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>Fokus: {activeWorkout.focus}</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+                <div>
+                  <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--heroui-violet-light)', margin: 0 }}>
+                    <Dumbbell size={24} />
+                    {activeWorkout.dayName} Workout
+                  </h2>
+                  <p style={{ color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Fokus: {activeWorkout.focus}</p>
+                </div>
+
+                <div>
+                  {!isTimerActive ? (
+                    <button className="btn-primary" onClick={handleStartWorkoutClick} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Play size={18} /> Training starten
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(124,58,237,0.2)', border: '1px solid var(--heroui-violet)', padding: '8px 16px', borderRadius: '30px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--heroui-violet-light)', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                        <Timer className="animate-pulse" size={20} />
+                        {formatTime(elapsedSeconds)}
+                      </div>
+                      <button className="btn-secondary" onClick={handleFinishWorkout} style={{ borderColor: '#ef4444', color: '#ef4444', padding: '6px 12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <StopCircle size={16} /> Beenden
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               <div className="workout-list" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {activeWorkout.exercises.map((ex, idx) => {
