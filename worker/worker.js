@@ -410,6 +410,23 @@ export default {
           await env.DB.prepare("DELETE FROM daily_macro_logs WHERE id = ?").bind(mealId).run();
           return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
         }
+        if (request.method === 'PUT') {
+          const { meal_name, calories, protein, fat, carbs } = await request.json();
+
+          await env.DB.prepare(
+            `UPDATE daily_macro_logs SET
+               meal_name = COALESCE(?, meal_name),
+               calories = COALESCE(?, calories),
+               protein = COALESCE(?, protein),
+               fat = COALESCE(?, fat),
+               carbs = COALESCE(?, carbs)
+             WHERE id = ?`
+          )
+            .bind(meal_name ?? null, calories ?? null, protein ?? null, fat ?? null, carbs ?? null, mealId)
+            .run();
+
+          return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
+        }
       }
 
       // --- Weekly Coach Report Endpoints ---
@@ -1693,6 +1710,13 @@ async function parseWithAI(text, audioBase64, photoBase64, env) {
   const prompt = `Analysiere die Nachricht (Text, Sprachnachricht oder Foto von Essen auf Deutsch).
 Schätze die Nährwerte und Makros der Mahlzeit PRÄZISE und REALISTISCH ein und antworte AUSSCHLIESSLICH im gültigen JSON-Format.
 
+METHODE FÜR ERNÄHRUNG/ESSEN (wende das GEDANKLICH an, bevor du antwortest — nicht im Output ausgeben):
+1. Zerlege die Mahlzeit in ihre einzelnen sichtbaren bzw. genannten Zutaten (z.B. "Thunfischsalat mit Vollkornbrot" → Thunfisch aus der Dose, Dressing/Mayonnaise, Gemüse, 2 Scheiben Vollkornbrot).
+2. Schätze für JEDE Zutat eine realistische, HAUSHALTSÜBLICHE Portionsmenge in Gramm — orientiere dich an einer normalen Alltagsportion, NICHT an einer Restaurant-Großportion, außer Text/Foto zeigen eindeutig mehr.
+3. Nutze bekannte Nährwerte pro 100g als Referenz (z.B. Thunfisch in Wasser abgetropft: ~25g Protein/~1g Fett pro 100g; Vollkornbrot: ~8g Protein/~40g Kohlenhydrate pro 100g; Mayonnaise: ~700kcal/~75g Fett pro 100g; mageres Hähnchenbrustfilet: ~23g Protein/~2g Fett pro 100g; Reis gekocht: ~2.5g Protein/~28g Kohlenhydrate pro 100g).
+4. Summiere die Werte aller Zutaten zur Gesamt-Mahlzeit.
+5. Plausibilitäts-Check: (Protein×4 + Fett×9 + Kohlenhydrate×4) muss ungefähr den angegebenen Kalorien entsprechen (±10%). Falls nicht, korrigiere die Werte vor der Antwort.
+
 WICHTIGE NÄHRWERT-REGELN FÜR GETRÄNKE & SPEISEN:
 - Instant-Kaffee, schwarzer Kaffee, Espresso, Filterkaffee, ungesüßter Tee & Wasser haben ca. 0 bis 5 KALORIEN (~2-5 kcal, 0g Eiweiß, 0g Fett, 1g Carbs)! Schätze Kaffee oder Tee OHNE Milch/Zucker NIEMALS mit mehr als 10 kcal ein!
 - Kaffee mit Milch/Zucker: ca. 30-70 kcal.
@@ -1792,6 +1816,7 @@ Klassifiziere die Eingabe in genau EINES der folgenden Formate:
     try {
       const fallbackPrompt = `Analysiere folgende Nachricht auf Deutsch präzise: "${text}"
 WICHTIG: Instant-Kaffee, schwarzer Kaffee, Tee & Wasser haben 0–5 kcal!
+Bei Mahlzeiten: zerlege sie gedanklich in einzelne Zutaten, schätze pro Zutat eine haushaltsübliche (NICHT übergroße) Portion in Gramm anhand bekannter Nährwerte pro 100g, und summiere. Protein×4 + Fett×9 + Kohlenhydrate×4 muss ungefähr den Kalorien entsprechen.
 Antworte AUSSCHLIESSLICH im gültigen JSON-Format.
 Formate:
 1. Aufgabe: {"type":"task","task":"Beschreibung","time":"HH:mm","is_routine":false}

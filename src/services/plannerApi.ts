@@ -688,6 +688,18 @@ export async function deleteLoggedMeal(id: string): Promise<void> {
   }
 }
 
+export async function updateLoggedMeal(id: string, updates: Partial<{ meal_name: string; calories: number; protein: number; fat: number; carbs: number }>): Promise<void> {
+  try {
+    await fetch(`${WORKER_URL}/macro-logs/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+  } catch (e) {
+    console.warn('Update logged meal error:', e);
+  }
+}
+
 export async function fetchWeeklyCoachReport(): Promise<WeeklyCoachReport | null> {
   try {
     const res = await fetch(`${WORKER_URL}/weekly-coach-report`);

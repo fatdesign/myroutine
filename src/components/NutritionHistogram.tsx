@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, Utensils, Trash2, BarChart2 } from 'lucide-react';
+import { Calendar, Utensils, Trash2, BarChart2, Pencil, Check, X } from 'lucide-react';
 import type { LoggedMeal } from '../types';
-import { fetchMonthlyMacroLogs, fetchMacroLogMonths, deleteLoggedMeal } from '../services/plannerApi';
+import { fetchMonthlyMacroLogs, fetchMacroLogMonths, deleteLoggedMeal, updateLoggedMeal } from '../services/plannerApi';
 
 interface NutritionHistogramProps {
   targetCalories?: number;
@@ -120,6 +120,35 @@ export const NutritionHistogram: React.FC<NutritionHistogramProps> = ({
   const handleDeleteMealItem = async (mealId: string) => {
     await deleteLoggedMeal(mealId);
     setMonthlyLogs(prev => prev.filter(m => m.id !== mealId));
+    if (onMealDeleted) onMealDeleted();
+  };
+
+  // Inline editing of a logged meal's macros (AI estimates can be off — let the user correct them)
+  const [editingMealId, setEditingMealId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{ calories: string; protein: string; fat: string; carbs: string }>({ calories: '', protein: '', fat: '', carbs: '' });
+
+  const startEditMeal = (meal: LoggedMeal) => {
+    setEditingMealId(meal.id);
+    setEditForm({
+      calories: String(meal.calories),
+      protein: String(meal.protein),
+      fat: String(meal.fat),
+      carbs: String(meal.carbs)
+    });
+  };
+
+  const cancelEditMeal = () => setEditingMealId(null);
+
+  const saveEditMeal = async (mealId: string) => {
+    const updates = {
+      calories: Number(editForm.calories) || 0,
+      protein: Number(editForm.protein) || 0,
+      fat: Number(editForm.fat) || 0,
+      carbs: Number(editForm.carbs) || 0
+    };
+    setMonthlyLogs(prev => prev.map(m => (m.id === mealId ? { ...m, ...updates } : m)));
+    setEditingMealId(null);
+    await updateLoggedMeal(mealId, updates);
     if (onMealDeleted) onMealDeleted();
   };
 
@@ -490,38 +519,97 @@ export const NutritionHistogram: React.FC<NutritionHistogramProps> = ({
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ color: '#fff', fontWeight: 'bold' }}>{meal.meal_name}</span>
-                      {meal.time && (
-                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: '4px' }}>
-                          ⏰ {meal.time}
-                        </span>
-                      )}
+                  {editingMealId === meal.id ? (
+                    <div style={{ width: '100%' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                        <span style={{ color: '#fff', fontWeight: 'bold' }}>{meal.meal_name}</span>
+                        {meal.time && (
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: '4px' }}>
+                            ⏰ {meal.time}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          🔥
+                          <input type="number" className="form-input" value={editForm.calories} onChange={e => setEditForm(f => ({ ...f, calories: e.target.value }))} style={{ width: '60px', padding: '3px 6px', fontSize: '0.78rem' }} /> kcal
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          🥩
+                          <input type="number" className="form-input" value={editForm.protein} onChange={e => setEditForm(f => ({ ...f, protein: e.target.value }))} style={{ width: '50px', padding: '3px 6px', fontSize: '0.78rem' }} /> g P
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          🥑
+                          <input type="number" className="form-input" value={editForm.fat} onChange={e => setEditForm(f => ({ ...f, fat: e.target.value }))} style={{ width: '50px', padding: '3px 6px', fontSize: '0.78rem' }} /> g F
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          🍚
+                          <input type="number" className="form-input" value={editForm.carbs} onChange={e => setEditForm(f => ({ ...f, carbs: e.target.value }))} style={{ width: '50px', padding: '3px 6px', fontSize: '0.78rem' }} /> g C
+                        </label>
+                        <button type="button" onClick={() => saveEditMeal(meal.id)} title="Speichern" style={{ background: 'rgba(34, 197, 94, 0.2)', border: 'none', color: '#22c55e', cursor: 'pointer', padding: '5px', borderRadius: '6px', display: 'flex', alignItems: 'center' }}>
+                          <Check size={14} />
+                        </button>
+                        <button type="button" onClick={cancelEditMeal} title="Abbrechen" style={{ background: 'rgba(255,255,255,0.06)', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '5px', borderRadius: '6px', display: 'flex', alignItems: 'center' }}>
+                          <X size={14} />
+                        </button>
+                      </div>
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px' }}>
-                      🔥 <strong style={{ color: '#22c55e' }}>{meal.calories} kcal</strong> | 🥩 {meal.protein}g P | 🥑 {meal.fat}g F | 🍚 {meal.carbs}g C
-                    </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div style={{ overflow: 'hidden', paddingRight: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ color: '#fff', fontWeight: 'bold' }}>{meal.meal_name}</span>
+                          {meal.time && (
+                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: '4px' }}>
+                              ⏰ {meal.time}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px' }}>
+                          🔥 <strong style={{ color: '#22c55e' }}>{meal.calories} kcal</strong> | 🥩 {meal.protein}g P | 🥑 {meal.fat}g F | 🍚 {meal.carbs}g C
+                        </div>
+                      </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteMealItem(meal.id)}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#ef4444',
-                      opacity: 0.7,
-                      cursor: 'pointer',
-                      padding: '4px',
-                      borderRadius: '4px',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                    title="Mahlzeit löschen"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          onClick={() => startEditMeal(meal)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--heroui-violet-light)',
+                            opacity: 0.7,
+                            cursor: 'pointer',
+                            padding: '4px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          title="Nährwerte korrigieren"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteMealItem(meal.id)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#ef4444',
+                            opacity: 0.7,
+                            cursor: 'pointer',
+                            padding: '4px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          title="Mahlzeit löschen"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ))
             )}
