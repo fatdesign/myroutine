@@ -15,6 +15,22 @@ const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
 
 const DEFAULT_TRACKS: AudioTrack[] = [
   {
+    id: 'joe-dispenza-morgen',
+    title: 'Morgenmeditation (Joe Dispenza)',
+    subtitle: 'Auf Deutsch - Ausrichtung & Intention',
+    fileName: 'joe_dispenza_morgenmeditation.mp3',
+    url: `${cleanBaseUrl}audio/joe_dispenza_morgenmeditation.mp3`,
+    category: 'Joe Dispenza'
+  },
+  {
+    id: 'joe-dispenza-abend',
+    title: 'Abendmeditation (Joe Dispenza)',
+    subtitle: 'Auf Deutsch - Reflexion & Dankbarkeit',
+    fileName: 'joe_dispenza_abendmeditation.mp3',
+    url: `${cleanBaseUrl}audio/joe_dispenza_abendmeditation.mp3`,
+    category: 'Joe Dispenza'
+  },
+  {
     id: 'tape-8',
     title: 'Tape #8: Problem Solving',
     subtitle: 'Wave II: Threshold',
