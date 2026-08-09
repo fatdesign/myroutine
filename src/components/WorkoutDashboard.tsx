@@ -33,6 +33,19 @@ export function WorkoutDashboard() {
       if (url) {
         setVisionImageUrl(url);
         localStorage.setItem('myroutine_vision_image', url);
+        upsertBodyMetricsInputs({
+          gender: calcGender,
+          age: calcAge,
+          weight: calcWeight,
+          height: calcHeight,
+          neck: calcNeck,
+          waist: calcWaist,
+          hip: calcHip,
+          targetKfa: calcTargetKfa,
+          activityLevel,
+          targetDeficitMode,
+          visionImageUrl: url
+        });
       }
     } catch (err) {
       console.error("Vision upload error:", err);
@@ -93,6 +106,9 @@ export function WorkoutDashboard() {
       setCalcTargetKfa(inputs.targetKfa);
       setActivityLevel(inputs.activityLevel);
       setTargetDeficitMode(inputs.targetDeficitMode);
+      if (inputs.visionImageUrl) {
+        setVisionImageUrl(inputs.visionImageUrl);
+      }
     });
   }, []);
 
@@ -108,9 +124,10 @@ export function WorkoutDashboard() {
       hip: calcHip,
       targetKfa: calcTargetKfa,
       activityLevel,
-      targetDeficitMode
+      targetDeficitMode,
+      visionImageUrl: visionImageUrl || undefined
     });
-  }, [calcGender, calcAge, calcWeight, calcHeight, calcNeck, calcWaist, calcHip, calcTargetKfa, activityLevel, targetDeficitMode]);
+  }, [calcGender, calcAge, calcWeight, calcHeight, calcNeck, calcWaist, calcHip, calcTargetKfa, activityLevel, targetDeficitMode, visionImageUrl]);
 
   const calculateBodyFatMetrics = () => {
     return calculateMetricsFromInputs({

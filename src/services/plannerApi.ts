@@ -566,6 +566,7 @@ export interface BodyMetricsCalculatorInputs {
   targetKfa: number;
   activityLevel: number;
   targetDeficitMode: number;
+  visionImageUrl?: string;
 }
 
 export async function fetchBodyMetricsInputs(): Promise<BodyMetricsCalculatorInputs> {
@@ -584,6 +585,9 @@ export async function fetchBodyMetricsInputs(): Promise<BodyMetricsCalculatorInp
         localStorage.setItem('myroutine_calc_target_kfa', String(data.targetKfa || 7.0));
         localStorage.setItem('myroutine_calc_activity', String(data.activityLevel || 1.55));
         localStorage.setItem('myroutine_calc_deficit', String(data.targetDeficitMode || 500));
+        if (data.visionImageUrl) {
+          localStorage.setItem('myroutine_vision_image', data.visionImageUrl);
+        }
         window.dispatchEvent(new Event('myroutine_body_metrics_updated'));
         return {
           gender: data.gender || 'male',
@@ -596,6 +600,7 @@ export async function fetchBodyMetricsInputs(): Promise<BodyMetricsCalculatorInp
           targetKfa: Number(data.targetKfa) || 7.0,
           activityLevel: Number(data.activityLevel) || 1.55,
           targetDeficitMode: Number(data.targetDeficitMode) || 500,
+          visionImageUrl: data.visionImageUrl || localStorage.getItem('myroutine_vision_image') || undefined
         };
       }
     }
@@ -612,7 +617,8 @@ export async function fetchBodyMetricsInputs(): Promise<BodyMetricsCalculatorInp
     hip: Number(localStorage.getItem('myroutine_calc_hip')) || 100,
     targetKfa: Number(localStorage.getItem('myroutine_calc_target_kfa')) || 7.0,
     activityLevel: Number(localStorage.getItem('myroutine_calc_activity')) || 1.55,
-    targetDeficitMode: Number(localStorage.getItem('myroutine_calc_deficit')) || 500
+    targetDeficitMode: Number(localStorage.getItem('myroutine_calc_deficit')) || 500,
+    visionImageUrl: localStorage.getItem('myroutine_vision_image') || undefined
   };
 }
 
@@ -627,6 +633,9 @@ export async function upsertBodyMetricsInputs(inputs: BodyMetricsCalculatorInput
   localStorage.setItem('myroutine_calc_target_kfa', String(inputs.targetKfa));
   localStorage.setItem('myroutine_calc_activity', String(inputs.activityLevel));
   localStorage.setItem('myroutine_calc_deficit', String(inputs.targetDeficitMode));
+  if (inputs.visionImageUrl) {
+    localStorage.setItem('myroutine_vision_image', inputs.visionImageUrl);
+  }
   window.dispatchEvent(new Event('myroutine_body_metrics_updated'));
 
   try {
