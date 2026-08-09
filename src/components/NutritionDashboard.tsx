@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Utensils, ShoppingBag, Sparkles, Check, Clock, Save, RefreshCw, ChefHat, Send, Camera, Trash2, Award, Lightbulb, Target, Flame, Droplet, Image as ImageIcon, Sun, Moon } from 'lucide-react';
+import { Utensils, ShoppingBag, Sparkles, Check, Clock, Save, RefreshCw, ChefHat, Send, Camera, Trash2, Award, Lightbulb, Target, Flame, Droplet, Image as ImageIcon, Sun, Moon, Footprints } from 'lucide-react';
 import type { NutritionProfile, NutritionPlan, LoggedMeal, WeeklyCoachReport } from '../types';
 import { 
   fetchNutritionProfile, upsertNutritionProfile, fetchNutritionPlan, generateAiNutritionPlan, 
@@ -79,6 +79,35 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
   const [totalWaterMl, setTotalWaterMl] = useState<number>(0);
   const [progressPhotos, setProgressPhotos] = useState<ProgressPhoto[]>([]);
   const [briefingMsg, setBriefingMsg] = useState<string | null>(null);
+
+  const todayDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+
+  const [dailySteps, setDailySteps] = useState<number>(() => {
+    const saved = localStorage.getItem(`myroutine_steps_${todayDateStr}`);
+    return saved ? parseInt(saved, 10) : 0;
+  });
+
+  const [activeCalories, setActiveCalories] = useState<number>(() => {
+    const savedKcal = localStorage.getItem(`myroutine_active_kcal_${todayDateStr}`);
+    if (savedKcal) return parseInt(savedKcal, 10);
+    const savedSteps = localStorage.getItem(`myroutine_steps_${todayDateStr}`);
+    return savedSteps ? Math.round(parseInt(savedSteps, 10) * 0.057) : 0;
+  });
+
+  const updateSteps = (steps: number, kcalOverride?: number) => {
+    const newSteps = Math.max(0, steps);
+    const calcKcal = kcalOverride !== undefined ? kcalOverride : Math.round(newSteps * 0.057);
+    setDailySteps(newSteps);
+    setActiveCalories(calcKcal);
+    localStorage.setItem(`myroutine_steps_${todayDateStr}`, String(newSteps));
+    localStorage.setItem(`myroutine_active_kcal_${todayDateStr}`, String(calcKcal));
+  };
+
+  const updateActiveKcal = (kcal: number) => {
+    const newKcal = Math.max(0, kcal);
+    setActiveCalories(newKcal);
+    localStorage.setItem(`myroutine_active_kcal_${todayDateStr}`, String(newKcal));
+  };
 
   useEffect(() => {
     fetchBodyMetricsInputs().then(() => setLiveMetrics(getLiveBodyMetrics()));
@@ -219,16 +248,21 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
         </div>
       </div>
 
-      {/* Live Macro Progress, Water Tracker & Weekly Coach Grid */}
+      {/* Live Macro Progress, Steps Tracker, Water Tracker & Weekly Coach Grid */}
       {(() => {
         const loggedCalories = macroLogs.reduce((sum, m) => sum + (m.calories || 0), 0);
         const loggedProtein = macroLogs.reduce((sum, m) => sum + (m.protein || 0), 0);
         const loggedFat = macroLogs.reduce((sum, m) => sum + (m.fat || 0), 0);
         const loggedCarbs = macroLogs.reduce((sum, m) => sum + (m.carbs || 0), 0);
-        const rawCalPercent = Math.round((loggedCalories / (liveMetrics.targetCalories || 1)) * 100);
+
+        const activeBurn = activeCalories || 0;
+        const effectiveTarget = (liveMetrics.targetCalories || 0) + activeBurn;
+        const netCalories = Math.max(0, loggedCalories - activeBurn);
+        const remainingBudget = effectiveTarget - loggedCalories;
+        const isOverCal = loggedCalories > effectiveTarget;
+        const rawCalPercent = Math.round((loggedCalories / (effectiveTarget || 1)) * 100);
         const calPercent = Math.min(100, rawCalPercent);
         const protPercent = Math.min(100, Math.round((loggedProtein / (liveMetrics.proteinGrams || 1)) * 100));
-        const isOverCal = loggedCalories > liveMetrics.targetCalories;
 
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
@@ -250,17 +284,25 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
                     <span style={{ color: 'var(--text-muted)' }}>
-                      🔥 Kalorien: <strong style={{ color: isOverCal ? '#ef4444' : '#22c55e' }}>{loggedCalories}</strong> / {liveMetrics.targetCalories} kcal
-                      {isOverCal ? (
-                        <span style={{ color: '#ef4444', marginLeft: '6px', fontSize: '0.75rem' }}>(+{loggedCalories - liveMetrics.targetCalories} kcal Überschuss ⚠️)</span>
-                      ) : (
-                        <span style={{ color: '#22c55e', marginLeft: '6px', fontSize: '0.75rem' }}>(Noch {liveMetrics.targetCalories - loggedCalories} kcal offen 🎯)</span>
+                      🔥 Gegessen: <strong style={{ color: isOverCal ? '#ef4444' : '#22c55e' }}>{loggedCalories}</strong> / {effectiveTarget} kcal
+                      {activeBurn > 0 && (
+                        <span style={{ color: '#eab308', marginLeft: '6px', fontSize: '0.75rem' }}>(+{activeBurn} kcal Burn)</span>
                       )}
                     </span>
                     <span style={{ color: isOverCal ? '#ef4444' : '#22c55e', fontWeight: 'bold' }}>{rawCalPercent}%</span>
                   </div>
                   <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', overflow: 'hidden' }}>
                     <div style={{ width: `${calPercent}%`, height: '100%', background: isOverCal ? 'linear-gradient(90deg, #f59e0b, #ef4444)' : 'linear-gradient(90deg, #22c55e, #16a34a)', transition: 'width 0.4s ease' }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginTop: '4px', color: 'var(--text-muted)' }}>
+                    <span>Netto-Einnahme: <strong style={{ color: '#38bdf8' }}>{netCalories} kcal</strong></span>
+                    <span>
+                      {remainingBudget >= 0 ? (
+                        <span style={{ color: '#22c55e', fontWeight: 'bold' }}>Noch {remainingBudget} kcal frei 🎯</span>
+                      ) : (
+                        <span style={{ color: '#ef4444', fontWeight: 'bold' }}>+{Math.abs(remainingBudget)} kcal Überschuss ⚠️</span>
+                      )}
+                    </span>
                   </div>
                 </div>
 
@@ -287,7 +329,7 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
               </div>
 
               {/* Logged Meals List */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '220px', overflowY: 'auto' }}>
                 {macroLogs.length === 0 ? (
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '10px 0' }}>
                     Noch keine Mahlzeiten für heute getrackt.
@@ -312,6 +354,100 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+
+            {/* 👟 Schritte & Aktivitäts-Burn Tracker Card */}
+            <div className="glass-panel" style={{ padding: '20px', borderRadius: '16px', border: '1px solid rgba(234, 179, 8, 0.35)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Footprints size={18} style={{ color: '#eab308' }} />
+                    Schritte & Aktiv-Burn
+                  </h3>
+                  <span className="badge-pill time" style={{ background: 'rgba(234, 179, 8, 0.2)', color: '#eab308', fontSize: '0.75rem', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    🔥 -{activeCalories} kcal
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>🚶‍♂️ Schritte heute</label>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        value={dailySteps || ''} 
+                        placeholder="z.B. 14000"
+                        onChange={e => updateSteps(parseInt(e.target.value, 10) || 0)}
+                        style={{ width: '100%', padding: '8px 10px', fontSize: '0.88rem', fontWeight: 'bold', color: '#eab308' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>🔥 Verbrannte kcal</label>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        value={activeCalories || ''} 
+                        placeholder="z.B. 830"
+                        onChange={e => updateActiveKcal(parseInt(e.target.value, 10) || 0)}
+                        style={{ width: '100%', padding: '8px 10px', fontSize: '0.88rem', fontWeight: 'bold', color: '#ef4444' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Quick Add Step Buttons */}
+                  <div>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Quick-Add Schritte:</span>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                      {[3000, 5000, 10000, 14000].map(s => (
+                        <button 
+                          key={s}
+                          type="button"
+                          onClick={() => updateSteps((dailySteps || 0) + s)}
+                          style={{ 
+                            padding: '6px 4px', 
+                            borderRadius: '6px', 
+                            background: 'rgba(234, 179, 8, 0.15)', 
+                            border: '1px solid rgba(234, 179, 8, 0.3)', 
+                            color: '#eab308', 
+                            fontSize: '0.75rem', 
+                            fontWeight: 'bold', 
+                            cursor: 'pointer' 
+                          }}
+                        >
+                          +{s >= 1000 ? `${s / 1000}k` : s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Reset Button */}
+                  <button
+                    type="button"
+                    onClick={() => updateSteps(0, 0)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer', textAlign: 'right', textDecoration: 'underline' }}
+                  >
+                    Schritte zurücksetzen
+                  </button>
+                </div>
+              </div>
+
+              {/* Summary Box */}
+              <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '10px 12px', marginTop: '14px', fontSize: '0.78rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>🚶‍♂️ Gelaufen:</span>
+                  <strong style={{ color: '#fff' }}>{dailySteps.toLocaleString()} Schritte</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>🔥 Aktivitäts-Burn:</span>
+                  <strong style={{ color: '#22c55e' }}>-{activeCalories} kcal</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '4px', marginTop: '4px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>⚡ Rest-Spielraum heute:</span>
+                  <strong style={{ color: '#eab308' }}>+{activeCalories} kcal frei</strong>
+                </div>
               </div>
             </div>
 
