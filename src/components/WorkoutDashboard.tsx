@@ -634,49 +634,59 @@ export function WorkoutDashboard() {
                   Training am {selectedHistoryDate.split('-').reverse().join('.')}
                 </h3>
 
-                {/* Session stats (Duration & Weight & KFA & Photo) */}
-                {selectedSession && (selectedSession.durationSeconds > 0 || selectedSession.bodyWeight || selectedSession.bodyFat || selectedSession.photoUrl) && (
-                  <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(124,58,237,0.1)', padding: '10px', borderRadius: '8px' }}>
-                    {selectedSession.photoUrl && (
-                      <div 
-                        onClick={() => setPreviewPhotoUrl(selectedSession.photoUrl!)}
-                        title="Klicken für Vergrößerung"
-                        style={{ width: '50px', height: '50px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0, cursor: 'pointer', border: '2px solid var(--heroui-violet)' }}
-                      >
-                        <img src={selectedSession.photoUrl} alt="Checkin" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                      {selectedSession.durationSeconds > 0 && (
-                        <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
-                          <Timer size={12} /> {formatTime(selectedSession.durationSeconds)}
-                        </span>
+                {/* Session stats (Duration, Steps, Weight & KFA & Photo) */}
+                {(() => {
+                  const historySteps = selectedHistoryDate ? parseInt(localStorage.getItem(`myroutine_steps_${selectedHistoryDate}`) || '0', 10) : 0;
+                  const historyKcal = selectedHistoryDate ? (parseInt(localStorage.getItem(`myroutine_active_kcal_${selectedHistoryDate}`) || '0', 10) || Math.round(historySteps * 0.057)) : 0;
+
+                  return (selectedSession && (selectedSession.durationSeconds > 0 || selectedSession.bodyWeight || selectedSession.bodyFat || selectedSession.photoUrl)) || historySteps > 0 ? (
+                    <div style={{ display: 'flex', gap: '12px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(124,58,237,0.1)', padding: '10px', borderRadius: '8px' }}>
+                      {selectedSession?.photoUrl && (
+                        <div 
+                          onClick={() => setPreviewPhotoUrl(selectedSession.photoUrl!)}
+                          title="Klicken für Vergrößerung"
+                          style={{ width: '50px', height: '50px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0, cursor: 'pointer', border: '2px solid var(--heroui-violet)' }}
+                        >
+                          <img src={selectedSession.photoUrl} alt="Checkin" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        </div>
                       )}
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        {selectedSession.bodyWeight && (
-                          <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                            <Weight size={12} /> {selectedSession.bodyWeight} kg
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {selectedSession && selectedSession.durationSeconds > 0 && (
+                          <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
+                            <Timer size={12} /> {formatTime(selectedSession.durationSeconds)}
                           </span>
                         )}
-                        {selectedSession.bodyFat && (
-                          <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', background: 'var(--heroui-violet)', whiteSpace: 'nowrap' }}>
-                            <Flame size={12} /> {selectedSession.bodyFat}% KFA
-                          </span>
-                        )}
-                        {selectedSession.neck && (
-                          <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
-                            👔 Nacken: {selectedSession.neck} cm
-                          </span>
-                        )}
-                        {selectedSession.waist && (
-                          <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
-                            📏 Bauch: {selectedSession.waist} cm
-                          </span>
-                        )}
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {historySteps > 0 && (
+                            <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', background: 'rgba(234, 179, 8, 0.2)', color: '#eab308', border: '1px solid rgba(234, 179, 8, 0.4)', whiteSpace: 'nowrap' }}>
+                              🚶‍♂️ {historySteps.toLocaleString()} Schritte (-{historyKcal} kcal)
+                            </span>
+                          )}
+                          {selectedSession?.bodyWeight && (
+                            <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                              <Weight size={12} /> {selectedSession.bodyWeight} kg
+                            </span>
+                          )}
+                          {selectedSession?.bodyFat && (
+                            <span className="badge-pill time" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', background: 'var(--heroui-violet)', whiteSpace: 'nowrap' }}>
+                              <Flame size={12} /> {selectedSession.bodyFat}% KFA
+                            </span>
+                          )}
+                          {selectedSession?.neck && (
+                            <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                              👔 Nacken: {selectedSession.neck} cm
+                            </span>
+                          )}
+                          {selectedSession?.waist && (
+                            <span className="badge-pill days" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                              📏 Bauch: {selectedSession.waist} cm
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  ) : null;
+                })()}
 
                 {(!history[selectedHistoryDate] || Object.values(history[selectedHistoryDate]).every(s => s === 0)) ? (
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Keine Übungen an diesem Tag.</p>

@@ -109,6 +109,22 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
     localStorage.setItem(`myroutine_active_kcal_${todayDateStr}`, String(newKcal));
   };
 
+  const [showStepHistory, setShowStepHistory] = useState<boolean>(false);
+
+  const last7DaysSteps = React.useMemo(() => {
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(d);
+      const dayLabel = i === 0 ? 'Heute' : (i === 1 ? 'Gestern' : d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' }));
+      const steps = parseInt(localStorage.getItem(`myroutine_steps_${dateStr}`) || '0', 10);
+      const kcal = parseInt(localStorage.getItem(`myroutine_active_kcal_${dateStr}`) || '0', 10) || Math.round(steps * 0.057);
+      days.push({ dateStr, dayLabel, steps, kcal });
+    }
+    return days;
+  }, [dailySteps, activeCalories]);
+
   useEffect(() => {
     fetchBodyMetricsInputs().then(() => setLiveMetrics(getLiveBodyMetrics()));
     fetchNutritionProfile().then(p => setProfile(p));
@@ -450,7 +466,7 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                 </div>
               </div>
 
-              {/* Summary Box */}
+              {/* Summary Box & 7-Day History Toggle */}
               <div style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '10px', padding: '10px 12px', marginTop: '14px', fontSize: '0.78rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <span style={{ color: 'var(--text-muted)' }}>🚶‍♂️ Gelaufen:</span>
@@ -463,6 +479,29 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '4px', marginTop: '4px' }}>
                   <span style={{ color: 'var(--text-muted)' }}>⚡ Rest-Spielraum heute:</span>
                   <strong style={{ color: '#eab308' }}>+{activeCalories} kcal frei</strong>
+                </div>
+
+                <div style={{ marginTop: '10px', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '8px', textAlign: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowStepHistory(!showStepHistory)}
+                    style={{ background: 'none', border: 'none', color: '#eab308', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    📅 7-Tage Schritte-Verlauf {showStepHistory ? 'schließen ▲' : 'anzeigen ▼'}
+                  </button>
+
+                  {showStepHistory && (
+                    <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+                      {last7DaysSteps.map(item => (
+                        <div key={item.dateStr} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '4px 8px', borderRadius: '6px', fontSize: '0.72rem' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>{item.dayLabel} ({item.dateStr.split('-').slice(1).join('.')})</span>
+                          <span style={{ color: item.steps > 0 ? '#fff' : 'var(--text-subtle)', fontWeight: item.steps > 0 ? 'bold' : 'normal' }}>
+                            {item.steps.toLocaleString()} Schritte <span style={{ color: '#22c55e', fontSize: '0.68rem' }}>(-{item.kcal} kcal)</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

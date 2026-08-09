@@ -467,21 +467,33 @@ export const NutritionHistogram: React.FC<NutritionHistogramProps> = ({
               )}
             </h4>
 
-            {/* Daily Total Macro Badges */}
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px', fontSize: '0.75rem' }}>
-              <span style={{ background: selectedDayData.totalCalories > targetCalories ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)', color: selectedDayData.totalCalories > targetCalories ? '#ef4444' : '#22c55e', padding: '3px 8px', borderRadius: '6px', border: `1px solid ${selectedDayData.totalCalories > targetCalories ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)'}` }}>
-                🔥 <strong>{selectedDayData.totalCalories}</strong> / {targetCalories} kcal
-              </span>
-              <span style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '3px 8px', borderRadius: '6px' }}>
-                🥩 <strong>{selectedDayData.totalProtein}g</strong> P
-              </span>
-              <span style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', padding: '3px 8px', borderRadius: '6px' }}>
-                🥑 <strong>{selectedDayData.totalFat}g</strong> F
-              </span>
-              <span style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', padding: '3px 8px', borderRadius: '6px' }}>
-                🍚 <strong>{selectedDayData.totalCarbs}g</strong> C
-              </span>
-            </div>
+            {/* Daily Total Macro Badges & Steps */}
+            {(() => {
+              const selectedSteps = parseInt(localStorage.getItem(`myroutine_steps_${selectedDate}`) || '0', 10);
+              const selectedActiveKcal = parseInt(localStorage.getItem(`myroutine_active_kcal_${selectedDate}`) || '0', 10) || Math.round(selectedSteps * 0.057);
+              
+              return (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px', fontSize: '0.75rem' }}>
+                  <span style={{ background: selectedDayData.totalCalories > (targetCalories + selectedActiveKcal) ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)', color: selectedDayData.totalCalories > (targetCalories + selectedActiveKcal) ? '#ef4444' : '#22c55e', padding: '3px 8px', borderRadius: '6px', border: `1px solid ${selectedDayData.totalCalories > (targetCalories + selectedActiveKcal) ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)'}` }}>
+                    🔥 <strong>{selectedDayData.totalCalories}</strong> / {targetCalories + selectedActiveKcal} kcal
+                  </span>
+                  {selectedSteps > 0 && (
+                    <span style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308', padding: '3px 8px', borderRadius: '6px', border: '1px solid rgba(234, 179, 8, 0.3)' }}>
+                      🚶‍♂️ <strong>{selectedSteps.toLocaleString()}</strong> Schritte (-{selectedActiveKcal} kcal)
+                    </span>
+                  )}
+                  <span style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '3px 8px', borderRadius: '6px' }}>
+                    🥩 <strong>{selectedDayData.totalProtein}g</strong> P
+                  </span>
+                  <span style={{ background: 'rgba(234, 179, 8, 0.1)', color: '#eab308', padding: '3px 8px', borderRadius: '6px' }}>
+                    🥑 <strong>{selectedDayData.totalFat}g</strong> F
+                  </span>
+                  <span style={{ background: 'rgba(56, 189, 248, 0.1)', color: '#38bdf8', padding: '3px 8px', borderRadius: '6px' }}>
+                    🍚 <strong>{selectedDayData.totalCarbs}g</strong> C
+                  </span>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Logged Meals List for the Selected Day */}
