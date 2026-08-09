@@ -476,10 +476,6 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
                   <span style={{ color: 'var(--text-muted)' }}>🔥 Aktivitäts-Burn:</span>
                   <strong style={{ color: '#22c55e' }}>-{activeCalories} kcal</strong>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '4px', marginTop: '4px' }}>
-                  <span style={{ color: 'var(--text-muted)' }}>⚡ Rest-Spielraum heute:</span>
-                  <strong style={{ color: '#eab308' }}>+{activeCalories} kcal frei</strong>
-                </div>
 
                 <div style={{ marginTop: '10px', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '8px', textAlign: 'center' }}>
                   <button
