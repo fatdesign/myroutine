@@ -120,6 +120,22 @@ export const NutritionDashboard: React.FC<NutritionDashboardProps> = ({ selected
       setTotalWaterMl(res.totalMl);
     });
     fetchProgressPhotos().then(photos => setProgressPhotos(photos));
+
+    // Auto-Reset at midnight or on tab focus if date changes
+    const checkDateRollover = () => {
+      const curDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+      const savedSteps = localStorage.getItem(`myroutine_steps_${curDate}`);
+      const savedKcal = localStorage.getItem(`myroutine_active_kcal_${curDate}`);
+      setDailySteps(savedSteps ? parseInt(savedSteps, 10) : 0);
+      setActiveCalories(savedKcal ? parseInt(savedKcal, 10) : (savedSteps ? Math.round(parseInt(savedSteps, 10) * 0.057) : 0));
+    };
+
+    window.addEventListener('focus', checkDateRollover);
+    const interval = setInterval(checkDateRollover, 60000);
+    return () => {
+      window.removeEventListener('focus', checkDateRollover);
+      clearInterval(interval);
+    };
   }, []);
 
   const handleDeleteMeal = async (id: string) => {
